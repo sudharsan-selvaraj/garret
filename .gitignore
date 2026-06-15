@@ -1,0 +1,12 @@
+node_modules
+out
+dist
+dist-electron
+*.log
+.DS_Store
+.vite
+native/build
+.electron-gyp
+.gyp-tmp
+.electron-tmp
+.electron-cache

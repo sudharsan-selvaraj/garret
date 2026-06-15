@@ -1,0 +1,1194 @@
+:root {
+  color-scheme: dark;
+
+  /* Text (macOS label colors) */
+  --text: rgba(255, 255, 255, 0.92);
+  --text-2: rgba(235, 235, 245, 0.6);
+  --text-3: rgba(235, 235, 245, 0.32);
+
+  /* Surfaces (translucent dark, Pock/macOS vibrancy feel) */
+  --surface: rgba(30, 30, 32, 0.82);
+  --surface-raised: rgba(44, 44, 46, 0.96);
+  --surface-input: rgba(118, 118, 128, 0.18);
+  --surface-hover: rgba(255, 255, 255, 0.06);
+
+  /* Lines */
+  --hairline: rgba(255, 255, 255, 0.1);
+
+  /* Accents (macOS dark system colors) */
+  --accent: #0a84ff;
+  --accent-hover: #2b9bff;
+  --danger: #ff453a;
+
+  /* Geometry */
+  --r-widget: 12px;
+  --r-menu: 12px;
+  --r-input: 7px;
+  --r-pill: 999px;
+
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  /* Native macOS: arrow cursor everywhere — even on buttons. The web `pointer`
+     hand cursor is one of the biggest "this is a web app" tells. */
+  cursor: default;
+  user-select: none;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Only real text entry gets the I-beam + selection. */
+input,
+textarea {
+  cursor: text;
+  user-select: text;
+}
+
+button {
+  font-family: inherit;
+}
+
+.app {
+  position: relative;
+  height: 100%;
+}
+
+/* ---------- Floating toolbar ---------- */
+.toolbar {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 40px; /* fixed so the collapsed pill is a perfect circle (40×40) */
+  padding: 0 8px;
+  background: var(--surface);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 0.5px solid var(--hairline);
+  border-radius: var(--r-pill);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  opacity: 0.62;
+  transition: padding 0.22s ease, gap 0.22s ease, opacity 0.18s ease;
+}
+.toolbar.expanded {
+  gap: 8px;
+  padding: 0 8px 0 14px;
+  opacity: 1;
+}
+.brand {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  color: var(--text-2);
+}
+/* Collapsible region: everything except the brand icon. */
+.toolbar-expand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-width 0.24s ease, opacity 0.16s ease;
+}
+.toolbar.expanded .toolbar-expand {
+  max-width: 460px;
+  opacity: 1;
+  overflow: visible; /* so open dropdown menus aren't clipped */
+}
+.brand-name {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  white-space: nowrap;
+}
+.add {
+  position: relative;
+}
+.add-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--r-pill);
+  padding: 0 13px 0 10px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: default;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: background 0.15s ease;
+}
+.add-btn:hover {
+  background: var(--accent-hover);
+}
+.add-btn:active {
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* ---------- Add menu ---------- */
+.add-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  width: 300px;
+  list-style: none;
+  background: var(--surface-raised);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 0.5px solid var(--hairline);
+  border-radius: var(--r-menu);
+  padding: 6px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+  z-index: 50;
+}
+.add-menu li button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  padding: 9px 10px;
+  border-radius: 8px;
+  cursor: default;
+}
+.add-menu li button:hover {
+  background: var(--accent);
+}
+.add-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--surface-input);
+  color: var(--text);
+}
+.add-menu li button:hover .add-icon {
+  background: rgba(255, 255, 255, 0.22);
+}
+.add-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.add-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+.add-desc {
+  font-size: 11px;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.add-menu li button:hover .add-desc {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* ---------- Canvas ---------- */
+.canvas {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+}
+.loading,
+.canvas-empty {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-2);
+  gap: 6px;
+}
+.canvas-empty-hint {
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+
+/* ---------- Free canvas (react-rnd) ---------- */
+.free-canvas {
+  position: absolute;
+  inset: 0;
+}
+.rnd-item {
+  /* react-rnd sets position/size inline; the widget fills it. */
+  display: flex;
+}
+
+/* ---------- Widget frame ---------- */
+.widget {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  /* More opaque + slightly lighter so the card stays legible on dark wallpapers
+     (true macOS widgets keep a consistent material regardless of wallpaper). */
+  /* Flat, embedded look — sits ON the desktop, not floating above it: no drop
+     shadow (that reads as elevation/a window), just a subtle hairline edge. */
+  background: rgba(34, 34, 36, 0.78);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--r-widget);
+  overflow: hidden;
+  box-shadow: none;
+}
+.widget-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 8px 9px 12px;
+  box-shadow: inset 0 -0.5px 0 rgba(255, 255, 255, 0.07);
+  cursor: default;
+  user-select: none;
+}
+.widget-icon {
+  display: grid;
+  place-items: center;
+  color: var(--text-2);
+}
+.widget-title {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.widget-actions {
+  display: flex;
+  gap: 2px;
+  cursor: default;
+}
+.widget-actions button {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: none;
+  color: var(--text-3);
+  border-radius: 6px;
+  cursor: default;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.widget-actions button:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+.widget-actions button.active {
+  color: var(--accent);
+}
+.widget-body {
+  flex: 1;
+  position: relative;
+  overflow: auto;
+  background: transparent;
+}
+.widget-webview {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: inline-flex;
+  background: #fff;
+}
+.widget-placeholder {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: var(--text-2);
+  font-size: 12.5px;
+  padding: 16px;
+  text-align: center;
+}
+.widget-error {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  color: var(--danger);
+  text-align: center;
+}
+.widget-error code {
+  color: var(--text-2);
+  font-size: 12px;
+  word-break: break-word;
+}
+.widget-error button {
+  background: var(--surface-input);
+  border: 0.5px solid var(--hairline);
+  color: var(--text);
+  padding: 6px 14px;
+  border-radius: var(--r-input);
+  cursor: default;
+}
+
+/* ---------- Settings ---------- */
+.widget-settings {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.settings-scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 20px;
+}
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 580px;
+}
+.settings-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Inset grouped container (System Settings style) */
+.settings-group {
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.09);
+  transition: box-shadow 0.14s ease;
+}
+.settings-group:focus-within {
+  box-shadow:
+    inset 0 0 0 1px var(--accent),
+    0 0 0 3px rgba(10, 132, 255, 0.3);
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 38px;
+  padding: 5px 12px;
+}
+.settings-row-label {
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--text);
+}
+.settings-row-control {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+.row-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  text-align: left;
+}
+.row-input::placeholder {
+  color: var(--text-3);
+}
+.row-select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  background: transparent;
+  outline: none;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  text-align: right;
+  cursor: default;
+  padding-right: 20px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-opacity='0.45' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right center;
+}
+.row-select option {
+  background: var(--surface-raised);
+  color: var(--text);
+}
+.settings-note {
+  font-size: 11.5px;
+  color: var(--text-2);
+  line-height: 1.45;
+  padding: 0 4px;
+}
+
+.switch {
+  flex-shrink: 0;
+  width: 42px;
+  height: 25px;
+  border: none;
+  border-radius: 999px;
+  background: var(--surface-input);
+  position: relative;
+  cursor: default;
+  transition: background 0.18s ease;
+}
+.switch.on {
+  background: var(--accent);
+}
+.switch-knob {
+  position: absolute;
+  top: 2.5px;
+  left: 2.5px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: transform 0.18s ease;
+}
+.switch.on .switch-knob {
+  transform: translateX(17px);
+}
+
+.settings-empty {
+  color: var(--text-2);
+  font-size: 12.5px;
+}
+
+/* Footer */
+.settings-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-top: 0.5px solid var(--hairline);
+  background: rgba(0, 0, 0, 0.18);
+}
+.settings-saved {
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.settings-done {
+  height: 28px;
+  padding: 0 16px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 13px;
+  cursor: default;
+  /* Native push-button depth: top specular highlight + faint drop shadow. */
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 1px 2px rgba(0, 0, 0, 0.35);
+  transition: background 0.15s ease;
+}
+.settings-done:hover {
+  background: var(--accent-hover);
+}
+.settings-done:active {
+  background: var(--accent);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* While dragging/resizing, let mouse events pass to the parent (not the webview). */
+.free-canvas.is-interacting .widget-webview {
+  pointer-events: none;
+}
+
+/* ---------- Context menu (right-click / ⋯) ---------- */
+.ctx-menu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 200px;
+  padding: 5px;
+  background: var(--surface-raised);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 0.5px solid var(--hairline);
+  border-radius: 10px;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.55);
+}
+.ctx-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 9px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  text-align: left;
+}
+.ctx-item:hover {
+  background: var(--accent);
+}
+.ctx-item.danger {
+  color: var(--danger);
+}
+.ctx-item.danger:hover {
+  background: var(--danger);
+  color: #fff;
+}
+.ctx-icon {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  color: var(--text-2);
+}
+.ctx-item:hover .ctx-icon {
+  color: inherit;
+}
+.ctx-label {
+  flex: 1;
+}
+.ctx-sep {
+  height: 0.5px;
+  margin: 5px 8px;
+  background: var(--hairline);
+}
+.ctx-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 9px;
+}
+.ctx-row-label {
+  font-size: 13px;
+  color: var(--text);
+}
+.ctx-row input[type='range'] {
+  flex: 1;
+  accent-color: var(--accent);
+}
+.ctx-row-value {
+  font-size: 11.5px;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+  width: 34px;
+  text-align: right;
+}
+
+/* ---------- Layout dropdown ---------- */
+.dropdown {
+  position: relative;
+}
+.layout-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 9px;
+  background: var(--surface-input);
+  border: none;
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+}
+.layout-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+.layout-btn svg:last-child {
+  color: var(--text-2);
+}
+.menu {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 8px);
+  width: 230px;
+  padding: 5px;
+  background: var(--surface-raised);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 0.5px solid var(--hairline);
+  border-radius: 10px;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.55);
+  z-index: 60;
+}
+.menu-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  text-align: left;
+}
+.menu-row:hover {
+  background: var(--surface-hover);
+}
+.menu-check {
+  width: 16px;
+  display: grid;
+  place-items: center;
+  color: var(--accent);
+}
+.menu-row-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.menu-row-del {
+  display: grid;
+  place-items: center;
+  color: var(--text-3);
+  border-radius: 5px;
+  padding: 2px;
+}
+.menu-row-del:hover {
+  color: var(--danger);
+}
+.menu-sep {
+  height: 0.5px;
+  margin: 5px 8px;
+  background: var(--hairline);
+}
+.menu-new {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+}
+.menu-new input {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 0.5px solid var(--hairline);
+  border-radius: 7px;
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+}
+.menu-new input:focus {
+  border-color: var(--accent);
+}
+.menu-new button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  background: var(--accent);
+  border: none;
+  border-radius: 7px;
+  color: #fff;
+}
+.menu-new button:disabled {
+  opacity: 0.4;
+}
+
+/* ---------- Native (non-webview) widgets ---------- */
+.native-widget {
+  width: 100%;
+  height: 100%;
+  color: var(--text);
+}
+
+.clock-widget {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  container-type: size;
+}
+.clock-time {
+  font-size: clamp(26px, 17cqw, 54px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.clock-date {
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+
+.notes-widget {
+  border: none;
+  outline: none;
+  resize: none;
+  padding: 14px;
+  font-family: inherit;
+  font-size: 13.5px;
+  line-height: 1.5;
+  background: transparent;
+  color: var(--text);
+}
+.notes-widget::placeholder {
+  color: var(--text-3);
+}
+
+.weather-widget {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  text-align: center;
+  padding: 12px;
+}
+.weather-icon {
+  font-size: 38px;
+  line-height: 1;
+}
+.weather-temp {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.weather-label {
+  font-size: 13.5px;
+  color: var(--text);
+}
+.weather-place {
+  font-size: 12px;
+  color: var(--text-2);
+  margin-top: 2px;
+}
+.weather-error {
+  color: var(--danger);
+  font-size: 12.5px;
+}
+
+/* ---------- Service (data) widgets ---------- */
+.svc-empty {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  text-align: center;
+  color: var(--text-2);
+  font-size: 12.5px;
+}
+
+/* Multi-row settings group (connect form / filters) needs row dividers. */
+.settings-group .settings-row + .settings-row {
+  box-shadow: inset 0 0.5px 0 var(--hairline);
+}
+
+.svc-connected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: rgba(48, 209, 88, 0.12);
+  font-size: 12.5px;
+}
+.svc-connected b {
+  font-weight: 600;
+}
+.svc-btn {
+  background: var(--surface-input);
+  border: none;
+  color: var(--text);
+  padding: 6px 12px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.svc-error {
+  color: var(--danger);
+  font-size: 11.5px;
+  padding: 0 4px;
+}
+
+/* Ticket list */
+.ticket-list {
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  gap: 1px;
+  overflow: auto;
+  height: 100%;
+}
+.list-caption {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  padding: 6px 8px 4px;
+}
+.ticket {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--text);
+  text-align: left;
+}
+.ticket:hover {
+  background: var(--surface-hover);
+}
+.ticket-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-3);
+}
+.ticket-dot.todo {
+  background: #8e8e93;
+}
+.ticket-dot.progress {
+  background: var(--accent);
+}
+.ticket-dot.done {
+  background: #30d158;
+}
+.ticket-dot.open {
+  background: var(--accent);
+}
+.ticket-dot.merged {
+  background: #bf5af2;
+}
+.ticket-dot.declined {
+  background: var(--danger);
+}
+.ticket-key {
+  flex-shrink: 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.ticket-summary {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ticket-avatar {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+}
+.ticket-status {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+/* Colored status pills (Jira status category / Bitbucket PR state) */
+.status-pill {
+  flex-shrink: 0;
+  max-width: 40%;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.status-pill.todo {
+  background: rgba(142, 142, 147, 0.22);
+  color: #c7c7cc;
+}
+.status-pill.progress,
+.status-pill.open {
+  background: rgba(10, 132, 255, 0.2);
+  color: #4aa8ff;
+}
+.status-pill.done {
+  background: rgba(48, 209, 88, 0.2);
+  color: #30d158;
+}
+.status-pill.merged {
+  background: rgba(191, 90, 242, 0.22);
+  color: #cd7bff;
+}
+.status-pill.declined {
+  background: rgba(255, 69, 58, 0.2);
+  color: #ff6961;
+}
+
+/* ---------- Toolbar icon button (gear) ---------- */
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--text-2);
+}
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+}
+
+/* ---------- Modal dialogs (Settings / Add) ---------- */
+.app-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.dialog-panel {
+  width: min(720px, 92vw);
+  max-height: 82vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-raised);
+  border: 0.5px solid var(--hairline);
+  border-radius: 16px;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.62);
+  overflow: hidden;
+}
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  box-shadow: inset 0 -0.5px 0 var(--hairline);
+}
+.dialog-title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.dialog-close {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--text-2);
+}
+.dialog-close:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+.dialog-body {
+  overflow: auto;
+}
+
+/* Settings dialog: master-detail */
+.dialog-settings {
+  width: min(760px, 92vw);
+}
+.settings-master {
+  display: flex;
+  min-height: 360px;
+}
+.settings-services {
+  width: 210px;
+  flex-shrink: 0;
+  list-style: none;
+  padding: 8px;
+  box-shadow: inset -0.5px 0 0 var(--hairline);
+}
+.svc-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+}
+.svc-nav:hover {
+  background: var(--surface-hover);
+}
+.svc-nav.active {
+  background: var(--accent);
+}
+.svc-nav-name {
+  flex: 1;
+  text-align: left;
+  font-weight: 500;
+}
+.svc-badge {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-3);
+}
+.svc-badge.on {
+  background: #30d158;
+}
+.settings-detail {
+  flex: 1;
+  padding: 22px;
+  overflow: auto;
+}
+.svc-detail {
+  max-width: 460px;
+}
+/* Align the connection inputs by giving labels a fixed column (dialog only). */
+.svc-detail .settings-row-label {
+  width: 84px;
+}
+/* Breathing room between the connection form and the Connect button. */
+.svc-detail .settings-done {
+  margin-top: 18px;
+}
+.svc-detail .svc-error {
+  margin-top: 10px;
+}
+.svc-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.svc-detail-head h3 {
+  font-size: 15px;
+  font-weight: 600;
+}
+.svc-detail-head p {
+  font-size: 12px;
+  color: var(--text-2);
+  margin-top: 2px;
+}
+
+/* Add dialog: widgets grouped by service */
+.dialog-add .dialog-body {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.add-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: var(--text-2);
+}
+.add-group-name {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.add-connect {
+  margin-left: auto;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--accent);
+  background: rgba(10, 132, 255, 0.14);
+  border: none;
+  padding: 4px 10px;
+  border-radius: 7px;
+}
+.add-group-ok {
+  margin-left: auto;
+  font-size: 11px;
+  color: #30d158;
+}
+.add-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(158px, 1fr));
+  gap: 10px;
+}
+.widget-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 0.5px solid var(--hairline);
+  border-radius: 12px;
+  color: var(--text);
+  text-align: left;
+}
+.widget-card:hover {
+  background: rgba(255, 255, 255, 0.09);
+}
+.widget-card.disabled {
+  opacity: 0.45;
+}
+.widget-card-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--surface-input);
+  color: var(--text);
+}
+.widget-card-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+.widget-card-desc {
+  font-size: 11px;
+  color: var(--text-2);
+  line-height: 1.4;
+}
