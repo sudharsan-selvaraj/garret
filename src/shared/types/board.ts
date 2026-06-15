@@ -20,6 +20,8 @@ export interface PlacedWidget<C = Record<string, unknown>> {
   opacity: number
   /** When locked, the widget can't be dragged or resized. */
   locked: boolean
+  /** Optional surface tint (hex, e.g. "#0a84ff"); falls back to the default panel. */
+  color?: string
 }
 
 /** A single board = the set of placed widgets for one layout. */

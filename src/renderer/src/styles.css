@@ -539,7 +539,7 @@ button {
 .ctx-menu {
   position: fixed;
   z-index: 1000;
-  min-width: 200px;
+  min-width: 224px;
   padding: 5px;
   background: var(--surface-raised);
   backdrop-filter: blur(24px) saturate(180%);
@@ -608,6 +608,51 @@ button {
   font-variant-numeric: tabular-nums;
   width: 34px;
   text-align: right;
+}
+
+/* Color picker (presets + native wheel + reset) */
+.ctx-color {
+  padding: 7px 9px 9px;
+}
+.ctx-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 9px;
+}
+.swatch {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 50%;
+  position: relative;
+}
+.swatch.active {
+  box-shadow:
+    0 0 0 2px var(--surface-raised),
+    0 0 0 3.5px #fff;
+}
+.swatch-custom {
+  overflow: hidden;
+  background: conic-gradient(from 0deg, #ff3b30, #ffcc00, #34c759, #00c7be, #0a84ff, #bf5af2, #ff3b30);
+}
+.swatch-custom input {
+  position: absolute;
+  inset: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+  border: none;
+  padding: 0;
+  opacity: 0;
+}
+.swatch-reset {
+  display: grid;
+  place-items: center;
+  background: var(--surface-input);
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1;
 }
 
 /* ---------- Layout dropdown ---------- */

@@ -23,6 +23,7 @@ interface BoardStore {
   updateFrame: (id: string, frame: Frame) => void
   setOpacity: (id: string, opacity: number) => void
   setLocked: (id: string, locked: boolean) => void
+  setColor: (id: string, color: string | undefined) => void
 
   refreshLayouts: () => Promise<void>
   switchLayout: (name: string) => Promise<void>
@@ -92,6 +93,8 @@ export const useBoardStore = create<BoardStore>((set, get) => {
     setOpacity: (id, opacity) => mut(id, (w) => ({ ...w, opacity })),
 
     setLocked: (id, locked) => mut(id, (w) => ({ ...w, locked })),
+
+    setColor: (id, color) => mut(id, (w) => ({ ...w, color })),
 
     refreshLayouts: async () => {
       const info = await window.myview.layouts.list()

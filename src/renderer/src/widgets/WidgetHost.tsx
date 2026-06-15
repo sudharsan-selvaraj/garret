@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { Lock, LockOpen, MoreHorizontal, RotateCw, SlidersHorizontal, Trash2 } from 'lucide-react'
 import type { PlacedWidget } from '@shared/types/board'
 import { registry } from '@renderer/plugins/registry'
@@ -9,6 +9,28 @@ import { AutoSettingsForm } from '@renderer/widgets/AutoSettingsForm'
 import { WidgetIcon } from '@renderer/widgets/WidgetIcon'
 import { ContextMenu, MenuItem, MenuRow, MenuSeparator } from '@renderer/widgets/ContextMenu'
 
+/** Preset tints for the widget color picker (macOS system palette). */
+const COLOR_PRESETS = [
+  '#0a84ff',
+  '#5e5ce6',
+  '#bf5af2',
+  '#ff375f',
+  '#ff453a',
+  '#ff9f0a',
+  '#ffd60a',
+  '#30d158',
+  '#40c8e0',
+  '#8e8e93'
+]
+
+function hexToRgba(hex: string, a: number): string {
+  const m = hex.replace('#', '')
+  const r = parseInt(m.slice(0, 2), 16)
+  const g = parseInt(m.slice(2, 4), 16)
+  const b = parseInt(m.slice(4, 6), 16)
+  return `rgba(${r}, ${g}, ${b}, ${a})`
+}
+
 /** Frame + chrome shared by every widget. Looks up the plugin and renders it. */
 export function WidgetHost({ widget }: { widget: PlacedWidget }): JSX.Element {
   const plugin = registry.get(widget.pluginId)
@@ -16,6 +38,7 @@ export function WidgetHost({ widget }: { widget: PlacedWidget }): JSX.Element {
   const updateConfig = useBoardStore((s) => s.updateConfig)
   const setOpacity = useBoardStore((s) => s.setOpacity)
   const setLocked = useBoardStore((s) => s.setLocked)
+  const setColor = useBoardStore((s) => s.setColor)
 
   const [showSettings, setShowSettings] = useState(false)
   const [refreshToken, setRefreshToken] = useState(0)
@@ -39,8 +62,11 @@ export function WidgetHost({ widget }: { widget: PlacedWidget }): JSX.Element {
     setMenu({ x: e.clientX, y: e.clientY })
   }
 
+  const style: CSSProperties = { opacity: widget.opacity / 100 }
+  if (widget.color) style.background = hexToRgba(widget.color, 0.82)
+
   return (
-    <div className="widget" style={{ opacity: widget.opacity / 100 }} onContextMenu={openMenu}>
+    <div className="widget" style={style} onContextMenu={openMenu}>
       <header className="widget-header widget-drag">
         <span className="widget-icon">
           <WidgetIcon icon={manifest.icon} size={15} />
@@ -137,6 +163,34 @@ export function WidgetHost({ widget }: { widget: PlacedWidget }): JSX.Element {
             />
             <span className="ctx-row-value">{widget.opacity}%</span>
           </MenuRow>
+          <div className="ctx-color">
+            <span className="ctx-row-label">Color</span>
+            <div className="ctx-swatches">
+              {COLOR_PRESETS.map((c) => (
+                <button
+                  key={c}
+                  className={`swatch${widget.color === c ? ' active' : ''}`}
+                  style={{ background: c }}
+                  title={c}
+                  onClick={() => setColor(widget.id, c)}
+                />
+              ))}
+              <label className="swatch swatch-custom" title="Custom color">
+                <input
+                  type="color"
+                  value={widget.color ?? '#222224'}
+                  onChange={(e) => setColor(widget.id, e.target.value)}
+                />
+              </label>
+              <button
+                className="swatch swatch-reset"
+                title="Default"
+                onClick={() => setColor(widget.id, undefined)}
+              >
+                ×
+              </button>
+            </div>
+          </div>
           <MenuSeparator />
           <MenuItem
             icon={<Trash2 size={15} strokeWidth={1.75} />}
