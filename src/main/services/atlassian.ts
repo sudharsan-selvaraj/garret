@@ -138,12 +138,13 @@ interface RawPR {
   id: number
   title: string
   state: string
-  author?: { display_name?: string }
+  author?: { display_name?: string; account_id?: string }
   source?: { branch?: { name?: string } }
   destination?: { branch?: { name?: string } }
   comment_count?: number
   created_on?: string
   links?: { html?: { href?: string } }
+  participants?: { user?: { account_id?: string }; role?: string; state?: string | null; approved?: boolean }[]
 }
 function normalizePR(pr: RawPR): BitbucketPR {
   return {
@@ -180,6 +181,56 @@ async function validate(creds: Creds): Promise<ServiceStatus> {
   return { connected: false, error: 'Provide an API token.' }
 }
 
+// Cache the authenticated user's Atlassian accountId (from Jira /myself) so we can
+// match Bitbucket author/reviewer account_ids — Bitbucket's API omits email.
+let selfCache: { email: string; accountId: string } | null = null
+async function selfAccountId(creds: Creds): Promise<string | null> {
+  if (selfCache?.email === creds.email) return selfCache.accountId
+  if (!creds.jiraSite) return null
+  try {
+    const me = (await jiraCall(creds, '/rest/api/3/myself')) as { accountId?: string }
+    if (me.accountId) {
+      selfCache = { email: creds.email, accountId: me.accountId }
+      return me.accountId
+    }
+  } catch {
+    /* identity unavailable */
+  }
+  return null
+}
+
+interface RepoRef {
+  ws: string
+  repo: string
+  label: string
+}
+/** Parse "workspace/repo" entries (also tolerates pasted bitbucket.org URLs). */
+function parseRepos(input: unknown): RepoRef[] {
+  const list = Array.isArray(input) ? input.map(String) : []
+  const out: RepoRef[] = []
+  for (const raw of list) {
+    const t = raw
+      .trim()
+      .replace(/^https?:\/\/bitbucket\.org\//i, '')
+      .replace(/\/+$/, '')
+    const [ws, repo] = t.split('/')
+    if (ws && repo) out.push({ ws, repo, label: `${ws}/${repo}` })
+  }
+  return out
+}
+
+const PR_FIELDS =
+  'values.id,values.title,values.state,values.comment_count,values.created_on,values.author.account_id,values.author.display_name,values.source.branch.name,values.destination.branch.name,values.links.html.href,values.participants.user.account_id,values.participants.role,values.participants.state,values.participants.approved'
+
+async function fetchRepoPRs(creds: Creds, ref: RepoRef, state: string): Promise<RawPR[]> {
+  const stateQ = state && state !== 'ALL' ? `state=${encodeURIComponent(state)}&` : ''
+  const data = (await bbCall(
+    creds,
+    `/repositories/${encodeURIComponent(ref.ws)}/${encodeURIComponent(ref.repo)}/pullrequests?${stateQ}pagelen=30&fields=${PR_FIELDS}`
+  )) as { values?: RawPR[] }
+  return data.values ?? []
+}
+
 export const atlassianService: BackendService = {
   id: 'atlassian',
 
@@ -206,6 +257,7 @@ export const atlassianService: BackendService = {
 
   async disconnect(): Promise<ServiceStatus> {
     secrets.delete(SECRET_KEY)
+    selfCache = null
     return { connected: false }
   },
 
@@ -238,6 +290,37 @@ export const atlassianService: BackendService = {
         `/repositories/${encodeURIComponent(workspace)}/${encodeURIComponent(repo)}/pullrequests?state=${encodeURIComponent(state)}&pagelen=${max}&fields=values.id,values.title,values.state,values.author.display_name,values.source.branch.name,values.destination.branch.name,values.comment_count,values.created_on,values.links.html.href`
       )) as { values?: RawPR[] }
       return (data.values ?? []).map(normalizePR)
+    }
+
+    if (method === 'listMyPRs' || method === 'listReviewPRs') {
+      const me = await selfAccountId(creds)
+      if (!me) throw new Error('Could not identify your account — set the Jira site in Settings.')
+      const refs = parseRepos(params.repos)
+      const state = String(params.state ?? 'OPEN')
+      const groups = await Promise.all(
+        refs.map(async (ref) => {
+          const prs = await fetchRepoPRs(creds, ref, state)
+          if (method === 'listMyPRs') {
+            return prs
+              .filter((p) => p.author?.account_id === me)
+              .map((p) => ({ ...normalizePR(p), repo: ref.label }))
+          }
+          return prs.flatMap((p) => {
+            const mine = (p.participants ?? []).find(
+              (x) => x.user?.account_id === me && x.role === 'REVIEWER'
+            )
+            if (!mine) return []
+            const reviewState =
+              mine.state === 'approved'
+                ? 'approved'
+                : mine.state === 'changes_requested'
+                  ? 'changes_requested'
+                  : 'pending'
+            return [{ ...normalizePR(p), repo: ref.label, reviewState }]
+          })
+        })
+      )
+      return groups.flat()
     }
 
     throw new Error(`Unknown Atlassian method: ${method}`)

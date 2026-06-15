@@ -996,6 +996,102 @@ button {
   white-space: nowrap;
 }
 
+/* ---------- Grouped PR widgets (My PRs / PRs to Review) ---------- */
+.pr-widget {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  padding: 6px;
+}
+.pr-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pr-group-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  color: var(--text-2);
+}
+.pr-group-head:hover {
+  background: var(--surface-hover);
+}
+.pr-group-name {
+  flex: 1;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+.pr-group-count {
+  font-size: 11px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+  background: var(--surface-input);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+.pr-group-body {
+  display: flex;
+  flex-direction: column;
+  padding: 2px 0 6px 6px;
+}
+.pr-author {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-2);
+  white-space: nowrap;
+  max-width: 30%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pr-comments {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* repos textarea + section label in settings */
+.settings-section-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  padding: 0 2px 7px;
+  display: block;
+}
+.repos-input {
+  width: 100%;
+  resize: vertical;
+  min-height: 76px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 0.5px solid var(--hairline);
+  border-radius: 9px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  line-height: 1.5;
+  outline: none;
+}
+.repos-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.25);
+}
+
 /* Colored status pills (Jira status category / Bitbucket PR state) */
 .status-pill {
   flex-shrink: 0;

@@ -11,4 +11,8 @@ export interface BitbucketPR {
   /** ISO created timestamp (for notification high-water-mark). */
   created?: string
   url: string
+  /** "workspace/repo" — set for multi-repo widgets, used for grouping. */
+  repo?: string
+  /** Your review state on this PR (review widget): 'approved' | 'changes_requested' | 'pending'. */
+  reviewState?: string
 }

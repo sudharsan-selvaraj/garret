@@ -5,6 +5,8 @@ import googleCalendar from '@plugins/google-calendar'
 import jiraBoard from '@plugins/jira-board'
 import jiraTickets from '@plugins/jira-tickets'
 import bitbucketPrs from '@plugins/bitbucket-prs'
+import bitbucketMyPrs from '@plugins/bitbucket-my-prs'
+import bitbucketReviewPrs from '@plugins/bitbucket-review-prs'
 import clock from '@plugins/clock'
 import notes from '@plugins/notes'
 import weather from '@plugins/weather'
@@ -15,6 +17,8 @@ import weather from '@plugins/weather'
  */
 const builtins: AnyWidgetPlugin[] = [
   jiraTickets,
+  bitbucketMyPrs,
+  bitbucketReviewPrs,
   bitbucketPrs,
   googleCalendar,
   jiraBoard,
