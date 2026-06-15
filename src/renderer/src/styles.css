@@ -316,6 +316,28 @@ button {
 .widget-actions button.active {
   color: var(--accent);
 }
+
+/* Light tint → dark header text/icons for contrast. */
+.widget--light .widget-header {
+  box-shadow: inset 0 -0.5px 0 rgba(0, 0, 0, 0.14);
+}
+.widget--light .widget-title {
+  color: rgba(0, 0, 0, 0.88);
+}
+.widget--light .widget-icon,
+.widget--light .widget-lock {
+  color: rgba(0, 0, 0, 0.55);
+}
+.widget--light .widget-actions button {
+  color: rgba(0, 0, 0, 0.5);
+}
+.widget--light .widget-actions button:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: rgba(0, 0, 0, 0.9);
+}
+.widget--light .widget-actions button.active {
+  color: var(--accent);
+}
 .widget-body {
   flex: 1;
   position: relative;

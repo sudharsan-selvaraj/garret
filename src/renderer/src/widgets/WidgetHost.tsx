@@ -23,12 +23,18 @@ const COLOR_PRESETS = [
   '#8e8e93'
 ]
 
-function hexToRgba(hex: string, a: number): string {
+function rgb(hex: string): [number, number, number] {
   const m = hex.replace('#', '')
-  const r = parseInt(m.slice(0, 2), 16)
-  const g = parseInt(m.slice(2, 4), 16)
-  const b = parseInt(m.slice(4, 6), 16)
+  return [parseInt(m.slice(0, 2), 16), parseInt(m.slice(2, 4), 16), parseInt(m.slice(4, 6), 16)]
+}
+function hexToRgba(hex: string, a: number): string {
+  const [r, g, b] = rgb(hex)
   return `rgba(${r}, ${g}, ${b}, ${a})`
+}
+/** Perceived luminance > threshold ⇒ the tint is light and needs dark text. */
+function isLight(hex: string): boolean {
+  const [r, g, b] = rgb(hex)
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.62
 }
 
 /** Frame + chrome shared by every widget. Looks up the plugin and renders it. */
@@ -63,10 +69,15 @@ export function WidgetHost({ widget }: { widget: PlacedWidget }): JSX.Element {
   }
 
   const style: CSSProperties = { opacity: widget.opacity / 100 }
+  const lightTint = widget.color ? isLight(widget.color) : false
   if (widget.color) style.background = hexToRgba(widget.color, 0.82)
 
   return (
-    <div className="widget" style={style} onContextMenu={openMenu}>
+    <div
+      className={`widget${lightTint ? ' widget--light' : ''}`}
+      style={style}
+      onContextMenu={openMenu}
+    >
       <header className="widget-header widget-drag">
         <span className="widget-icon">
           <WidgetIcon icon={manifest.icon} size={15} />
