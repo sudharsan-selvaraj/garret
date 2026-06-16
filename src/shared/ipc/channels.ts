@@ -2,6 +2,7 @@ import type { BoardState, PlacedWidget } from '../types/board'
 import type { WindowMode } from '../types/window'
 import type { ServiceStatus } from '../types/services'
 import type { PollUpdate, WatchSpec } from '../types/poll'
+import type { Preferences } from '../types/preferences'
 
 /**
  * The single source of truth for the main ↔ renderer contract.
@@ -37,7 +38,10 @@ export const Channels = {
   watchUnsubscribe: 'watch:unsubscribe',
   watchEvent: 'watch:event',
   hudState: 'hud:state',
-  hudSet: 'hud:set'
+  hudSet: 'hud:set',
+  prefsGet: 'prefs:get',
+  prefsSet: 'prefs:set',
+  uiOpenSettings: 'ui:open-settings'
 } as const
 
 /** Options for the file watcher. */
@@ -105,6 +109,17 @@ export interface MyViewApi {
   hud: {
     set(active: boolean): void
     onState(cb: (active: boolean) => void): () => void
+  }
+  /** App-level preferences (HUD hotkey, …). */
+  prefs: {
+    get(): Promise<Preferences>
+    /** Apply a partial update. `ok:false` means the new hotkey couldn't be registered. */
+    set(patch: Partial<Preferences>): Promise<{ ok: boolean; prefs: Preferences }>
+  }
+  /** UI commands pushed from the main process (e.g. the tray menu). */
+  ui: {
+    /** Fired when something outside the renderer asks to open Settings (tray → Preferences). */
+    onOpenSettings(cb: () => void): () => void
   }
   /**
    * Backend service integrations (Jira, Bitbucket, …). Auth + data live in main;

@@ -20,6 +20,7 @@ export default function App(): JSX.Element {
   const dialog = useUiStore((s) => s.dialog)
   const hud = useUiStore((s) => s.hud)
   const setHud = useUiStore((s) => s.setHud)
+  const openSettings = useUiStore((s) => s.openSettings)
 
   useDesktopClickThrough()
   useNotificationWatches()
@@ -27,6 +28,9 @@ export default function App(): JSX.Element {
   useEffect(() => {
     void hydrate()
   }, [hydrate])
+
+  // Tray → Preferences opens the General settings pane.
+  useEffect(() => window.myview.ui.onOpenSettings(() => openSettings('general')), [openSettings])
 
   // Reflect HUD state pushed from main; Esc dismisses while in HUD.
   useEffect(() => {

@@ -1,21 +1,25 @@
 import Store from 'electron-store'
 import { DEFAULT_LAYOUT, EMPTY_BOARD, type BoardState, type LayoutsState } from '@shared/types/board'
+import { DEFAULT_PREFERENCES, type Preferences } from '@shared/types/preferences'
 import type { LayoutsInfo } from '@shared/ipc/channels'
 
 /**
  * On-disk JSON store. `layouts` holds named boards (presets) with the active one;
- * `kv` is the namespaced per-widget key/value space.
+ * `kv` is the namespaced per-widget key/value space; `preferences` holds app-level
+ * settings (e.g. the HUD hotkey).
  */
 interface Schema {
   layouts: LayoutsState
   kv: Record<string, unknown>
+  preferences: Preferences
 }
 
 const store = new Store<Schema>({
   name: 'myview',
   defaults: {
     layouts: { active: DEFAULT_LAYOUT, layouts: { [DEFAULT_LAYOUT]: EMPTY_BOARD } },
-    kv: {}
+    kv: {},
+    preferences: DEFAULT_PREFERENCES
   }
 })
 
@@ -91,5 +95,15 @@ export const persistence = {
     const kv = store.get('kv')
     kv[key] = value
     store.set('kv', kv)
+  },
+
+  getPreferences(): Preferences {
+    // Merge over defaults so newly-added keys are always present.
+    return { ...DEFAULT_PREFERENCES, ...store.get('preferences') }
+  },
+  setPreferences(patch: Partial<Preferences>): Preferences {
+    const next = { ...this.getPreferences(), ...patch }
+    store.set('preferences', next)
+    return next
   }
 }

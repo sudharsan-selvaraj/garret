@@ -1525,6 +1525,62 @@ button {
   margin-top: 2px;
 }
 
+/* Settings: General pane (hotkey recorder) */
+.settings-nav-sep {
+  height: 1px;
+  margin: 6px 10px;
+  background: var(--hairline);
+}
+.hotkey-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hotkey-display {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  min-width: 130px;
+  padding: 0 4px;
+}
+.hotkey-display.recording {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 7px;
+}
+.hotkey-hint {
+  font-size: 12px;
+  color: var(--text-3);
+}
+.key-cap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 24px;
+  padding: 0 7px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--surface-hover);
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 0.5px var(--hairline);
+}
+.hotkey-btn {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  background: var(--surface-hover);
+  border: none;
+  border-radius: 7px;
+}
+.hotkey-btn:hover {
+  background: var(--surface-active, var(--surface-hover));
+}
+
 /* Add dialog: widgets grouped by service */
 .dialog-add .dialog-body {
   padding: 18px;

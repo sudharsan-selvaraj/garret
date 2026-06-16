@@ -50,6 +50,17 @@ const api: MyViewApi = {
       return () => ipcRenderer.removeListener(Channels.hudState, listener)
     }
   },
+  prefs: {
+    get: () => ipcRenderer.invoke(Channels.prefsGet),
+    set: (patch) => ipcRenderer.invoke(Channels.prefsSet, patch)
+  },
+  ui: {
+    onOpenSettings: (cb) => {
+      const listener = (): void => cb()
+      ipcRenderer.on(Channels.uiOpenSettings, listener)
+      return () => ipcRenderer.removeListener(Channels.uiOpenSettings, listener)
+    }
+  },
   services: {
     status: (id) => ipcRenderer.invoke(Channels.serviceStatus, id),
     connect: (id, creds) => ipcRenderer.invoke(Channels.serviceConnect, id, creds),

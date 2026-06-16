@@ -1,20 +1,34 @@
 import { useState } from 'react'
+import { SlidersHorizontal } from 'lucide-react'
 import { services, useServiceStatus, type ServiceDefinition } from '@sdk'
 import { serviceRegistry } from '@renderer/services/serviceRegistry'
 import { useUiStore } from '@renderer/app/useUiStore'
 import { WidgetIcon } from '@renderer/widgets/WidgetIcon'
 import { Dialog } from '@renderer/app/Dialog'
+import { GeneralSettings } from '@renderer/app/GeneralSettings'
+
+const GENERAL = 'general'
 
 export function SettingsDialog(): JSX.Element {
   const close = useUiStore((s) => s.close)
   const initial = useUiStore((s) => s.settingsServiceId)
   const defs = serviceRegistry.list()
-  const [selected, setSelected] = useState<string | null>(initial ?? defs[0]?.id ?? null)
+  const [selected, setSelected] = useState<string>(initial ?? GENERAL)
 
   return (
     <Dialog title="Settings" onClose={close} className="dialog-settings">
       <div className="settings-master">
         <ul className="settings-services">
+          <li>
+            <button
+              className={`svc-nav${selected === GENERAL ? ' active' : ''}`}
+              onClick={() => setSelected(GENERAL)}
+            >
+              <SlidersHorizontal size={16} strokeWidth={1.75} />
+              <span className="svc-nav-name">General</span>
+            </button>
+          </li>
+          <li className="settings-nav-sep" />
           {defs.map((d) => (
             <li key={d.id}>
               <button
@@ -29,10 +43,10 @@ export function SettingsDialog(): JSX.Element {
           ))}
         </ul>
         <div className="settings-detail">
-          {selected ? (
-            <ServiceDetail def={defs.find((d) => d.id === selected) as ServiceDefinition} />
+          {selected === GENERAL ? (
+            <GeneralSettings />
           ) : (
-            <p className="svc-empty">No services available.</p>
+            <ServiceDetail def={defs.find((d) => d.id === selected) as ServiceDefinition} />
           )}
         </div>
       </div>

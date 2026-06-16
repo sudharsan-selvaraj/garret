@@ -3,13 +3,20 @@ import { ipcMain, BrowserWindow, shell, dialog } from 'electron'
 import { Channels, type WatchOptions } from '@shared/ipc/channels'
 import type { BoardState } from '@shared/types/board'
 import type { WatchSpec } from '@shared/types/poll'
+import type { Preferences } from '@shared/types/preferences'
 import { persistence } from '@main/persistence/store'
 import { getService } from '@main/services/registry'
 import * as scheduler from '@main/poll/scheduler'
 import { subscribeWatch, unsubscribeWatch, teardownWatchSender } from '@main/watcher'
 
+/** Hooks the main process provides to IPC handlers (things outside the persistence layer). */
+export interface IpcHooks {
+  /** Apply a new HUD hotkey. Returns false if the accelerator couldn't be registered. */
+  setHudHotkey(accelerator: string): boolean
+}
+
 /** Binds the shared IPC channels to their main-process handlers. Call once on ready. */
-export function registerIpcHandlers(): void {
+export function registerIpcHandlers(hooks: IpcHooks): void {
   ipcMain.handle(Channels.boardLoad, () => persistence.loadBoard())
   ipcMain.handle(Channels.boardSave, (_e, state: BoardState) => persistence.saveBoard(state))
 
@@ -30,6 +37,19 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(Channels.serviceDisconnect, (_e, id: string) => getService(id).disconnect())
 
   ipcMain.handle(Channels.layoutsAllWidgets, () => persistence.allWidgets())
+
+  // ---- App preferences ----
+  ipcMain.handle(Channels.prefsGet, () => persistence.getPreferences())
+  ipcMain.handle(Channels.prefsSet, (_e, patch: Partial<Preferences>) => {
+    // Validate the hotkey by actually (re)registering it before persisting — a
+    // combo the OS rejects (reserved / already taken) must not be saved.
+    if (typeof patch.hudHotkey === 'string') {
+      if (!hooks.setHudHotkey(patch.hudHotkey)) {
+        return { ok: false, prefs: persistence.getPreferences() }
+      }
+    }
+    return { ok: true, prefs: persistence.setPreferences(patch) }
+  })
 
   // ---- Per-webContents teardown (poll subscriptions + file watchers) ----
   const senders = new Set<number>()

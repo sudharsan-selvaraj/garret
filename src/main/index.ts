@@ -1,7 +1,9 @@
-import { app, BrowserWindow, globalShortcut, ipcMain } from 'electron'
+import { app, BrowserWindow, globalShortcut, ipcMain, Menu, Tray } from 'electron'
 import { Channels } from '@shared/ipc/channels'
 import { registerIpcHandlers } from '@main/ipc/registerHandlers'
 import { initScheduler } from '@main/poll/scheduler'
+import { persistence } from '@main/persistence/store'
+import { createTrayIcon } from '@main/tray/icon'
 import {
   createWindow,
   pinToDesktopLevel,
@@ -14,16 +16,17 @@ import {
 // Flip to 'windowed' for plain windowed development.
 const WINDOW_MODE: WindowMode = 'desktop'
 
-// Global hotkey to summon the HUD (configurable later).
-const HUD_HOTKEY = 'CommandOrControl+Shift+Space'
-
 let win: BrowserWindow | null = null
+let tray: Tray | null = null
 let hudActive = false
+// The currently-registered HUD accelerator (empty = none). Owned here so the
+// prefs IPC handler can swap it at runtime.
+let currentHotkey = ''
 
 /**
- * HUD mode: raise the always-present desktop layer ABOVE every window, focus it
- * (so Esc/keyboard work) and dim the backdrop. Toggling off drops it back to the
- * desktop level — sinking behind your apps again.
+ * HUD mode: raise the always-present desktop layer ABOVE every window and dim the
+ * backdrop. Toggling off drops it back to the desktop level — sinking behind your
+ * apps again.
  */
 function setHud(active: boolean): void {
   if (!win || active === hudActive) return
@@ -39,6 +42,55 @@ function setHud(active: boolean): void {
     pinToDesktopLevel(win)
   }
   win.webContents.send(Channels.hudState, active)
+  updateTrayMenu()
+}
+
+/**
+ * (Re)register the global HUD hotkey. Returns false if the accelerator can't be
+ * registered (reserved / already taken); in that case the previous binding is
+ * restored so we're never left unbound. Used at startup and from the prefs IPC.
+ */
+function registerHudHotkey(accel: string): boolean {
+  const prev = currentHotkey
+  if (prev) globalShortcut.unregister(prev)
+  if (!accel) {
+    currentHotkey = ''
+    updateTrayMenu()
+    return true
+  }
+  if (globalShortcut.register(accel, () => setHud(!hudActive))) {
+    currentHotkey = accel
+    updateTrayMenu()
+    return true
+  }
+  if (prev) globalShortcut.register(prev, () => setHud(!hudActive))
+  currentHotkey = prev
+  updateTrayMenu()
+  return false
+}
+
+/** Bring the layer up and ask the renderer to open Settings (from the tray menu). */
+function openPreferences(): void {
+  if (!win) return
+  setHud(true)
+  win.webContents.send(Channels.uiOpenSettings)
+}
+
+function updateTrayMenu(): void {
+  if (!tray) return
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      {
+        label: hudActive ? 'Hide Overlay' : 'Show Overlay',
+        accelerator: currentHotkey || undefined,
+        click: () => setHud(!hudActive)
+      },
+      { type: 'separator' },
+      { label: 'Preferences…', click: openPreferences },
+      { type: 'separator' },
+      { label: 'Quit MyView', accelerator: 'CommandOrControl+Shift+Q', click: () => app.quit() }
+    ])
+  )
 }
 
 app.whenReady().then(() => {
@@ -47,12 +99,17 @@ app.whenReady().then(() => {
   // regular Dock-activating app can't, which caused the flicker over full-screen).
   if (process.platform === 'darwin') app.dock?.hide()
 
-  registerIpcHandlers()
+  registerIpcHandlers({ setHudHotkey: registerHudHotkey })
   initScheduler()
   win = createWindow(WINDOW_MODE)
 
   globalShortcut.register('CommandOrControl+Shift+Q', () => app.quit())
-  globalShortcut.register(HUD_HOTKEY, () => setHud(!hudActive))
+  registerHudHotkey(persistence.getPreferences().hudHotkey)
+
+  // Menu-bar presence — the primary entry point since we run without a Dock icon.
+  tray = new Tray(createTrayIcon())
+  tray.setToolTip('MyView')
+  updateTrayMenu()
 
   // Renderer can dismiss (Esc / backdrop click). Dismiss-on-blur is intentionally
   // omitted: activating the app emits a transient blur that would instantly close
