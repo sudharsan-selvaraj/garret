@@ -4,6 +4,13 @@ import { registerIpcHandlers } from '@main/ipc/registerHandlers'
 import { initScheduler } from '@main/poll/scheduler'
 import { persistence } from '@main/persistence/store'
 import { createTrayIcon } from '@main/tray/icon'
+import { initClipboard } from '@main/clipboard/manager'
+import { registerClipboardHandlers } from '@main/clipboard/ipc'
+import {
+  createClipboardPicker,
+  notifyClipboardPicker,
+  toggleClipboardPicker
+} from '@main/windows/clipboardPicker'
 import {
   createWindow,
   pinToDesktopLevel,
@@ -19,9 +26,10 @@ const WINDOW_MODE: WindowMode = 'desktop'
 let win: BrowserWindow | null = null
 let tray: Tray | null = null
 let hudActive = false
-// The currently-registered HUD accelerator (empty = none). Owned here so the
-// prefs IPC handler can swap it at runtime.
+// The currently-registered accelerators (empty = none). Owned here so the prefs
+// IPC handler can swap them at runtime.
 let currentHotkey = ''
+let currentClipboardHotkey = ''
 
 /**
  * HUD mode: raise the always-present desktop layer ABOVE every window and dim the
@@ -69,6 +77,23 @@ function registerHudHotkey(accel: string): boolean {
   return false
 }
 
+/** (Re)register the global clipboard-manager hotkey, restoring the prior one on failure. */
+function registerClipboardHotkey(accel: string): boolean {
+  const prev = currentClipboardHotkey
+  if (prev) globalShortcut.unregister(prev)
+  if (!accel) {
+    currentClipboardHotkey = ''
+    return true
+  }
+  if (globalShortcut.register(accel, () => toggleClipboardPicker())) {
+    currentClipboardHotkey = accel
+    return true
+  }
+  if (prev) globalShortcut.register(prev, () => toggleClipboardPicker())
+  currentClipboardHotkey = prev
+  return false
+}
+
 /** Bring the layer up and ask the renderer to open Settings (from the tray menu). */
 function openPreferences(): void {
   if (!win) return
@@ -99,12 +124,22 @@ app.whenReady().then(() => {
   // regular Dock-activating app can't, which caused the flicker over full-screen).
   if (process.platform === 'darwin') app.dock?.hide()
 
-  registerIpcHandlers({ setHudHotkey: registerHudHotkey })
+  registerIpcHandlers({
+    setHudHotkey: registerHudHotkey,
+    setClipboardHotkey: registerClipboardHotkey
+  })
+  registerClipboardHandlers()
   initScheduler()
   win = createWindow(WINDOW_MODE)
 
+  // Clipboard manager: history capture + the (hidden) picker panel.
+  createClipboardPicker()
+  initClipboard(notifyClipboardPicker)
+
   globalShortcut.register('CommandOrControl+Shift+Q', () => app.quit())
-  registerHudHotkey(persistence.getPreferences().hudHotkey)
+  const prefs = persistence.getPreferences()
+  registerHudHotkey(prefs.hudHotkey)
+  registerClipboardHotkey(prefs.clipboardHotkey)
 
   // Menu-bar presence — the primary entry point since we run without a Dock icon.
   tray = new Tray(createTrayIcon())

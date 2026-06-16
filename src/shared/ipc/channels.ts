@@ -3,6 +3,7 @@ import type { WindowMode } from '../types/window'
 import type { ServiceStatus } from '../types/services'
 import type { PollUpdate, WatchSpec } from '../types/poll'
 import type { Preferences } from '../types/preferences'
+import type { ClipItem } from '../types/clipboard'
 
 /**
  * The single source of truth for the main ↔ renderer contract.
@@ -41,7 +42,15 @@ export const Channels = {
   hudSet: 'hud:set',
   prefsGet: 'prefs:get',
   prefsSet: 'prefs:set',
-  uiOpenSettings: 'ui:open-settings'
+  uiOpenSettings: 'ui:open-settings',
+  clipboardList: 'clipboard:list',
+  clipboardPaste: 'clipboard:paste',
+  clipboardDelete: 'clipboard:delete',
+  clipboardClear: 'clipboard:clear',
+  clipboardHide: 'clipboard:hide',
+  clipboardChanged: 'clipboard:changed',
+  clipboardAxStatus: 'clipboard:ax-status',
+  clipboardOpenAx: 'clipboard:open-ax'
 } as const
 
 /** Options for the file watcher. */
@@ -121,6 +130,24 @@ export interface MyViewApi {
     /** Fired when something outside the renderer asks to open Settings (tray → Preferences). */
     onOpenSettings(cb: () => void): () => void
   }
+  /** Clipboard manager — history list + paste/delete/clear, used by the picker window. */
+  clipboard: {
+    list(): Promise<ClipItem[]>
+    /** Select an item: copy it, dismiss the picker, and paste into the previous app. */
+    paste(id: string): void
+    /** Remove a single item from history. */
+    delete(id: string): void
+    /** Clear all history. */
+    clear(): void
+    /** Dismiss the picker window (Esc / blur). */
+    hide(): void
+    /** Whether Accessibility is granted (needed for auto-paste). */
+    axStatus(): Promise<boolean>
+    /** Open System Settings → Privacy → Accessibility. */
+    openAccessibilitySettings(): void
+    /** Fired when history changes or the picker is (re)shown — re-fetch the list. */
+    onChanged(cb: () => void): () => void
+  }
   /**
    * Backend service integrations (Jira, Bitbucket, …). Auth + data live in main;
    * the renderer only ever sees status + query results, never credentials.
@@ -151,7 +178,12 @@ export interface MyViewApi {
   }
   platform: NodeJS.Platform
   windowMode: WindowMode
+  /** Which UI this window hosts: the widget board, or the clipboard picker. */
+  windowRole: WindowRole
 }
+
+/** The role a window plays — selects which root UI the renderer mounts. */
+export type WindowRole = 'board' | 'clipboard'
 
 declare global {
   interface Window {

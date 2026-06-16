@@ -1,9 +1,11 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { Channels, type MyViewApi } from '@shared/ipc/channels'
+import { Channels, type MyViewApi, type WindowRole } from '@shared/ipc/channels'
 import type { WindowMode } from '@shared/types/window'
 
 const modeArg = process.argv.find((a) => a.startsWith('--myview-mode='))
 const windowMode = (modeArg?.split('=')[1] as WindowMode) ?? 'windowed'
+const roleArg = process.argv.find((a) => a.startsWith('--myview-role='))
+const windowRole = (roleArg?.split('=')[1] as WindowRole) ?? 'board'
 
 const api: MyViewApi = {
   board: {
@@ -61,6 +63,20 @@ const api: MyViewApi = {
       return () => ipcRenderer.removeListener(Channels.uiOpenSettings, listener)
     }
   },
+  clipboard: {
+    list: () => ipcRenderer.invoke(Channels.clipboardList),
+    paste: (id) => ipcRenderer.send(Channels.clipboardPaste, id),
+    delete: (id) => ipcRenderer.send(Channels.clipboardDelete, id),
+    clear: () => ipcRenderer.send(Channels.clipboardClear),
+    hide: () => ipcRenderer.send(Channels.clipboardHide),
+    axStatus: () => ipcRenderer.invoke(Channels.clipboardAxStatus),
+    openAccessibilitySettings: () => ipcRenderer.send(Channels.clipboardOpenAx),
+    onChanged: (cb) => {
+      const listener = (): void => cb()
+      ipcRenderer.on(Channels.clipboardChanged, listener)
+      return () => ipcRenderer.removeListener(Channels.clipboardChanged, listener)
+    }
+  },
   services: {
     status: (id) => ipcRenderer.invoke(Channels.serviceStatus, id),
     connect: (id, creds) => ipcRenderer.invoke(Channels.serviceConnect, id, creds),
@@ -84,7 +100,8 @@ const api: MyViewApi = {
     }
   },
   platform: process.platform,
-  windowMode
+  windowMode,
+  windowRole
 }
 
 contextBridge.exposeInMainWorld('myview', api)

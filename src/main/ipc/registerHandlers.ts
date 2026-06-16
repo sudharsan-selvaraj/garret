@@ -13,6 +13,8 @@ import { subscribeWatch, unsubscribeWatch, teardownWatchSender } from '@main/wat
 export interface IpcHooks {
   /** Apply a new HUD hotkey. Returns false if the accelerator couldn't be registered. */
   setHudHotkey(accelerator: string): boolean
+  /** Apply a new clipboard-manager hotkey. Returns false if it couldn't be registered. */
+  setClipboardHotkey(accelerator: string): boolean
 }
 
 /** Binds the shared IPC channels to their main-process handlers. Call once on ready. */
@@ -41,12 +43,13 @@ export function registerIpcHandlers(hooks: IpcHooks): void {
   // ---- App preferences ----
   ipcMain.handle(Channels.prefsGet, () => persistence.getPreferences())
   ipcMain.handle(Channels.prefsSet, (_e, patch: Partial<Preferences>) => {
-    // Validate the hotkey by actually (re)registering it before persisting — a
+    // Validate hotkeys by actually (re)registering them before persisting — a
     // combo the OS rejects (reserved / already taken) must not be saved.
-    if (typeof patch.hudHotkey === 'string') {
-      if (!hooks.setHudHotkey(patch.hudHotkey)) {
-        return { ok: false, prefs: persistence.getPreferences() }
-      }
+    if (typeof patch.hudHotkey === 'string' && !hooks.setHudHotkey(patch.hudHotkey)) {
+      return { ok: false, prefs: persistence.getPreferences() }
+    }
+    if (typeof patch.clipboardHotkey === 'string' && !hooks.setClipboardHotkey(patch.clipboardHotkey)) {
+      return { ok: false, prefs: persistence.getPreferences() }
     }
     return { ok: true, prefs: persistence.setPreferences(patch) }
   })
