@@ -21,6 +21,7 @@ export const Channels = {
   layoutsCreate: 'layouts:create',
   layoutsRename: 'layouts:rename',
   layoutsDelete: 'layouts:delete',
+  layoutsAddWidget: 'layouts:add-widget',
   serviceStatus: 'service:status',
   serviceConnect: 'service:connect',
   serviceDisconnect: 'service:disconnect',
@@ -87,6 +88,8 @@ export interface MyViewApi {
     rename(from: string, to: string): Promise<LayoutsInfo>
     /** Delete a layout; returns the new active board. */
     delete(name: string): Promise<BoardState>
+    /** Append a widget to another (non-active) layout — for copy/move between layouts. */
+    addWidget(name: string, widget: PlacedWidget): Promise<void>
     /** All placed widgets across every layout (for registering notification watches). */
     allWidgets(): Promise<PlacedWidget[]>
   }

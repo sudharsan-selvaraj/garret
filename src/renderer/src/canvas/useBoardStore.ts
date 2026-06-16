@@ -30,6 +30,8 @@ interface BoardStore {
   createLayout: (name: string) => Promise<void>
   renameLayout: (from: string, to: string) => Promise<void>
   deleteLayout: (name: string) => Promise<void>
+  copyWidgetTo: (target: string, widget: PlacedWidget) => Promise<void>
+  moveWidgetTo: (target: string, widget: PlacedWidget) => Promise<void>
 }
 
 function persist(widgets: PlacedWidget[]): void {
@@ -121,6 +123,17 @@ export const useBoardStore = create<BoardStore>((set, get) => {
       const board = await window.myview.layouts.delete(name)
       const info = await window.myview.layouts.list()
       set({ widgets: board.widgets, activeLayout: info.active, layoutNames: info.names })
+    },
+
+    // Clone (new id) into another layout's board. The target is never the active
+    // layout (the menu only offers others), so the local board is untouched.
+    copyWidgetTo: async (target, widget) => {
+      await window.myview.layouts.addWidget(target, { ...widget, id: crypto.randomUUID() })
+    },
+
+    moveWidgetTo: async (target, widget) => {
+      await window.myview.layouts.addWidget(target, { ...widget, id: crypto.randomUUID() })
+      get().removeWidget(widget.id)
     }
   }
 })

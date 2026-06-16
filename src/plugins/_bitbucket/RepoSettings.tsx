@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { useServiceStatus, type WidgetSettingsProps } from '@sdk'
+import type { BitbucketPR } from '@shared/types/bitbucket'
 
 export interface RepoConfig {
   title: string
@@ -7,6 +8,10 @@ export interface RepoConfig {
   state: string
   refreshMin: string
   notify: boolean
+  /** Hide PRs created more than this many days ago ('0' = no limit). */
+  maxAgeDays?: string
+  /** PR ids the user has manually muted (hidden from the list). */
+  muted?: number[]
 }
 
 /** Parse the repos textarea ("workspace/repo" per line) into an array for the query. */
@@ -15,6 +20,18 @@ export function parseReposConfig(repos: string): string[] {
     .split(/[\n,]/)
     .map((s) => s.trim())
     .filter(Boolean)
+}
+
+/** Apply the client-side display filters: drop muted PRs and ones older than the cutoff. */
+export function filterPRs(items: BitbucketPR[], config: RepoConfig): BitbucketPR[] {
+  const maxAge = Number(config.maxAgeDays) || 0
+  const muted = new Set(config.muted ?? [])
+  const cutoff = maxAge > 0 ? Date.now() - maxAge * 86_400_000 : 0
+  return items.filter((pr) => {
+    if (muted.has(pr.id)) return false
+    if (cutoff && pr.created && new Date(pr.created).getTime() < cutoff) return false
+    return true
+  })
 }
 
 export function RepoSettings({
@@ -54,13 +71,25 @@ export function RepoSettings({
               <option value="ALL">All</option>
             </select>
           </Row>
-          <Row label="Refresh every">
-            <select className="row-select" value={config.refreshMin} onChange={(e) => onChange({ refreshMin: e.target.value })}>
-              <option value="0">Manual</option>
-              <option value="1">1 min</option>
-              <option value="5">5 min</option>
-              <option value="15">15 min</option>
-            </select>
+          <Row label="Hide older than (days)">
+            <input
+              className="row-input"
+              type="number"
+              min={0}
+              placeholder="0 = any age"
+              value={config.maxAgeDays ?? ''}
+              onChange={(e) => onChange({ maxAgeDays: e.target.value })}
+            />
+          </Row>
+          <Row label="Refresh (min)">
+            <input
+              className="row-input"
+              type="number"
+              min={0}
+              placeholder="0 = manual"
+              value={config.refreshMin ?? ''}
+              onChange={(e) => onChange({ refreshMin: e.target.value })}
+            />
           </Row>
           <Row label={notifyLabel}>
             <Switch on={config.notify} onChange={(v) => onChange({ notify: v })} />

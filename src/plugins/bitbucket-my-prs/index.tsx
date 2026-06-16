@@ -2,7 +2,12 @@ import { GitPullRequestArrow, MessageSquare } from 'lucide-react'
 import { defineWidget, field, usePolledQuery, type WidgetRenderProps } from '@sdk'
 import type { BitbucketPR } from '@shared/types/bitbucket'
 import { GroupedPrList } from '@plugins/_bitbucket/GroupedPrList'
-import { RepoSettings, parseReposConfig, type RepoConfig } from '@plugins/_bitbucket/RepoSettings'
+import {
+  RepoSettings,
+  filterPRs,
+  parseReposConfig,
+  type RepoConfig
+} from '@plugins/_bitbucket/RepoSettings'
 
 const SERVICE = 'atlassian'
 const STATE_CLASS: Record<string, string> = { OPEN: 'open', MERGED: 'merged', DECLINED: 'declined' }
@@ -26,14 +31,19 @@ function MyPRs({ config, ctx }: WidgetRenderProps<RepoConfig>): JSX.Element {
     return <div className="svc-empty">Add one or more repos in ⚙ settings.</div>
   }
 
+  const muted = config.muted ?? []
+  const items = data ? filterPRs(data, config) : undefined
+  const mute = (id: number): void => ctx.updateConfig({ muted: [...muted, id] })
+
   return (
     <div className="pr-widget">
       {config.title && <div className="list-caption">{config.title}</div>}
       <GroupedPrList
-        items={data}
+        items={items}
         loading={loading}
         error={error}
         empty="No open PRs you authored."
+        onMute={mute}
         meta={(pr) => (
           <>
             {pr.commentCount ? (
@@ -45,6 +55,11 @@ function MyPRs({ config, ctx }: WidgetRenderProps<RepoConfig>): JSX.Element {
           </>
         )}
       />
+      {muted.length > 0 && (
+        <button className="pr-unmute" onClick={() => ctx.updateConfig({ muted: [] })}>
+          {muted.length} muted · Unmute all
+        </button>
+      )}
     </div>
   )
 }

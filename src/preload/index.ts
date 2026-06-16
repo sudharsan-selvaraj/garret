@@ -18,6 +18,7 @@ const api: MyViewApi = {
     create: (name) => ipcRenderer.invoke(Channels.layoutsCreate, name),
     rename: (from, to) => ipcRenderer.invoke(Channels.layoutsRename, from, to),
     delete: (name) => ipcRenderer.invoke(Channels.layoutsDelete, name),
+    addWidget: (name, widget) => ipcRenderer.invoke(Channels.layoutsAddWidget, name, widget),
     allWidgets: () => ipcRenderer.invoke(Channels.layoutsAllWidgets)
   },
   poll: {

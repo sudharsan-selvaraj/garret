@@ -10,6 +10,12 @@ export interface Preferences {
   clipboardPersist: boolean
   /** Skip clipboard items flagged confidential/transient (password managers). */
   clipboardIgnoreConfidential: boolean
+  /** Notify when a meeting is created or cancelled (needs Google connected). */
+  calendarNotifyChanges: boolean
+  /** Minutes before a meeting to remind (0 = off). */
+  calendarRemindBefore: number
+  /** How often (minutes) to check the calendar for changes/reminders. */
+  calendarSyncMin: number
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -17,5 +23,8 @@ export const DEFAULT_PREFERENCES: Preferences = {
   clipboardHotkey: 'Alt+Command+V',
   clipboardMaxItems: 100,
   clipboardPersist: true,
-  clipboardIgnoreConfidential: true
+  clipboardIgnoreConfidential: true,
+  calendarNotifyChanges: false,
+  calendarRemindBefore: 0,
+  calendarSyncMin: 5
 }

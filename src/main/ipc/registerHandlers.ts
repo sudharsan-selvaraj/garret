@@ -15,6 +15,8 @@ export interface IpcHooks {
   setHudHotkey(accelerator: string): boolean
   /** Apply a new clipboard-manager hotkey. Returns false if it couldn't be registered. */
   setClipboardHotkey(accelerator: string): boolean
+  /** (Re)start the background calendar monitor (after prefs or Google connect/disconnect). */
+  refreshCalendarMonitor(): void
 }
 
 /** Binds the shared IPC channels to their main-process handlers. Call once on ready. */
@@ -29,14 +31,22 @@ export function registerIpcHandlers(hooks: IpcHooks): void {
     persistence.renameLayout(from, to)
   )
   ipcMain.handle(Channels.layoutsDelete, (_e, name: string) => persistence.deleteLayout(name))
+  ipcMain.handle(Channels.layoutsAddWidget, (_e, name: string, widget) =>
+    persistence.addWidgetToLayout(name, widget)
+  )
 
   ipcMain.handle(Channels.serviceStatus, (_e, id: string) => getService(id).status())
   ipcMain.handle(Channels.serviceConnect, async (_e, id: string, creds: Record<string, unknown>) => {
     const status = await getService(id).connect(creds)
     if (status.connected) scheduler.clearServiceGate(id) // re-enable polling after reconnect
+    if (id === 'google') hooks.refreshCalendarMonitor()
     return status
   })
-  ipcMain.handle(Channels.serviceDisconnect, (_e, id: string) => getService(id).disconnect())
+  ipcMain.handle(Channels.serviceDisconnect, async (_e, id: string) => {
+    const status = await getService(id).disconnect()
+    if (id === 'google') hooks.refreshCalendarMonitor()
+    return status
+  })
 
   ipcMain.handle(Channels.layoutsAllWidgets, () => persistence.allWidgets())
 
@@ -51,7 +61,15 @@ export function registerIpcHandlers(hooks: IpcHooks): void {
     if (typeof patch.clipboardHotkey === 'string' && !hooks.setClipboardHotkey(patch.clipboardHotkey)) {
       return { ok: false, prefs: persistence.getPreferences() }
     }
-    return { ok: true, prefs: persistence.setPreferences(patch) }
+    const prefs = persistence.setPreferences(patch)
+    if (
+      'calendarNotifyChanges' in patch ||
+      'calendarRemindBefore' in patch ||
+      'calendarSyncMin' in patch
+    ) {
+      hooks.refreshCalendarMonitor()
+    }
+    return { ok: true, prefs }
   })
 
   // ---- Per-webContents teardown (poll subscriptions + file watchers) ----

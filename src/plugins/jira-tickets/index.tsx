@@ -141,13 +141,15 @@ function JiraSettings({ config, onChange }: WidgetSettingsProps<Config>): JSX.El
 
       <div className="settings-item">
         <div className="settings-group">
-          <Row label="Refresh every">
-            <select className="row-select" value={config.refreshMin} onChange={(e) => onChange({ refreshMin: e.target.value })}>
-              <option value="0">Manual</option>
-              <option value="1">1 min</option>
-              <option value="5">5 min</option>
-              <option value="15">15 min</option>
-            </select>
+          <Row label="Refresh (min)">
+            <input
+              className="row-input"
+              type="number"
+              min={0}
+              placeholder="0 = manual"
+              value={config.refreshMin ?? ''}
+              onChange={(e) => onChange({ refreshMin: e.target.value })}
+            />
           </Row>
           <Row label="Notify on new tickets">
             <Switch on={config.notify} onChange={(v) => onChange({ notify: v })} />

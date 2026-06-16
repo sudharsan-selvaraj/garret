@@ -29,7 +29,7 @@ const SERVICE = 'google'
 
 function intervalFor(c: Config): number {
   const m = Number(c.refreshMin)
-  return m > 0 ? m * 60_000 : 15 * 60_000
+  return m > 0 ? m * 60_000 : 24 * 60 * 60_000 // 0 = manual
 }
 
 function fmtTime(iso: string): string {
@@ -490,16 +490,7 @@ export default defineWidget<Config>({
         ]
       }),
       maxResults: field.number({ label: 'Max events (agenda)', default: 12 }),
-      refreshMin: field.select({
-        label: 'Refresh every',
-        default: '15',
-        options: [
-          { label: 'Manual', value: '0' },
-          { label: '5 min', value: '5' },
-          { label: '15 min', value: '15' },
-          { label: '30 min', value: '30' }
-        ]
-      })
+      refreshMin: field.number({ label: 'Refresh (min)', default: 15, help: '0 = manual' })
     }
   },
   render: CalendarWidget

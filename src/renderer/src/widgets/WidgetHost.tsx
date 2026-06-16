@@ -1,5 +1,14 @@
 import { useState, type CSSProperties } from 'react'
-import { Lock, LockOpen, MoreHorizontal, RotateCw, SlidersHorizontal, Trash2 } from 'lucide-react'
+import {
+  Copy,
+  CornerUpRight,
+  Lock,
+  LockOpen,
+  MoreHorizontal,
+  RotateCw,
+  SlidersHorizontal,
+  Trash2
+} from 'lucide-react'
 import type { PlacedWidget } from '@shared/types/board'
 import { registry } from '@renderer/plugins/registry'
 import { useBoardStore } from '@renderer/canvas/useBoardStore'
@@ -45,6 +54,10 @@ export function WidgetHost({ widget }: { widget: PlacedWidget }): JSX.Element {
   const setOpacity = useBoardStore((s) => s.setOpacity)
   const setLocked = useBoardStore((s) => s.setLocked)
   const setColor = useBoardStore((s) => s.setColor)
+  const layoutNames = useBoardStore((s) => s.layoutNames)
+  const activeLayout = useBoardStore((s) => s.activeLayout)
+  const copyWidgetTo = useBoardStore((s) => s.copyWidgetTo)
+  const moveWidgetTo = useBoardStore((s) => s.moveWidgetTo)
 
   const [showSettings, setShowSettings] = useState(false)
   const [refreshToken, setRefreshToken] = useState(0)
@@ -214,6 +227,39 @@ export function WidgetHost({ widget }: { widget: PlacedWidget }): JSX.Element {
               </button>
             </div>
           </div>
+          {layoutNames.filter((n) => n !== activeLayout).length > 0 && (
+            <>
+              <MenuSeparator />
+              <div className="ctx-section">Send to layout</div>
+              {layoutNames
+                .filter((n) => n !== activeLayout)
+                .map((name) => (
+                  <div className="ctx-move" key={name}>
+                    <span className="ctx-move-name">{name}</span>
+                    <button
+                      className="ctx-move-btn"
+                      title={`Move to ${name}`}
+                      onClick={() => {
+                        void moveWidgetTo(name, widget)
+                        setMenu(null)
+                      }}
+                    >
+                      <CornerUpRight size={14} strokeWidth={1.75} />
+                    </button>
+                    <button
+                      className="ctx-move-btn"
+                      title={`Copy to ${name}`}
+                      onClick={() => {
+                        void copyWidgetTo(name, widget)
+                        setMenu(null)
+                      }}
+                    >
+                      <Copy size={14} strokeWidth={1.75} />
+                    </button>
+                  </div>
+                ))}
+            </>
+          )}
           <MenuSeparator />
           <MenuItem
             icon={<Trash2 size={15} strokeWidth={1.75} />}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Check, ChevronDown, Layers, Plus, Settings, Trash2 } from 'lucide-react'
+import { Check, ChevronDown, Layers, Pencil, Plus, Settings, Trash2 } from 'lucide-react'
 import { useBoardStore } from '@renderer/canvas/useBoardStore'
 import { useUiStore } from '@renderer/app/useUiStore'
 
@@ -47,7 +47,16 @@ function LayoutMenu({
   const switchLayout = useBoardStore((s) => s.switchLayout)
   const createLayout = useBoardStore((s) => s.createLayout)
   const deleteLayout = useBoardStore((s) => s.deleteLayout)
+  const renameLayout = useBoardStore((s) => s.renameLayout)
   const [newName, setNewName] = useState('')
+  const [editing, setEditing] = useState<string | null>(null)
+  const [draft, setDraft] = useState('')
+
+  const commitRename = (): void => {
+    const to = draft.trim()
+    if (editing && to && to !== editing && !names.includes(to)) void renameLayout(editing, to)
+    setEditing(null)
+  }
 
   // Close on Escape / outside click.
   useEffect(() => {
@@ -83,33 +92,62 @@ function LayoutMenu({
       </button>
       {open && (
         <div className="menu">
-          {names.map((name) => (
-            <button
-              key={name}
-              className="menu-row"
-              onClick={() => {
-                void switchLayout(name)
-                setOpen(false)
-              }}
-            >
-              <span className="menu-check">
-                {name === active && <Check size={14} strokeWidth={2.25} />}
-              </span>
-              <span className="menu-row-label">{name}</span>
-              {names.length > 1 && (
+          {names.map((name) =>
+            editing === name ? (
+              <div className="menu-rename" key={name}>
+                <input
+                  autoFocus
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') commitRename()
+                    else if (e.key === 'Escape') setEditing(null)
+                  }}
+                  onBlur={commitRename}
+                />
+                <button title="Save" onMouseDown={(e) => e.preventDefault()} onClick={commitRename}>
+                  <Check size={14} strokeWidth={2.25} />
+                </button>
+              </div>
+            ) : (
+              <button
+                key={name}
+                className="menu-row"
+                onClick={() => {
+                  void switchLayout(name)
+                  setOpen(false)
+                }}
+              >
+                <span className="menu-check">
+                  {name === active && <Check size={14} strokeWidth={2.25} />}
+                </span>
+                <span className="menu-row-label">{name}</span>
                 <span
-                  className="menu-row-del"
-                  title="Delete layout"
+                  className="menu-row-edit"
+                  title="Rename layout"
                   onClick={(e) => {
                     e.stopPropagation()
-                    void deleteLayout(name)
+                    setEditing(name)
+                    setDraft(name)
                   }}
                 >
-                  <Trash2 size={13} strokeWidth={1.75} />
+                  <Pencil size={12} strokeWidth={1.75} />
                 </span>
-              )}
-            </button>
-          ))}
+                {names.length > 1 && (
+                  <span
+                    className="menu-row-del"
+                    title="Delete layout"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      void deleteLayout(name)
+                    }}
+                  >
+                    <Trash2 size={13} strokeWidth={1.75} />
+                  </span>
+                )}
+              </button>
+            )
+          )}
           <div className="menu-sep" />
           <div className="menu-new">
             <input

@@ -83,6 +83,54 @@ export function GeneralSettings(): JSX.Element {
           <button className="settings-clear" onClick={() => window.myview.clipboard.clear()}>
             Clear clipboard history
           </button>
+
+          <p className="settings-section-label">Calendar notifications</p>
+          <div className="settings-group">
+            <div className="settings-row">
+              <label className="settings-row-label">New &amp; cancelled</label>
+              <div className="settings-row-control">
+                <Toggle
+                  on={prefs.calendarNotifyChanges}
+                  onChange={(v) => void update({ calendarNotifyChanges: v })}
+                />
+              </div>
+            </div>
+            <div className="settings-row">
+              <label className="settings-row-label">Remind before</label>
+              <div className="settings-row-control">
+                <select
+                  className="row-input"
+                  value={prefs.calendarRemindBefore}
+                  onChange={(e) => void update({ calendarRemindBefore: Number(e.target.value) })}
+                >
+                  <option value={0}>Off</option>
+                  <option value={1}>1 min</option>
+                  <option value={5}>5 min</option>
+                  <option value={10}>10 min</option>
+                  <option value={15}>15 min</option>
+                </select>
+              </div>
+            </div>
+            <div className="settings-row">
+              <label className="settings-row-label">Check every</label>
+              <div className="settings-row-control">
+                <select
+                  className="row-input"
+                  value={prefs.calendarSyncMin}
+                  onChange={(e) => void update({ calendarSyncMin: Number(e.target.value) })}
+                >
+                  <option value={1}>1 min</option>
+                  <option value={2}>2 min</option>
+                  <option value={5}>5 min</option>
+                  <option value={15}>15 min</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <p className="settings-note">
+            Requires Google connected. Reminders fire at the exact time; “check every” is how often
+            we look for new/cancelled meetings (the Calendar API is free).
+          </p>
         </>
       )}
     </div>

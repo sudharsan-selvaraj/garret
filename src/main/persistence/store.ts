@@ -1,5 +1,11 @@
 import Store from 'electron-store'
-import { DEFAULT_LAYOUT, EMPTY_BOARD, type BoardState, type LayoutsState } from '@shared/types/board'
+import {
+  DEFAULT_LAYOUT,
+  EMPTY_BOARD,
+  type BoardState,
+  type LayoutsState,
+  type PlacedWidget
+} from '@shared/types/board'
 import { DEFAULT_PREFERENCES, type Preferences } from '@shared/types/preferences'
 import type { LayoutsInfo } from '@shared/ipc/channels'
 
@@ -80,6 +86,15 @@ export const persistence = {
       store.set('layouts', s)
     }
     return boardOf(state(), state().active)
+  },
+
+  /** Append a widget to a (non-active) layout's board — used by copy/move-between-layouts. */
+  addWidgetToLayout(name: string, widget: PlacedWidget): void {
+    const s = state()
+    const board = s.layouts[name]
+    if (!board) return
+    s.layouts[name] = { ...board, widgets: [...board.widgets, widget] }
+    store.set('layouts', s)
   },
 
   /** All placed widgets across every layout (for notification watch registration). */

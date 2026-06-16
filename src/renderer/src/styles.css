@@ -515,6 +515,13 @@ button {
 .row-input::placeholder {
   color: var(--text-3);
 }
+/* Number fields are short values — keep them compact and right-aligned (like selects)
+   instead of stretching the full row. */
+.row-input[type='number'] {
+  flex: 0 0 auto;
+  width: 84px;
+  text-align: right;
+}
 .row-select {
   appearance: none;
   -webkit-appearance: none;
@@ -682,6 +689,44 @@ button {
   font-size: 13px;
   color: var(--text);
 }
+.ctx-section {
+  padding: 5px 12px 2px;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-3);
+}
+.ctx-move {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px 3px 12px;
+}
+.ctx-move-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ctx-move-btn {
+  flex-shrink: 0;
+  width: 26px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 6px;
+  background: var(--surface-hover);
+  color: var(--text-2);
+}
+.ctx-move-btn:hover {
+  background: var(--accent);
+  color: #fff;
+}
 .ctx-row input[type='range'] {
   flex: 1;
   accent-color: var(--accent);
@@ -813,6 +858,49 @@ button {
 }
 .menu-row-del:hover {
   color: var(--danger);
+}
+.menu-row-edit {
+  display: grid;
+  place-items: center;
+  color: var(--text-3);
+  border-radius: 5px;
+  padding: 2px;
+  opacity: 0;
+}
+.menu-row:hover .menu-row-edit {
+  opacity: 1;
+}
+.menu-row-edit:hover {
+  color: var(--text);
+}
+.menu-rename {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+}
+.menu-rename input {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface-input);
+  border: none;
+  outline: none;
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+}
+.menu-rename button {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
 }
 .menu-sep {
   height: 0.5px;
@@ -1881,6 +1969,35 @@ button {
 .row-kebab:hover {
   background: var(--surface-hover);
   color: var(--text);
+}
+.git-row:hover .row-kebab,
+.pr-row:hover .row-kebab {
+  opacity: 1;
+}
+
+/* PR row: the ticket button + an optional ⋯ mute menu beside it. */
+.pr-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.pr-row .ticket {
+  flex: 1;
+  min-width: 0;
+}
+.pr-unmute {
+  margin: 4px 6px 2px;
+  align-self: flex-start;
+  padding: 4px 10px;
+  font-size: 11px;
+  color: var(--text-3);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+}
+.pr-unmute:hover {
+  color: var(--text);
+  background: var(--surface-hover);
 }
 
 /* repo editor rows in settings */
