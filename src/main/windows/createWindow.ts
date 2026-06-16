@@ -1,6 +1,6 @@
 import { join } from 'path'
 import { app, BrowserWindow, screen } from 'electron'
-import { pinToDesktop } from '@main/native/macWindow'
+import { pinToDesktop, raiseToHud, makePanel } from '@main/native/macWindow'
 import { Channels } from '@shared/ipc/channels'
 import type { WindowMode } from '@shared/types/window'
 
@@ -13,6 +13,17 @@ export type { WindowMode }
  * Trade-off: widgets render above desktop icons (covering them).
  */
 const DESKTOP_LEVEL_OFFSET = 1
+
+/**
+ * When the HUD is summoned we raise the window above everything. macOS fires
+ * `show` events while it composites the window onto a full-screen Space; without
+ * this guard the `show` handler would re-pin it to the desktop level on every one
+ * of those events — slamming it back behind your apps and causing the flap.
+ */
+let hudMode = false
+export function setHudMode(active: boolean): void {
+  hudMode = active
+}
 
 /**
  * Creates the MyView window. Both modes share the same renderer/canvas — the only
@@ -49,6 +60,9 @@ export function createWindow(mode: WindowMode): BrowserWindow {
   })
 
   if (isDesktop) {
+    // Make it a non-activating panel up front so HUD mode can float it over other
+    // apps' full-screen Spaces without activation/Space-switch (the flicker fix).
+    makePanel(win.getNativeWindowHandle())
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
     // Native pin: set the NSWindow level below normal windows while staying interactive.
     const pin = (): void => {
@@ -56,8 +70,11 @@ export function createWindow(mode: WindowMode): BrowserWindow {
       if (!ok) console.warn('[window] desktop pin failed; window is at normal level.')
     }
     pin()
-    // Re-apply after show — Electron can reset the level when the window is ordered in.
-    win.on('show', pin)
+    // Re-apply after show — Electron can reset the level when the window is ordered
+    // in — but NOT while the HUD is up, or we'd slam it back behind your apps.
+    win.on('show', () => {
+      if (!hudMode) pin()
+    })
     trackCursor(win)
   }
 
@@ -74,6 +91,16 @@ export function createWindow(mode: WindowMode): BrowserWindow {
   }
 
   return win
+}
+
+/** Re-pin a window to the desktop level (used when leaving HUD mode). */
+export function pinToDesktopLevel(win: BrowserWindow): void {
+  pinToDesktop(win.getNativeWindowHandle(), DESKTOP_LEVEL_OFFSET)
+}
+
+/** Float a window above everything (incl. full-screen Spaces) for HUD mode. */
+export function raiseWindowToHud(win: BrowserWindow): void {
+  raiseToHud(win.getNativeWindowHandle())
 }
 
 /**

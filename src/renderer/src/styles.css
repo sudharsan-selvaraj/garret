@@ -70,6 +70,50 @@ button {
   height: 100%;
 }
 
+/* ---------- HUD mode (summoned over everything) ---------- */
+.hud-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  background: rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(3px) saturate(115%);
+  -webkit-backdrop-filter: blur(3px) saturate(115%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.16s ease;
+}
+.app.hud-active .hud-backdrop {
+  opacity: 1;
+  pointer-events: auto;
+}
+.canvas {
+  z-index: 2;
+}
+/* In HUD, let clicks on empty canvas fall through to the backdrop (→ dismiss),
+   while widgets and the toolbar stay interactive. */
+.app.hud-active .canvas,
+.app.hud-active .free-canvas {
+  pointer-events: none;
+}
+.app.hud-active .rnd-item {
+  pointer-events: auto;
+}
+/* A gentle entrance for the widgets when summoned (on the inner card, so it
+   doesn't fight react-rnd's positioning transform on .rnd-item). */
+.app.hud-active .widget {
+  animation: hud-pop 0.18s ease;
+}
+@keyframes hud-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* ---------- Floating toolbar ---------- */
 .toolbar {
   position: fixed;

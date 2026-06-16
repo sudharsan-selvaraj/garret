@@ -53,8 +53,68 @@ Napi::Value PinToDesktop(const Napi::CallbackInfo& info) {
   return Napi::Boolean::New(env, true);
 }
 
+// raiseToHud(handleBuffer) -> boolean
+// Float the window ABOVE everything — including full-screen apps in their own
+// Spaces — and activate the app so it receives keyboard (Esc) input.
+Napi::Value RaiseToHud(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  NSWindow* window = WindowFromHandle(info[0]);
+  if (!window) {
+    Napi::TypeError::New(env, "valid native window handle required")
+        .ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
+
+  // NOTE: do NOT set window.level here — Electron owns it via setAlwaysOnTop.
+  // We only set the collection behavior so it floats over full-screen Spaces,
+  // and order it front WITHOUT activating the app (activation forces a Space
+  // switch / process-type transform that makes the HUD flicker out over
+  // full-screen apps). Dismiss is via hotkey / backdrop click.
+  dispatch_block_t apply = ^{
+    // Set the high level here too so it AGREES with Electron's setAlwaysOnTop
+    // (matching values → neither clobbers the other).
+    window.level = CGWindowLevelForKey(kCGScreenSaverWindowLevelKey);
+    window.collectionBehavior = NSWindowCollectionBehaviorCanJoinAllSpaces |
+                                NSWindowCollectionBehaviorFullScreenAuxiliary |
+                                NSWindowCollectionBehaviorStationary;
+    [window setIgnoresMouseEvents:NO];
+    [window orderFrontRegardless];
+  };
+  if ([NSThread isMainThread]) {
+    apply();
+  } else {
+    dispatch_sync(dispatch_get_main_queue(), apply);
+  }
+  return Napi::Boolean::New(env, true);
+}
+
+// makePanel(handleBuffer) -> boolean
+// Turn the window into a non-activating panel. Non-activating panels are the one
+// kind of window macOS lets float over another app's full-screen Space without
+// stealing activation or being flapped hidden — the fix for HUD-over-full-screen.
+Napi::Value MakePanel(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  NSWindow* window = WindowFromHandle(info[0]);
+  if (!window) {
+    Napi::TypeError::New(env, "valid native window handle required")
+        .ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
+  dispatch_block_t apply = ^{
+    window.styleMask |= NSWindowStyleMaskNonactivatingPanel;
+  };
+  if ([NSThread isMainThread]) {
+    apply();
+  } else {
+    dispatch_sync(dispatch_get_main_queue(), apply);
+  }
+  return Napi::Boolean::New(env, true);
+}
+
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
   exports.Set("pinToDesktop", Napi::Function::New(env, PinToDesktop));
+  exports.Set("raiseToHud", Napi::Function::New(env, RaiseToHud));
+  exports.Set("makePanel", Napi::Function::New(env, MakePanel));
   return exports;
 }
 

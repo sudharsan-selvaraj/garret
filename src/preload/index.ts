@@ -42,6 +42,14 @@ const api: MyViewApi = {
       return () => ipcRenderer.removeListener(Channels.watchEvent, listener)
     }
   },
+  hud: {
+    set: (active) => ipcRenderer.send(Channels.hudSet, active),
+    onState: (cb) => {
+      const listener = (_e: unknown, active: boolean): void => cb(active)
+      ipcRenderer.on(Channels.hudState, listener)
+      return () => ipcRenderer.removeListener(Channels.hudState, listener)
+    }
+  },
   services: {
     status: (id) => ipcRenderer.invoke(Channels.serviceStatus, id),
     connect: (id, creds) => ipcRenderer.invoke(Channels.serviceConnect, id, creds),

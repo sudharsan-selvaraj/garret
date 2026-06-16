@@ -1,18 +1,20 @@
 import { useEffect } from 'react'
+import { useUiStore } from '@renderer/app/useUiStore'
 
 /** Selector for regions that should capture clicks; everything else passes through. */
 const INTERACTIVE = '.toolbar, .rnd-item, .ctx-menu, .menu, .add-menu, .app-dialog'
 
 /**
  * In desktop mode, makes empty canvas areas click-through (clicks fall to the
- * desktop/icons) while widgets and the toolbar stay interactive.
+ * desktop/icons) while widgets and the toolbar stay interactive. In HUD mode the
+ * whole layer is interactive (the dimmed backdrop captures clicks to dismiss).
  *
- * Driven by main-process cursor polling rather than forwarded DOM mouse events:
- * a desktop-level window is never the key window, so macOS delivers forwarded
- * move events unreliably and would leave the layer stuck click-through. The polled
- * cursor position is a global OS query that always works.
+ * Driven by main-process cursor polling rather than forwarded DOM mouse events,
+ * which a desktop-level (non-key) window delivers unreliably.
  */
 export function useDesktopClickThrough(): void {
+  const hud = useUiStore((s) => s.hud)
+
   useEffect(() => {
     if (window.myview.windowMode !== 'desktop') return
 
@@ -24,6 +26,10 @@ export function useDesktopClickThrough(): void {
     }
 
     const off = window.myview.window.onCursorMove(({ x, y }) => {
+      if (useUiStore.getState().hud) {
+        setIgnore(false) // HUD: capture everything (backdrop dismiss + widgets)
+        return
+      }
       const inside = x >= 0 && y >= 0 && x <= window.innerWidth && y <= window.innerHeight
       if (!inside) {
         setIgnore(true)
@@ -39,4 +45,11 @@ export function useDesktopClickThrough(): void {
       window.myview.window.setIgnoreMouseEvents(false)
     }
   }, [])
+
+  // Force interactivity the instant HUD opens (don't wait for a cursor move).
+  useEffect(() => {
+    if (window.myview.windowMode === 'desktop' && hud) {
+      window.myview.window.setIgnoreMouseEvents(false)
+    }
+  }, [hud])
 }

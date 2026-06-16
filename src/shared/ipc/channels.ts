@@ -35,7 +35,9 @@ export const Channels = {
   notifySyncWatches: 'notify:sync-watches',
   watchSubscribe: 'watch:subscribe',
   watchUnsubscribe: 'watch:unsubscribe',
-  watchEvent: 'watch:event'
+  watchEvent: 'watch:event',
+  hudState: 'hud:state',
+  hudSet: 'hud:set'
 } as const
 
 /** Options for the file watcher. */
@@ -98,6 +100,11 @@ export interface MyViewApi {
     subscribe(watchId: string, paths: string[], opts: WatchOptions): void
     unsubscribe(watchId: string): void
     onEvent(cb: (watchId: string) => void): () => void
+  }
+  /** HUD mode — summon the widget layer over everything via global hotkey. */
+  hud: {
+    set(active: boolean): void
+    onState(cb: (active: boolean) => void): () => void
   }
   /**
    * Backend service integrations (Jira, Bitbucket, …). Auth + data live in main;

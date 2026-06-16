@@ -3,6 +3,8 @@ import { app } from 'electron'
 
 interface MacWindowAddon {
   pinToDesktop(handle: Buffer, levelOffset?: number): boolean
+  raiseToHud(handle: Buffer): boolean
+  makePanel(handle: Buffer): boolean
 }
 
 let addon: MacWindowAddon | null | undefined
@@ -36,6 +38,34 @@ export function pinToDesktop(handle: Buffer, levelOffset = 1): boolean {
     return a.pinToDesktop(handle, levelOffset)
   } catch (err) {
     console.warn('[native] pinToDesktop failed', err)
+    return false
+  }
+}
+
+/** Float the window above everything (incl. full-screen apps) and activate it. */
+export function raiseToHud(handle: Buffer): boolean {
+  const a = load()
+  if (!a) return false
+  try {
+    return a.raiseToHud(handle)
+  } catch (err) {
+    console.warn('[native] raiseToHud failed', err)
+    return false
+  }
+}
+
+/**
+ * Convert the window into a non-activating panel — the one window kind macOS lets
+ * float over another app's full-screen Space without stealing activation (the HUD
+ * fix). Safe to leave on permanently; the desktop layer never needs to activate.
+ */
+export function makePanel(handle: Buffer): boolean {
+  const a = load()
+  if (!a) return false
+  try {
+    return a.makePanel(handle)
+  } catch (err) {
+    console.warn('[native] makePanel failed', err)
     return false
   }
 }
