@@ -81,6 +81,21 @@ function joinUrlOf(item: any): string | undefined {
   return m?.[0]
 }
 
+function stripHtml(s?: string): string | undefined {
+  if (!s) return undefined
+  const text = s
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+  return text ? text.slice(0, 800) : undefined
+}
+
 function mapEvent(item: any): CalendarEvent {
   const allDay = Boolean(item.start?.date && !item.start?.dateTime)
   return {
@@ -92,7 +107,23 @@ function mapEvent(item: any): CalendarEvent {
     location: item.location,
     joinUrl: joinUrlOf(item),
     url: item.htmlLink,
-    status: item.status
+    status: item.status,
+    description: stripHtml(item.description),
+    organizer: item.organizer
+      ? { email: item.organizer.email, name: item.organizer.displayName, self: item.organizer.self }
+      : undefined,
+    attendees: Array.isArray(item.attendees)
+      ? item.attendees
+          .filter((a: any) => !a.resource) // drop rooms/equipment
+          .map((a: any) => ({
+            email: a.email,
+            name: a.displayName,
+            self: a.self,
+            organizer: a.organizer,
+            response: a.responseStatus,
+            optional: a.optional
+          }))
+      : undefined
   }
 }
 
@@ -107,6 +138,12 @@ function timeMaxFor(range: string): string | undefined {
   if (range === 'day') return new Date(now.getTime() + 24 * 3600_000).toISOString()
   if (range === 'week') return new Date(now.getTime() + 7 * 24 * 3600_000).toISOString()
   return undefined
+}
+
+async function fetchEvents(calendarId: string, q: Record<string, string>): Promise<CalendarEvent[]> {
+  const data = await calCall(`/calendars/${encodeURIComponent(calendarId)}/events`, q)
+  const items = Array.isArray(data.items) ? data.items : []
+  return items.filter((i: any) => i.status !== 'cancelled').map(mapEvent)
 }
 
 export const googleService: BackendService = {
@@ -146,8 +183,9 @@ export const googleService: BackendService = {
   },
 
   async query(method, params): Promise<unknown> {
+    const calendarId = String(params.calendarId || 'primary')
+
     if (method === 'listUpcomingEvents') {
-      const calendarId = String(params.calendarId || 'primary')
       const q: Record<string, string> = {
         singleEvents: 'true',
         orderBy: 'startTime',
@@ -156,10 +194,26 @@ export const googleService: BackendService = {
       }
       const timeMax = timeMaxFor(String(params.range || 'today'))
       if (timeMax) q.timeMax = timeMax
-      const data = await calCall(`/calendars/${encodeURIComponent(calendarId)}/events`, q)
-      const items = Array.isArray(data.items) ? data.items : []
-      return items.filter((i: any) => i.status !== 'cancelled').map(mapEvent) as CalendarEvent[]
+      return fetchEvents(calendarId, q)
     }
+
+    if (method === 'listDay') {
+      // Whole local day at `dayOffset` from today (negative = past).
+      const day = new Date()
+      day.setDate(day.getDate() + (Number(params.dayOffset) || 0))
+      const start = new Date(day)
+      start.setHours(0, 0, 0, 0)
+      const end = new Date(day)
+      end.setHours(23, 59, 59, 999)
+      return fetchEvents(calendarId, {
+        singleEvents: 'true',
+        orderBy: 'startTime',
+        timeMin: start.toISOString(),
+        timeMax: end.toISOString(),
+        maxResults: '50'
+      })
+    }
+
     throw new Error(`Unknown google method: ${method}`)
   }
 }
