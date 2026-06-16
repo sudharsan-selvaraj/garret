@@ -1,4 +1,4 @@
-import { Boxes } from 'lucide-react'
+import { Boxes, CalendarDays } from 'lucide-react'
 import { field, type ServiceDefinition } from '@sdk'
 
 /** Registry of service definitions (the groups widgets belong to). */
@@ -35,6 +35,26 @@ export function registerServices(): void {
       bitbucketToken: field.password({
         label: 'Bitbucket token',
         placeholder: 'optional — only if your API token lacks Bitbucket scope'
+      })
+    }
+  })
+  serviceRegistry.register({
+    id: 'google',
+    name: 'Google',
+    icon: CalendarDays,
+    description:
+      'Google Calendar (read-only). Create a Desktop OAuth client in Google Cloud, then sign in.',
+    requiresConnection: true,
+    connectionSchema: {
+      clientId: field.text({
+        label: 'Client ID',
+        required: true,
+        placeholder: '…apps.googleusercontent.com'
+      }),
+      clientSecret: field.password({
+        label: 'Client secret',
+        required: true,
+        placeholder: 'GOCSPX-…'
       })
     }
   })

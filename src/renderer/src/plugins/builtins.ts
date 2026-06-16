@@ -13,6 +13,7 @@ import notes from '@plugins/notes'
 import weather from '@plugins/weather'
 import devTools from '@plugins/dev-tools'
 import snippets from '@plugins/snippets'
+import calendar from '@plugins/calendar'
 
 /**
  * The single touchpoint for shipping a new built-in widget: add it here.
@@ -20,6 +21,7 @@ import snippets from '@plugins/snippets'
  */
 const builtins: AnyWidgetPlugin[] = [
   jiraTickets,
+  calendar,
   bitbucketMyPrs,
   bitbucketReviewPrs,
   bitbucketPrs,
