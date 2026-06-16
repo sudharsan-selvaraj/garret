@@ -1,7 +1,7 @@
 {
   "name": "myview",
   "version": "0.0.1",
-  "description": "A desktop widget layer — interactive widgets pinned above the wallpaper, behind your windows.",
+  "description": "Garret — a macOS desktop layer for developer focus: ambient widgets above the wallpaper, a summon-over-everything HUD, and keyboard-driven action palettes (PRs, Jira, Git, Calendar, clipboard, dev tools).",
   "main": "out/main/index.js",
   "author": "Sudharsan Selvaraj",
   "license": "MIT",

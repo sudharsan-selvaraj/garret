@@ -1,38 +1,59 @@
 # Garret
 
-A desktop **widget layer** — interactive widgets (Google Calendar, Jira board, todo list, …)
-pinned *above the wallpaper but behind your application windows*, so they're always there
-in the background of your day.
+**A desktop layer for developer focus.** Garret keeps the signals you care about —
+pull requests waiting on you, your tickets, repo state, your calendar, the thing you
+copied five minutes ago — in the dead space *around* your work, so you reach them
+without breaking flow.
 
-- **Stack:** Electron + Vite + React + TypeScript
-- **Widgets (planned):** embedded web views (`<webview>`) so sites that block iframing
-  (Google, Jira) still render and stay fully interactive.
-- **Future:** optional Go sidecar for native API integrations (OAuth, polling, caching).
+It's three surfaces in one app:
 
-## Status
+- **Ambient** — interactive widgets pinned **above the wallpaper, behind your app
+  windows**. Always there for a glance, never in the way.
+- **HUD** — a global hotkey yanks the whole layer **over everything** (including
+  full-screen apps) for a quick "what needs me right now?", then dismisses.
+- **Action palettes** — keyboard-summoned tools that do a thing and hand you back to
+  exactly what you were doing: a **clipboard history** that pastes into the focused
+  field of any app, with more to come.
 
-### Spike #1 — desktop layer ✅ (this build)
-Proves the hardest requirement: a transparent, frameless window pinned to the macOS
-**desktop window level** (`type: 'desktop'` → `kCGDesktopWindowLevel`). Renders a floating
-clock card with no wallpaper-covering chrome.
+The through-line: **reduce context-switching cost toward zero.**
 
-**Known caveat:** a `type: 'desktop'` window does not receive mouse/keyboard input on macOS.
-Interactivity comes in **Spike #1b** via a small native addon that sets a custom NSWindow
-level while still accepting events.
+## Widgets
 
-### Roadmap
-1. ✅ Spike #1 — macOS desktop-pinned transparent window
-2. ⬜ Spike #1b — interactive desktop-level window (native NSWindow level)
-3. ⬜ Spike #2 — Windows desktop pinning (WorkerW re-parenting)
-4. ⬜ MVP — draggable/resizable widget canvas + one `<webview>` widget (Google Calendar)
-5. ⬜ Add/remove widgets by URL, persist layout to disk
-6. ⬜ Grid snapping, per-widget settings
-7. ⬜ Go sidecar + native API widgets
+| Widget | What it does |
+| --- | --- |
+| **Jira Tickets** | A live, filtered issue list (JQL or structured filters), inline status. |
+| **Pull Requests** | Yours and ones awaiting your review — grouped by repo, with reviewers, RSVP/approval state, comment counts, age filter, and per-PR mute. |
+| **Git Repos** | Multi-repo status (branch, ahead/behind, staged/modified), driven by a file watcher (not polling); open in Finder/editor. |
+| **Calendar** | Google Calendar as an agenda *or* a day timeline — next-meeting highlight, attendees & RSVPs, one-click Join, plus new/cancelled and "starting soon" notifications. |
+| **Dev Tools** | Offline JSON / Base64 / JWT / URL / timestamp / SHA-256 / UUID, with auto-detect — nothing leaves your machine. |
+| **Snippets** | Per-tool click-to-copy cheat sheets (one widget for Git, one for your project, …). |
+| **Clock · Notes · Weather · Web embed** | The essentials, plus any site as a live `<webview>`. |
+
+## Highlights
+
+- **Free-form canvas** — drag/resize anywhere; named **layouts** you can rename and
+  move/copy widgets between; per-widget color, opacity, and lock.
+- **Clipboard manager** — encrypted history, summon-and-paste, image/file support.
+- **Configurable global hotkeys** and a **menu-bar** presence.
+- **Central polling scheduler** (coalesced, rate-limit aware) and **background
+  notifications** that run even when the layer is hidden.
+- **Encrypted secrets** via the macOS Keychain — tokens never touch disk in plaintext.
+- **Plugin architecture** — a new widget is a manifest + a render component; the
+  settings form, validation, polling, and notifications come for free.
+
+## Stack
+
+Electron · Vite · React · TypeScript, with a small native macOS addon (Obj-C++) for
+desktop-level window pinning, HUD-over-full-screen, and clipboard paste.
 
 ## Develop
 
 ```bash
 npm install
-npm run dev      # launches the desktop layer (stop with Cmd+Shift+Q, or Ctrl+C in terminal)
-npm run build    # type-checks + bundles main/preload/renderer
+npm run setup:electron   # fetch Electron's binary (if install scripts are disabled)
+npm run build:native     # build the macOS native addon
+npm run dev              # launch (quit with ⌘⇧Q)
+npm run build            # type-check + bundle main / preload / renderer
 ```
+
+**Platform:** macOS first. Windows (desktop pinning via WorkerW) is on the roadmap.
