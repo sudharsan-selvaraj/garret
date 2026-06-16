@@ -12,6 +12,7 @@ import clock from '@plugins/clock'
 import notes from '@plugins/notes'
 import weather from '@plugins/weather'
 import devTools from '@plugins/dev-tools'
+import snippets from '@plugins/snippets'
 
 /**
  * The single touchpoint for shipping a new built-in widget: add it here.
@@ -29,6 +30,7 @@ const builtins: AnyWidgetPlugin[] = [
   weather,
   notes,
   devTools,
+  snippets,
   webEmbed
 ]
 

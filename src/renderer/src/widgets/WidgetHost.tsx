@@ -77,6 +77,11 @@ export function WidgetHost({ widget }: { widget: PlacedWidget }): JSX.Element {
   const headless = manifest.capabilities?.headless ?? false
   const bodyDrag = headless && !showSettings ? ' widget-drag' : ''
 
+  // Per-instance title override (e.g. name a Snippets widget "Git"); falls back
+  // to the plugin's name. Any widget can set config.title.
+  const customTitle = typeof widget.config.title === 'string' ? widget.config.title.trim() : ''
+  const title = customTitle || manifest.name
+
   return (
     <div
       className={`widget${lightTint ? ' widget--light' : ''}${headless ? ' widget--headless' : ''}`}
@@ -88,7 +93,7 @@ export function WidgetHost({ widget }: { widget: PlacedWidget }): JSX.Element {
           <span className="widget-icon">
             <WidgetIcon icon={manifest.icon} size={15} />
           </span>
-          <span className="widget-title">{manifest.name}</span>
+          <span className="widget-title">{title}</span>
           {widget.locked && (
             <span className="widget-lock" title="Locked">
               <Lock size={12} strokeWidth={2} />
