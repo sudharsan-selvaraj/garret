@@ -1,7 +1,11 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Rnd } from 'react-rnd'
 import { useBoardStore } from '@renderer/canvas/useBoardStore'
 import { WidgetHost } from '@renderer/widgets/WidgetHost'
+
+// Extra space beyond the furthest widget so the canvas stays scrollable and you
+// have room to drag widgets into new territory (the container grows on drop).
+const CANVAS_PADDING = 220
 
 /** Free-positioned (Rainmeter-style) canvas: each widget is dragged/resized anywhere. */
 export function WidgetCanvas(): JSX.Element {
@@ -11,6 +15,21 @@ export function WidgetCanvas(): JSX.Element {
   // While dragging/resizing, disable pointer events on webviews so the gesture
   // isn't swallowed by a <webview> (a separate web contents).
   const [interacting, setInteracting] = useState(false)
+
+  // Size the canvas to span all widgets so the container can scroll to reach
+  // anything past the screen edge; CSS floors it at the viewport (so it only
+  // scrolls when content actually overflows). Drag-room padding is added ONLY
+  // while interacting, so a board that fits shows no scrollbar at rest.
+  const extent = useMemo(() => {
+    let width = 0
+    let height = 0
+    for (const w of widgets) {
+      width = Math.max(width, w.x + w.width)
+      height = Math.max(height, w.y + w.height)
+    }
+    const pad = interacting ? CANVAS_PADDING : 0
+    return { width: width + pad, height: height + pad }
+  }, [widgets, interacting])
 
   if (widgets.length === 0) {
     return (
@@ -22,7 +41,10 @@ export function WidgetCanvas(): JSX.Element {
   }
 
   return (
-    <div className={`free-canvas${interacting ? ' is-interacting' : ''}`}>
+    <div
+      className={`free-canvas${interacting ? ' is-interacting' : ''}`}
+      style={{ width: extent.width, height: extent.height }}
+    >
       {widgets.map((w) => (
         <Rnd
           key={w.id}

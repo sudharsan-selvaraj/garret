@@ -11,6 +11,7 @@ import gitRepo from '@plugins/git-repo'
 import clock from '@plugins/clock'
 import notes from '@plugins/notes'
 import weather from '@plugins/weather'
+import devTools from '@plugins/dev-tools'
 
 /**
  * The single touchpoint for shipping a new built-in widget: add it here.
@@ -27,6 +28,7 @@ const builtins: AnyWidgetPlugin[] = [
   clock,
   weather,
   notes,
+  devTools,
   webEmbed
 ]
 
