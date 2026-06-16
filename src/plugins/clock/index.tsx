@@ -39,6 +39,7 @@ export default defineWidget<Config>({
     description: 'A simple clock and date.',
     defaultSize: { w: 3, h: 3 },
     minSize: { w: 2, h: 2 },
+    capabilities: { headless: true },
     configSchema: {
       format: field.select({
         label: 'Time format',

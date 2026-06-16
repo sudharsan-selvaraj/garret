@@ -39,6 +39,12 @@ export interface WidgetManifest {
   capabilities?: {
     /** Show a refresh button in the widget header. */
     refreshable?: boolean
+    /**
+     * Render without header chrome (no title bar / ⋯ button) for a clean object
+     * on the desktop — e.g. a clock. Settings/lock/color/remove stay reachable via
+     * the right-click context menu, and the whole card becomes the drag handle.
+     */
+    headless?: boolean
   }
   /**
    * Background notification support. `poll(config)` returns the query to watch

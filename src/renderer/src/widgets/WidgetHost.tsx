@@ -72,34 +72,41 @@ export function WidgetHost({ widget }: { widget: PlacedWidget }): JSX.Element {
   const lightTint = widget.color ? isLight(widget.color) : false
   if (widget.color) style.background = hexToRgba(widget.color, 0.82)
 
+  // Headless: no header chrome. The whole card becomes the drag handle (except
+  // while editing settings, so form inputs stay usable); settings live in the menu.
+  const headless = manifest.capabilities?.headless ?? false
+  const bodyDrag = headless && !showSettings ? ' widget-drag' : ''
+
   return (
     <div
-      className={`widget${lightTint ? ' widget--light' : ''}`}
+      className={`widget${lightTint ? ' widget--light' : ''}${headless ? ' widget--headless' : ''}`}
       style={style}
       onContextMenu={openMenu}
     >
-      <header className="widget-header widget-drag">
-        <span className="widget-icon">
-          <WidgetIcon icon={manifest.icon} size={15} />
-        </span>
-        <span className="widget-title">{manifest.name}</span>
-        {widget.locked && (
-          <span className="widget-lock" title="Locked">
-            <Lock size={12} strokeWidth={2} />
+      {!headless && (
+        <header className="widget-header widget-drag">
+          <span className="widget-icon">
+            <WidgetIcon icon={manifest.icon} size={15} />
           </span>
-        )}
-        <div className="widget-actions" onMouseDown={(e) => e.stopPropagation()}>
-          <button
-            title="Options"
-            className={menu ? 'active' : ''}
-            onClick={(e) => setMenu({ x: e.currentTarget.getBoundingClientRect().right, y: e.currentTarget.getBoundingClientRect().bottom + 4 })}
-          >
-            <MoreHorizontal size={16} strokeWidth={1.75} />
-          </button>
-        </div>
-      </header>
+          <span className="widget-title">{manifest.name}</span>
+          {widget.locked && (
+            <span className="widget-lock" title="Locked">
+              <Lock size={12} strokeWidth={2} />
+            </span>
+          )}
+          <div className="widget-actions" onMouseDown={(e) => e.stopPropagation()}>
+            <button
+              title="Options"
+              className={menu ? 'active' : ''}
+              onClick={(e) => setMenu({ x: e.currentTarget.getBoundingClientRect().right, y: e.currentTarget.getBoundingClientRect().bottom + 4 })}
+            >
+              <MoreHorizontal size={16} strokeWidth={1.75} />
+            </button>
+          </div>
+        </header>
+      )}
 
-      <div className="widget-body">
+      <div className={`widget-body${bodyDrag}`}>
         {showSettings ? (
           <div className="widget-settings">
             <div className="settings-scroll">
