@@ -32,6 +32,16 @@ const api: MyViewApi = {
   notify: {
     syncWatches: (watches) => ipcRenderer.send(Channels.notifySyncWatches, watches)
   },
+  watch: {
+    subscribe: (watchId, paths, opts) =>
+      ipcRenderer.send(Channels.watchSubscribe, watchId, paths, opts),
+    unsubscribe: (watchId) => ipcRenderer.send(Channels.watchUnsubscribe, watchId),
+    onEvent: (cb) => {
+      const listener = (_e: unknown, watchId: string): void => cb(watchId)
+      ipcRenderer.on(Channels.watchEvent, listener)
+      return () => ipcRenderer.removeListener(Channels.watchEvent, listener)
+    }
+  },
   services: {
     status: (id) => ipcRenderer.invoke(Channels.serviceStatus, id),
     connect: (id, creds) => ipcRenderer.invoke(Channels.serviceConnect, id, creds),
@@ -39,6 +49,9 @@ const api: MyViewApi = {
     query: (id, method, params) => ipcRenderer.invoke(Channels.serviceQuery, id, method, params)
   },
   openExternal: (url) => ipcRenderer.send(Channels.openExternal, url),
+  openPath: (path) => ipcRenderer.send(Channels.openPath, path),
+  openInEditor: (path, editor) => ipcRenderer.send(Channels.openInEditor, path, editor),
+  pickDirectory: () => ipcRenderer.invoke(Channels.pickDirectory),
   store: {
     get: (key) => ipcRenderer.invoke(Channels.storeGet, key),
     set: (key, value) => ipcRenderer.invoke(Channels.storeSet, key, value)

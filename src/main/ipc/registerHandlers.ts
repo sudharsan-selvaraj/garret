@@ -1,10 +1,12 @@
-import { ipcMain, BrowserWindow, shell } from 'electron'
-import { Channels } from '@shared/ipc/channels'
+import { execFile } from 'node:child_process'
+import { ipcMain, BrowserWindow, shell, dialog } from 'electron'
+import { Channels, type WatchOptions } from '@shared/ipc/channels'
 import type { BoardState } from '@shared/types/board'
 import type { WatchSpec } from '@shared/types/poll'
 import { persistence } from '@main/persistence/store'
 import { getService } from '@main/services/registry'
 import * as scheduler from '@main/poll/scheduler'
+import { subscribeWatch, unsubscribeWatch, teardownWatchSender } from '@main/watcher'
 
 /** Binds the shared IPC channels to their main-process handlers. Call once on ready. */
 export function registerIpcHandlers(): void {
@@ -29,8 +31,26 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle(Channels.layoutsAllWidgets, () => persistence.allWidgets())
 
-  // ---- Poll scheduler ----
+  // ---- Per-webContents teardown (poll subscriptions + file watchers) ----
   const senders = new Set<number>()
+  const teardown = (wcId: number): void => {
+    scheduler.teardownSender(wcId)
+    teardownWatchSender(wcId)
+  }
+  const trackSender = (sender: Electron.WebContents): void => {
+    const wcId = sender.id
+    if (senders.has(wcId)) return
+    senders.add(wcId)
+    sender.once('destroyed', () => {
+      teardown(wcId)
+      senders.delete(wcId)
+    })
+    sender.on('did-start-navigation', (_ev, _url, isInPlace, isMainFrame) => {
+      if (isMainFrame && !isInPlace) teardown(wcId)
+    })
+  }
+
+  // ---- Poll scheduler ----
   ipcMain.handle(
     Channels.pollSubscribe,
     (
@@ -42,18 +62,8 @@ export function registerIpcHandlers(): void {
       params: Record<string, unknown>,
       intervalMs: number
     ) => {
-      const wcId = e.sender.id
-      if (!senders.has(wcId)) {
-        senders.add(wcId)
-        e.sender.once('destroyed', () => {
-          scheduler.teardownSender(wcId)
-          senders.delete(wcId)
-        })
-        e.sender.on('did-start-navigation', (_ev, _url, isInPlace, isMainFrame) => {
-          if (isMainFrame && !isInPlace) scheduler.teardownSender(wcId)
-        })
-      }
-      return scheduler.subscribe(subId, key, serviceId, method, params, intervalMs, wcId)
+      trackSender(e.sender)
+      return scheduler.subscribe(subId, key, serviceId, method, params, intervalMs, e.sender.id)
     }
   )
   ipcMain.on(Channels.pollUnsubscribe, (_e, subId: string) => scheduler.unsubscribe(subId))
@@ -61,6 +71,16 @@ export function registerIpcHandlers(): void {
   ipcMain.on(Channels.notifySyncWatches, (_e, watches: WatchSpec[]) =>
     scheduler.syncWatches(watches)
   )
+
+  // ---- File watcher ----
+  ipcMain.on(
+    Channels.watchSubscribe,
+    (e, watchId: string, paths: string[], opts: WatchOptions) => {
+      trackSender(e.sender)
+      subscribeWatch(watchId, paths, e.sender.id, opts)
+    }
+  )
+  ipcMain.on(Channels.watchUnsubscribe, (_e, watchId: string) => unsubscribeWatch(watchId))
   ipcMain.handle(
     Channels.serviceQuery,
     (_e, id: string, method: string, params: Record<string, unknown>) =>
@@ -69,6 +89,36 @@ export function registerIpcHandlers(): void {
 
   ipcMain.on(Channels.openExternal, (_e, url: string) => {
     if (/^https?:\/\//i.test(url)) void shell.openExternal(url)
+  })
+
+  ipcMain.on(Channels.openPath, (_e, path: string) => {
+    if (path) void shell.openPath(path)
+  })
+
+  const EDITOR_APPS: Record<string, string> = {
+    vscode: 'Visual Studio Code',
+    cursor: 'Cursor',
+    intellij: 'IntelliJ IDEA'
+  }
+  ipcMain.on(Channels.openInEditor, (_e, path: string, editor: string) => {
+    if (!path) return
+    const app = EDITOR_APPS[editor]
+    if (app) {
+      execFile('open', ['-a', app, path], (err) => {
+        if (err) void shell.openPath(path) // editor app not found → reveal in Finder
+      })
+    } else {
+      void shell.openPath(path)
+    }
+  })
+
+  ipcMain.handle(Channels.pickDirectory, async (e) => {
+    const win = BrowserWindow.fromWebContents(e.sender)
+    const opts = { properties: ['openDirectory' as const] }
+    const res = win
+      ? await dialog.showOpenDialog(win, opts)
+      : await dialog.showOpenDialog(opts)
+    return res.canceled ? null : (res.filePaths[0] ?? null)
   })
 
   ipcMain.handle(Channels.storeGet, (_e, key: string) => persistence.kvGet(key))

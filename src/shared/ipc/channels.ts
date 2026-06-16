@@ -24,13 +24,27 @@ export const Channels = {
   serviceDisconnect: 'service:disconnect',
   serviceQuery: 'service:query',
   openExternal: 'shell:open-external',
+  openPath: 'shell:open-path',
+  openInEditor: 'shell:open-in-editor',
+  pickDirectory: 'dialog:pick-directory',
   layoutsAllWidgets: 'layouts:all-widgets',
   pollSubscribe: 'poll:subscribe',
   pollUnsubscribe: 'poll:unsubscribe',
   pollRefresh: 'poll:refresh',
   pollUpdate: 'poll:update',
-  notifySyncWatches: 'notify:sync-watches'
+  notifySyncWatches: 'notify:sync-watches',
+  watchSubscribe: 'watch:subscribe',
+  watchUnsubscribe: 'watch:unsubscribe',
+  watchEvent: 'watch:event'
 } as const
+
+/** Options for the file watcher. */
+export interface WatchOptions {
+  recursive?: boolean
+  /** Skip events whose path contains any of these substrings (e.g. '/node_modules/'). */
+  ignore?: string[]
+  debounceMs?: number
+}
 
 /** Snapshot of available layouts and which one is active. */
 export interface LayoutsInfo {
@@ -79,6 +93,12 @@ export interface MyViewApi {
   notify: {
     syncWatches(watches: WatchSpec[]): void
   }
+  /** File-system watcher — fires when any watched path changes (debounced). */
+  watch: {
+    subscribe(watchId: string, paths: string[], opts: WatchOptions): void
+    unsubscribe(watchId: string): void
+    onEvent(cb: (watchId: string) => void): () => void
+  }
   /**
    * Backend service integrations (Jira, Bitbucket, …). Auth + data live in main;
    * the renderer only ever sees status + query results, never credentials.
@@ -91,6 +111,12 @@ export interface MyViewApi {
   }
   /** Open a URL in the user's default browser. */
   openExternal(url: string): void
+  /** Reveal/open a local path in Finder. */
+  openPath(path: string): void
+  /** Open a local path in an editor app ('vscode' | 'cursor' | 'intellij'); falls back to Finder. */
+  openInEditor(path: string, editor: string): void
+  /** Native folder picker; resolves to the chosen path or null if cancelled. */
+  pickDirectory(): Promise<string | null>
   /** Namespaced key/value store for per-widget state (tokens, cursors, cache). */
   store: {
     get<T = unknown>(key: string): Promise<T | undefined>
