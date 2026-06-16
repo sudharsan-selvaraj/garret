@@ -114,7 +114,7 @@ function updateTrayMenu(): void {
       { type: 'separator' },
       { label: 'Preferences…', click: openPreferences },
       { type: 'separator' },
-      { label: 'Quit MyView', accelerator: 'CommandOrControl+Shift+Q', click: () => app.quit() }
+      { label: 'Quit Garret', accelerator: 'CommandOrControl+Shift+Q', click: () => app.quit() }
     ])
   )
 }
@@ -148,7 +148,7 @@ app.whenReady().then(() => {
 
   // Menu-bar presence — the primary entry point since we run without a Dock icon.
   tray = new Tray(createTrayIcon())
-  tray.setToolTip('MyView')
+  tray.setToolTip('Garret')
   updateTrayMenu()
 
   // Renderer can dismiss (Esc / backdrop click). Dismiss-on-blur is intentionally

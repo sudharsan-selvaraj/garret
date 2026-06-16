@@ -26,7 +26,7 @@ export function setHudMode(active: boolean): void {
 }
 
 /**
- * Creates the MyView window. Both modes share the same renderer/canvas — the only
+ * Creates the Garret window. Both modes share the same renderer/canvas — the only
  * difference is window level + chrome, so the proven widget board drops straight
  * onto the desktop layer.
  */
@@ -39,7 +39,7 @@ export function createWindow(mode: WindowMode): BrowserWindow {
       ? { x: work.x, y: work.y, width: work.width, height: work.height }
       : { width: 1280, height: 860 }),
     show: false,
-    title: 'MyView',
+    title: 'Garret',
     transparent: isDesktop,
     frame: !isDesktop,
     hasShadow: !isDesktop,

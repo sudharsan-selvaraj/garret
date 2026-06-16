@@ -26,7 +26,7 @@ function pasteClip(id: string): void {
     isAccessibilityTrusted(true)
     new Notification({
       title: 'Copied to clipboard',
-      body: 'Grant MyView Accessibility access to paste automatically — or just press ⌘V.'
+      body: 'Grant Garret Accessibility access to paste automatically — or just press ⌘V.'
     }).show()
   }
 }

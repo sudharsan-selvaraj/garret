@@ -1,4 +1,4 @@
-# MyView
+# Garret
 
 A desktop **widget layer** — interactive widgets (Google Calendar, Jira board, todo list, …)
 pinned *above the wallpaper but behind your application windows*, so they're always there

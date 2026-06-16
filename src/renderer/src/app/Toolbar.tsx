@@ -17,11 +17,11 @@ export function Toolbar(): JSX.Element {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <div className="brand" title="MyView">
+      <div className="brand" title="Garret">
         <Layers size={15} strokeWidth={2} />
       </div>
       <div className="toolbar-expand">
-        <span className="brand-name">MyView</span>
+        <span className="brand-name">Garret</span>
         <LayoutMenu open={layoutOpen} setOpen={setLayoutOpen} />
         <button className="icon-btn" title="Settings" onClick={() => openSettings()}>
           <Settings size={16} strokeWidth={1.75} />

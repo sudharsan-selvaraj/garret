@@ -75,7 +75,7 @@ export async function runOAuth(clientId: string, clientSecret: string): Promise<
         }
         res.writeHead(200, { 'Content-Type': 'text/html' })
         res.end(
-          '<!doctype html><meta charset="utf-8"><body style="font-family:-apple-system,sans-serif;background:#1c1c1e;color:#fff;display:flex;height:100vh;align-items:center;justify-content:center;margin:0"><div style="text-align:center"><h2>Connected to MyView ✓</h2><p>You can close this tab and return to MyView.</p></div>'
+          '<!doctype html><meta charset="utf-8"><body style="font-family:-apple-system,sans-serif;background:#1c1c1e;color:#fff;display:flex;height:100vh;align-items:center;justify-content:center;margin:0"><div style="text-align:center"><h2>Connected to Garret ✓</h2><p>You can close this tab and return to Garret.</p></div>'
         )
         clearTimeout(timer)
         server.close()
@@ -117,7 +117,7 @@ export async function runOAuth(clientId: string, clientSecret: string): Promise<
   })
   if (!tok.refresh_token) {
     throw new Error(
-      'No refresh token returned. Revoke MyView at myaccount.google.com/permissions, then reconnect.'
+      'No refresh token returned. Revoke Garret at myaccount.google.com/permissions, then reconnect.'
     )
   }
   const email = await fetchEmail(tok.access_token)
