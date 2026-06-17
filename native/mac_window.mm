@@ -3,6 +3,7 @@
 // while remaining fully interactive (clicks + keyboard), which `type:'desktop'`
 // windows do not allow. This is the core of Spike #1b.
 #import <Cocoa/Cocoa.h>
+#import <objc/runtime.h>
 #include <napi.h>
 
 // Resolve the NSWindow from the Buffer returned by win.getNativeWindowHandle().
@@ -114,6 +115,51 @@ Napi::Value MakePanel(const Napi::CallbackInfo& info) {
   } else {
     dispatch_sync(dispatch_get_main_queue(), apply);
   }
+  return Napi::Boolean::New(env, true);
+}
+
+// disableFrameConstraint(handleBuffer) -> boolean
+// macOS calls -constrainFrameRect:toScreen: on every show/order to clamp a window
+// into the screen's visibleFrame (clear of the menu bar + Dock). That defeats a
+// full-screen desktop layer: our 0,0 frame gets shoved to the workArea origin,
+// leaving an undimmed strip under the Dock when the HUD is summoned.
+//
+// We override that method for THIS window only via isa-swizzling: point the window
+// at a dynamically-created subclass whose override returns the proposed rect
+// unchanged. This is the same per-instance subclassing the runtime uses for KVO —
+// it doesn't touch any other Electron window.
+static NSRect GarretUnconstrainedFrame(id self, SEL _cmd, NSRect frameRect, NSScreen* screen) {
+  return frameRect; // never constrain — placement is managed explicitly in JS
+}
+
+Napi::Value DisableFrameConstraint(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  NSWindow* window = WindowFromHandle(info[0]);
+  if (!window) {
+    Napi::TypeError::New(env, "valid native window handle required")
+        .ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
+  dispatch_block_t apply = ^{
+    Class base = object_getClass(window);
+    NSString* subName =
+        [NSString stringWithFormat:@"%@_GarretUnconstrained", NSStringFromClass(base)];
+    Class sub = NSClassFromString(subName);
+    if (!sub) {
+      sub = objc_allocateClassPair(base, subName.UTF8String, 0);
+      if (sub) {
+        NSString* types = [NSString stringWithFormat:@"%s%s%s%s%s", @encode(NSRect),
+                                                     @encode(id), @encode(SEL),
+                                                     @encode(NSRect), @encode(NSScreen*)];
+        class_addMethod(sub, @selector(constrainFrameRect:toScreen:),
+                        (IMP)GarretUnconstrainedFrame, types.UTF8String);
+        objc_registerClassPair(sub);
+      }
+    }
+    if (sub && object_getClass(window) != sub) object_setClass(window, sub);
+  };
+  if ([NSThread isMainThread]) apply();
+  else dispatch_sync(dispatch_get_main_queue(), apply);
   return Napi::Boolean::New(env, true);
 }
 
@@ -307,6 +353,7 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
   exports.Set("pinToDesktop", Napi::Function::New(env, PinToDesktop));
   exports.Set("raiseToHud", Napi::Function::New(env, RaiseToHud));
   exports.Set("makePanel", Napi::Function::New(env, MakePanel));
+  exports.Set("disableFrameConstraint", Napi::Function::New(env, DisableFrameConstraint));
   exports.Set("pasteboardChangeCount", Napi::Function::New(env, PasteboardChangeCount));
   exports.Set("pasteboardIsConcealed", Napi::Function::New(env, PasteboardIsConcealed));
   exports.Set("pasteboardFileURLs", Napi::Function::New(env, PasteboardFileURLs));

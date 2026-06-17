@@ -4,6 +4,7 @@ import {
   pinToDesktop,
   raiseToHud,
   makePanel,
+  disableFrameConstraint,
   startCursorMonitor,
   stopCursorMonitor
 } from '@main/native/macWindow'
@@ -38,11 +39,16 @@ export function setHudMode(active: boolean): void {
  */
 export function createWindow(mode: WindowMode): BrowserWindow {
   const isDesktop = mode === 'desktop'
-  const work = screen.getPrimaryDisplay().workArea
+  // Full display bounds (NOT workArea) so the desktop layer — and especially the
+  // HUD's dim backdrop — covers the ENTIRE screen, including behind the menu bar
+  // and Dock. workArea subtracts whatever the Dock reserves, which would otherwise
+  // leave an uncovered strip (e.g. a left/bottom Dock) showing through as an
+  // undimmed gap when the HUD is summoned.
+  const bounds = screen.getPrimaryDisplay().bounds
 
   const win = new BrowserWindow({
     ...(isDesktop
-      ? { x: work.x, y: work.y, width: work.width, height: work.height }
+      ? { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height }
       : { width: 1280, height: 860 }),
     show: false,
     title: 'Garret',
@@ -69,17 +75,31 @@ export function createWindow(mode: WindowMode): BrowserWindow {
     // Make it a non-activating panel up front so HUD mode can float it over other
     // apps' full-screen Spaces without activation/Space-switch (the flicker fix).
     makePanel(win.getNativeWindowHandle())
+    // Stop macOS clamping the frame into the workArea so the layer truly fills the
+    // screen (otherwise the HUD's dim leaves an undimmed strip under the Dock).
+    disableFrameConstraint(win.getNativeWindowHandle())
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
     // Native pin: set the NSWindow level below normal windows while staying interactive.
     const pin = (): void => {
       const ok = pinToDesktop(win.getNativeWindowHandle(), DESKTOP_LEVEL_OFFSET)
       if (!ok) console.warn('[window] desktop pin failed; window is at normal level.')
     }
+    // macOS constrains a normal-level window so its frame stays clear of the menu
+    // bar/Dock, shifting our full-screen window's origin to the workArea (leaving an
+    // undimmed strip in HUD). Re-assert the true full-screen frame AFTER pinning to
+    // the desktop level, where AppKit no longer applies that constraint.
+    const fillScreen = (): void => {
+      win.setBounds({ x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height })
+    }
     pin()
+    fillScreen()
     // Re-apply after show — Electron can reset the level when the window is ordered
     // in — but NOT while the HUD is up, or we'd slam it back behind your apps.
     win.on('show', () => {
-      if (!hudMode) pin()
+      if (!hudMode) {
+        pin()
+        fillScreen()
+      }
     })
     trackCursor(win)
   }

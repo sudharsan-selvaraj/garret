@@ -5,6 +5,7 @@ interface MacWindowAddon {
   pinToDesktop(handle: Buffer, levelOffset?: number): boolean
   raiseToHud(handle: Buffer): boolean
   makePanel(handle: Buffer): boolean
+  disableFrameConstraint(handle: Buffer): boolean
   pasteboardChangeCount(): number
   pasteboardIsConcealed(): boolean
   pasteboardFileURLs(): string[]
@@ -75,6 +76,22 @@ export function makePanel(handle: Buffer): boolean {
     return a.makePanel(handle)
   } catch (err) {
     console.warn('[native] makePanel failed', err)
+    return false
+  }
+}
+
+/**
+ * Stop macOS from clamping this window's frame into the screen's visibleFrame
+ * (clear of the menu bar/Dock), so a full-screen desktop layer can actually cover
+ * the whole display. Returns false if the native addon is unavailable.
+ */
+export function disableFrameConstraint(handle: Buffer): boolean {
+  const a = load()
+  if (!a) return false
+  try {
+    return a.disableFrameConstraint(handle)
+  } catch (err) {
+    console.warn('[native] disableFrameConstraint failed', err)
     return false
   }
 }
