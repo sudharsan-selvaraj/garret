@@ -106,10 +106,11 @@ export function raiseWindowToHud(win: BrowserWindow): void {
 /**
  * How often we sample the global cursor to drive click-through. The renderer only
  * needs this to flip interactivity as the cursor crosses widget boundaries, so a
- * coarse poll is plenty — 100ms (10 Hz) keeps it responsive while costing a
- * fraction of the energy of a 30ms (33 Hz) loop. See trackCursor.
+ * coarse poll is plenty — 60ms (~16 Hz) keeps the "move then click a widget" miss
+ * window small while still costing far less than the old 30ms (33 Hz) loop, and
+ * the delta gate below means an idle cursor is nearly free regardless. See trackCursor.
  */
-const CURSOR_POLL_MS = 100
+const CURSOR_POLL_MS = 60
 
 /**
  * Poll the global cursor position and push it (window-relative) to the renderer.
