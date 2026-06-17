@@ -14,7 +14,7 @@
     "build:native": "cd native && node-gyp rebuild --target=31.7.7 --arch=arm64 --dist-url=https://electronjs.org/headers --devdir=../.electron-gyp",
     "build:icon": "bash scripts/make-icon.sh",
     "pack:dir": "npm run build:native && npm run build && electron-builder --dir",
-    "pack:mac": "npm run build:native && npm run build && electron-builder --mac"
+    "pack:mac": "npm run build:native && npm run build && electron-builder --mac --publish never"
   },
   "dependencies": {
     "electron-store": "^8.2.0",
