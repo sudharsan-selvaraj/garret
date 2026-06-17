@@ -10,3 +10,5 @@ native/build
 .gyp-tmp
 .electron-tmp
 .electron-cache
+
+build/icon.iconset
