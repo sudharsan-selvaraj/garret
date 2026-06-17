@@ -104,20 +104,37 @@ export function raiseWindowToHud(win: BrowserWindow): void {
 }
 
 /**
+ * How often we sample the global cursor to drive click-through. The renderer only
+ * needs this to flip interactivity as the cursor crosses widget boundaries, so a
+ * coarse poll is plenty — 100ms (10 Hz) keeps it responsive while costing a
+ * fraction of the energy of a 30ms (33 Hz) loop. See trackCursor.
+ */
+const CURSOR_POLL_MS = 100
+
+/**
  * Poll the global cursor position and push it (window-relative) to the renderer.
  * The renderer uses this to toggle click-through — robust because it doesn't rely
  * on the desktop-level (non-key) window receiving forwarded mouse-move events,
  * which macOS delivers unreliably and was leaving widgets stuck non-interactive.
+ *
+ * Energy: we skip the IPC (and the renderer's hit-test) entirely when the cursor
+ * hasn't moved since the last sample, so a still cursor costs only a cheap
+ * getCursorScreenPoint() every 100ms and nothing downstream.
  */
 function trackCursor(win: BrowserWindow): void {
+  let lastX = Number.NaN
+  let lastY = Number.NaN
   const timer = setInterval(() => {
     if (win.isDestroyed() || win.webContents.isDestroyed()) {
       clearInterval(timer)
       return
     }
     const pt = screen.getCursorScreenPoint()
+    if (pt.x === lastX && pt.y === lastY) return // cursor idle — nothing to do
+    lastX = pt.x
+    lastY = pt.y
     const b = win.getBounds()
     win.webContents.send(Channels.cursorPos, { x: pt.x - b.x, y: pt.y - b.y })
-  }, 30)
+  }, CURSOR_POLL_MS)
   win.on('closed', () => clearInterval(timer))
 }
