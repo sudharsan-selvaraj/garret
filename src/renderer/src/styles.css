@@ -65,6 +65,28 @@ button {
   font-family: inherit;
 }
 
+/* Clickable elements get the pointer cursor as an affordance for "you can click
+   this" — overrides the default arrow above. Covers all widgets too, since their
+   click targets are <button>s. Disabled controls fall back to the arrow. */
+button,
+a,
+select,
+summary,
+[role='button'],
+[role='tab'],
+[role='switch'],
+[role='menuitem'],
+input[type='checkbox'],
+input[type='radio'],
+input[type='range'] {
+  cursor: pointer;
+}
+button:disabled,
+button[disabled],
+[aria-disabled='true'] {
+  cursor: default;
+}
+
 .app {
   position: relative;
   height: 100%;
@@ -139,14 +161,21 @@ button {
   /* One coordinated curve + duration for every animated property so the pill
      expands/collapses as a single smooth motion (was mismatched easings/durations). */
   transition:
-    padding 0.34s cubic-bezier(0.32, 0.72, 0, 1),
-    gap 0.34s cubic-bezier(0.32, 0.72, 0, 1),
-    opacity 0.24s ease;
+    padding 0.46s cubic-bezier(0.32, 0.72, 0, 1),
+    gap 0.46s cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 0.32s ease;
 }
 .toolbar.expanded {
   gap: 8px;
   padding: 0 8px 0 14px;
   opacity: 1;
+  /* Expand direction: a gentler, slower curve with a slow start (collapse keeps the
+     base ease-out, which already feels right). The base curve front-loads motion,
+     which — with the max-width overshoot — made expanding feel abrupt. */
+  transition:
+    padding 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+    gap 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.34s ease;
 }
 .brand {
   display: grid;
@@ -167,13 +196,17 @@ button {
   /* Match the pill's curve/duration; fade the contents in slightly faster so they
      read as appearing *with* the expansion rather than after it. */
   transition:
-    max-width 0.34s cubic-bezier(0.32, 0.72, 0, 1),
-    opacity 0.26s cubic-bezier(0.32, 0.72, 0, 1);
+    max-width 0.46s cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 0.34s cubic-bezier(0.32, 0.72, 0, 1);
 }
 .toolbar.expanded .toolbar-expand {
   max-width: 460px;
   opacity: 1;
   overflow: visible; /* so open dropdown menus aren't clipped */
+  /* Expand: slower + slow-start curve so the content reveal isn't front-loaded. */
+  transition:
+    max-width 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.36s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .brand-name {
   font-size: 13px;
