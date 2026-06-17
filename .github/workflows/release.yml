@@ -1,0 +1,51 @@
+name: Release
+
+# Cut a release by pushing a version tag, e.g.:
+#   git tag v1.0.0 && git push origin v1.0.0
+# This builds the macOS app and attaches the DMG + zip to the GitHub Release.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write # needed to create the release and upload assets
+
+jobs:
+  build-mac:
+    runs-on: macos-14 # arm64 runner — matches our arm64 target + native addon
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Ensure Electron binary
+        # No-op if npm ci already ran electron's postinstall; safe to run anyway.
+        run: npm run setup:electron
+
+      - name: Sync version to tag
+        # Name artifacts after the tag (v1.0.0 -> Garret-1.0.0-arm64.dmg) instead
+        # of the static package.json version. No commit — CI-only.
+        run: npm version --no-git-tag-version --allow-same-version "${GITHUB_REF_NAME#v}"
+
+      - name: Build & package (unsigned, arm64)
+        env:
+          # No signing identity in CI — produce an unsigned build.
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npm run pack:mac
+
+      - name: Attach artifacts to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          # Triggered by the tag push; creates the release if it doesn't exist yet.
+          files: |
+            dist/*.dmg
+            dist/*.zip
