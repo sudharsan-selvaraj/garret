@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { registerBuiltins } from '@renderer/plugins/builtins'
+import { loadExternalWidgets } from '@renderer/plugins/externalLoader'
 import { registerServices } from '@renderer/services/serviceRegistry'
 import { useBoardStore } from '@renderer/canvas/useBoardStore'
 import { useUiStore } from '@renderer/app/useUiStore'
@@ -26,7 +27,9 @@ export default function App(): JSX.Element {
   useNotificationWatches()
 
   useEffect(() => {
-    void hydrate()
+    // Register external widgets BEFORE hydrating so saved external-widget
+    // instances resolve from the registry on first render.
+    void loadExternalWidgets().finally(() => void hydrate())
   }, [hydrate])
 
   // Tray → Preferences opens the General settings pane.

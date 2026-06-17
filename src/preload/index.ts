@@ -84,6 +84,10 @@ const api: MyViewApi = {
     disconnect: (id) => ipcRenderer.invoke(Channels.serviceDisconnect, id),
     query: (id, method, params) => ipcRenderer.invoke(Channels.serviceQuery, id, method, params)
   },
+  plugins: {
+    listExternal: () => ipcRenderer.invoke(Channels.pluginsListExternal),
+    fetch: (url, init) => ipcRenderer.invoke(Channels.pluginsFetch, url, init)
+  },
   openExternal: (url) => ipcRenderer.send(Channels.openExternal, url),
   openPath: (path) => ipcRenderer.send(Channels.openPath, path),
   openInEditor: (path, editor) => ipcRenderer.send(Channels.openInEditor, path, editor),

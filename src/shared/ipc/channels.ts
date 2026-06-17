@@ -22,6 +22,8 @@ export const Channels = {
   layoutsRename: 'layouts:rename',
   layoutsDelete: 'layouts:delete',
   layoutsAddWidget: 'layouts:add-widget',
+  pluginsListExternal: 'plugins:list-external',
+  pluginsFetch: 'plugins:fetch',
   serviceStatus: 'service:status',
   serviceConnect: 'service:connect',
   serviceDisconnect: 'service:disconnect',
@@ -160,6 +162,15 @@ export interface MyViewApi {
     connect(serviceId: string, creds: Record<string, unknown>): Promise<ServiceStatus>
     disconnect(serviceId: string): Promise<ServiceStatus>
     query<T = unknown>(serviceId: string, method: string, params: Record<string, unknown>): Promise<T>
+  }
+  /** Dev-tier external widgets loaded from the `external-widgets/` folder. */
+  plugins: {
+    listExternal(): Promise<{ name: string; source: string }[]>
+    /** Host-mediated HTTP (no CORS) — the network-capability chokepoint for widgets. */
+    fetch(
+      url: string,
+      init?: { method?: string; headers?: Record<string, string>; body?: string }
+    ): Promise<{ ok: boolean; status: number; data?: unknown; error?: string }>
   }
   /** Open a URL in the user's default browser. */
   openExternal(url: string): void

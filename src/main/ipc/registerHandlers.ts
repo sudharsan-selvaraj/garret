@@ -8,6 +8,7 @@ import { persistence } from '@main/persistence/store'
 import { getService } from '@main/services/registry'
 import * as scheduler from '@main/poll/scheduler'
 import { subscribeWatch, unsubscribeWatch, teardownWatchSender } from '@main/watcher'
+import { listExternalWidgets } from '@main/plugins/externalWidgets'
 
 /** Hooks the main process provides to IPC handlers (things outside the persistence layer). */
 export interface IpcHooks {
@@ -17,6 +18,12 @@ export interface IpcHooks {
   setClipboardHotkey(accelerator: string): boolean
   /** (Re)start the background calendar monitor (after prefs or Google connect/disconnect). */
   refreshCalendarMonitor(): void
+}
+
+/** Friendly message for a failed host-mediated fetch. */
+function fetchErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.name === 'AbortError' ? 'Request timed out' : err.message
+  return String(err)
 }
 
 /** Binds the shared IPC channels to their main-process handlers. Call once on ready. */
@@ -34,6 +41,56 @@ export function registerIpcHandlers(hooks: IpcHooks): void {
   ipcMain.handle(Channels.layoutsAddWidget, (_e, name: string, widget) =>
     persistence.addWidgetToLayout(name, widget)
   )
+  ipcMain.handle(Channels.pluginsListExternal, () => listExternalWidgets())
+  // Host-mediated fetch for external widgets (no CORS). Returns a structured
+  // result (never throws) so the renderer gets clean errors. Bounded even in the
+  // dev tier: http(s) only, 10s timeout, 5MB streamed cap. The per-host allowlist
+  // / permission gating is the sandbox tier — this just removes the foot-cannon.
+  const FETCH_TIMEOUT_MS = 10_000
+  const FETCH_MAX_BYTES = 5 * 1024 * 1024
+  ipcMain.handle(Channels.pluginsFetch, async (_e, url: string, init?: RequestInit) => {
+    let scheme: string
+    try {
+      scheme = new URL(url).protocol
+    } catch {
+      return { ok: false, status: 0, error: 'Invalid URL' }
+    }
+    if (scheme !== 'http:' && scheme !== 'https:') {
+      return { ok: false, status: 0, error: 'Only http(s) URLs are allowed' }
+    }
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+    try {
+      const res = await fetch(url, { ...init, signal: controller.signal })
+      const reader = res.body?.getReader()
+      const chunks: Buffer[] = []
+      let received = 0
+      if (reader) {
+        for (;;) {
+          const { done, value } = await reader.read()
+          if (done) break
+          received += value.byteLength
+          if (received > FETCH_MAX_BYTES) {
+            controller.abort()
+            return { ok: false, status: res.status, error: 'Response too large (>5MB)' }
+          }
+          chunks.push(Buffer.from(value))
+        }
+      }
+      const text = Buffer.concat(chunks).toString('utf8')
+      let data: unknown
+      try {
+        data = JSON.parse(text)
+      } catch {
+        data = text
+      }
+      return { ok: res.ok, status: res.status, data }
+    } catch (err) {
+      return { ok: false, status: 0, error: fetchErrorMessage(err) }
+    } finally {
+      clearTimeout(timer)
+    }
+  })
 
   ipcMain.handle(Channels.serviceStatus, (_e, id: string) => getService(id).status())
   ipcMain.handle(Channels.serviceConnect, async (_e, id: string, creds: Record<string, unknown>) => {
