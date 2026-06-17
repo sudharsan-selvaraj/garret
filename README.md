@@ -56,4 +56,28 @@ npm run dev              # launch (quit with ⌘⇧Q)
 npm run build            # type-check + bundle main / preload / renderer
 ```
 
+## Releases
+
+Tagged releases ship a prebuilt macOS app (arm64) as a DMG + zip, attached to the
+[GitHub Release](https://github.com/sudharsan-selvaraj/garret/releases). To cut one,
+push a version tag — CI builds and uploads the artifacts:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0   # → .github/workflows/release.yml builds Garret-1.0.0-arm64.dmg
+```
+
+The build is **unsigned**, so on first launch macOS Gatekeeper will block it. Either
+**right-click the app → Open**, or clear the quarantine flag:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Garret.app
+```
+
+(Code-signing + notarization — which remove this step — are on the backlog, gated on an
+Apple Developer ID.)
+
+To build locally instead, run `npm run pack:mac` (DMG + zip) or `npm run pack:dir`
+(unpacked `.app`); output lands in `dist/`.
+
 **Platform:** macOS first. Windows (desktop pinning via WorkerW) is on the roadmap.

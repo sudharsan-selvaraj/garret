@@ -26,9 +26,27 @@ Work, in order:
 7. **Install lifecycle + Extensions manager** — `userData/widgets` dir, install/update/remove,
    enable/disable, review/revoke permissions.
 
+### Code-signing + notarization
+**Prerequisite for distributing the app to anyone but yourself.** Today's build is unsigned, so
+Gatekeeper blocks first launch (users must right-click → Open / strip quarantine). Required once
+Garret is shared via a download link or beyond your own Macs.
+
+Needs an **Apple Developer Program** membership ($99/yr) for a *Developer ID Application* cert.
+Work, in order:
+1. In `electron-builder.yml`: set a real `mac.identity` (replace `identity: null`); add
+   `mac.hardenedRuntime: true` + an entitlements plist if needed.
+2. Add an `afterSign` notarize hook (`@electron/notarize`, or electron-builder's `notarize`
+   config) using `xcrun notarytool` with an App Store Connect API key (or Apple ID + app password).
+3. Wire CI secrets into [`.github/workflows/release.yml`](.github/workflows/release.yml):
+   `CSC_LINK` (base64 .p12) + `CSC_KEY_PASSWORD`, and the notarytool credentials; drop
+   `CSC_IDENTITY_AUTO_DISCOVERY=false`.
+4. Verify: `spctl -a -vv Garret.app` reports *accepted / Notarized Developer ID*.
+
 ## Other deferred
 - Trusted-local tier polish: hot-reload / "Reload widgets" action; unknown-widget card names the
   missing id; decide dev-cwd vs userData dir.
 - Calendar: non-primary calendars.
 - Windows support (desktop pinning via WorkerW).
-- Packaging / distribution (electron-builder; `git`-on-PATH; bundle the native addon; production CSP).
+- Production CSP — safe to tighten now that external widgets are dev-only (`new Function` path
+  doesn't run in packaged builds); revisit when the sandbox tier lands.
+- ~~Packaging (electron-builder, native-addon bundling, release workflow)~~ — done.
