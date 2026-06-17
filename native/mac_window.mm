@@ -11,7 +11,10 @@ static NSWindow* WindowFromHandle(const Napi::Value& value) {
   if (!value.IsBuffer()) return nil;
   auto buf = value.As<Napi::Buffer<char>>();
   if (buf.Length() < sizeof(void*)) return nil;
-  NSView* view = *reinterpret_cast<NSView* __unsafe_unretained*>(buf.Data());
+  // The buffer holds the raw NSView* value. Read it as a plain C pointer, then
+  // __bridge it to an ObjC reference (no retain) — a direct C→ObjC reinterpret_cast
+  // is rejected under ARC by newer clang (e.g. the CI runner's).
+  NSView* view = (__bridge NSView*)(*reinterpret_cast<void**>(buf.Data()));
   return view ? [view window] : nil;
 }
 
