@@ -1,6 +1,12 @@
 import { join } from 'path'
 import { app, BrowserWindow, screen } from 'electron'
-import { pinToDesktop, raiseToHud, makePanel } from '@main/native/macWindow'
+import {
+  pinToDesktop,
+  raiseToHud,
+  makePanel,
+  startCursorMonitor,
+  stopCursorMonitor
+} from '@main/native/macWindow'
 import { Channels } from '@shared/ipc/channels'
 import type { WindowMode } from '@shared/types/window'
 
@@ -104,38 +110,53 @@ export function raiseWindowToHud(win: BrowserWindow): void {
 }
 
 /**
- * How often we sample the global cursor to drive click-through. The renderer only
- * needs this to flip interactivity as the cursor crosses widget boundaries, so a
- * coarse poll is plenty — 60ms (~16 Hz) keeps the "move then click a widget" miss
- * window small while still costing far less than the old 30ms (33 Hz) loop, and
- * the delta gate below means an idle cursor is nearly free regardless. See trackCursor.
+ * Fallback poll interval, used ONLY when the native event monitor is unavailable.
+ * The preferred path (trackCursor) is event-driven and has no fixed-rate timer.
  */
 const CURSOR_POLL_MS = 60
 
 /**
- * Poll the global cursor position and push it (window-relative) to the renderer.
- * The renderer uses this to toggle click-through — robust because it doesn't rely
- * on the desktop-level (non-key) window receiving forwarded mouse-move events,
- * which macOS delivers unreliably and was leaving widgets stuck non-interactive.
- *
- * Energy: we skip the IPC (and the renderer's hit-test) entirely when the cursor
- * hasn't moved since the last sample, so a still cursor costs only a cheap
- * getCursorScreenPoint() every 100ms and nothing downstream.
+ * Push the current cursor position (window-relative) to the renderer, which uses
+ * it to toggle click-through as the cursor crosses widget boundaries. We read the
+ * position via Electron's screen API (correct across displays/Retina) rather than
+ * trusting a desktop-level non-key window to receive forwarded DOM mouse events,
+ * which macOS delivers unreliably. Skips the IPC when the cursor hasn't actually
+ * moved (dedupe), so there's nothing downstream for an idle cursor.
  */
-function trackCursor(win: BrowserWindow): void {
+function makeCursorEmitter(win: BrowserWindow): () => void {
   let lastX = Number.NaN
   let lastY = Number.NaN
+  return () => {
+    if (win.isDestroyed() || win.webContents.isDestroyed()) return
+    const pt = screen.getCursorScreenPoint()
+    if (pt.x === lastX && pt.y === lastY) return // no real movement — nothing to do
+    lastX = pt.x
+    lastY = pt.y
+    const b = win.getBounds()
+    win.webContents.send(Channels.cursorPos, { x: pt.x - b.x, y: pt.y - b.y })
+  }
+}
+
+/**
+ * Drive click-through from cursor movement. Preferred path: a native NSEvent
+ * monitor (see macWindow.ts / mac_window.mm) that fires only when the mouse moves —
+ * zero cost while idle, no fixed-rate timer. If native is unavailable we fall back
+ * to a coarse poll so the layer still works (degraded energy, same behavior).
+ */
+function trackCursor(win: BrowserWindow): void {
+  const emit = makeCursorEmitter(win)
+
+  if (startCursorMonitor(emit)) {
+    win.on('closed', () => stopCursorMonitor())
+    return
+  }
+
   const timer = setInterval(() => {
     if (win.isDestroyed() || win.webContents.isDestroyed()) {
       clearInterval(timer)
       return
     }
-    const pt = screen.getCursorScreenPoint()
-    if (pt.x === lastX && pt.y === lastY) return // cursor idle — nothing to do
-    lastX = pt.x
-    lastY = pt.y
-    const b = win.getBounds()
-    win.webContents.send(Channels.cursorPos, { x: pt.x - b.x, y: pt.y - b.y })
+    emit()
   }, CURSOR_POLL_MS)
   win.on('closed', () => clearInterval(timer))
 }

@@ -105,6 +105,9 @@ Napi::Value MakePanel(const Napi::CallbackInfo& info) {
   }
   dispatch_block_t apply = ^{
     window.styleMask |= NSWindowStyleMaskNonactivatingPanel;
+    // Ensure mouse-moved events reach our app while a widget is interactive, so the
+    // local cursor monitor (see StartCursorMonitor) sees them.
+    window.acceptsMouseMovedEvents = YES;
   };
   if ([NSThread isMainThread]) {
     apply();
@@ -220,6 +223,86 @@ Napi::Value PasteToPreviousApp(const Napi::CallbackInfo& info) {
   return Napi::Boolean::New(info.Env(), true);
 }
 
+// ---- Cursor monitor (event-driven click-through) ---------------------------
+// Polling the cursor wastes energy. Instead we observe mouse-move events and fire
+// a JS tick ONLY when the cursor actually moves, coalesced to ~30Hz. A GLOBAL
+// monitor catches moves headed to OTHER apps (when our layer is click-through, so
+// we can detect the cursor entering a widget); a LOCAL monitor catches moves headed
+// to US (when a widget is interactive, so we can detect it leaving). Together they
+// cover every move with zero cost while the cursor is idle. NSEvent monitors —
+// unlike a CGEventTap — need no Input Monitoring permission.
+//
+// The tick carries no coordinates: the JS side reads the position via Electron's
+// screen API, reusing its proven multi-display/Retina coordinate handling.
+
+static id gCursorGlobalMonitor = nil;
+static id gCursorLocalMonitor = nil;
+static Napi::ThreadSafeFunction gCursorTsfn;
+static bool gCursorActive = false;
+static NSTimeInterval gLastCursorEmit = 0;
+static const NSTimeInterval kCursorMinInterval = 1.0 / 30.0; // coalesce bursts to ~30Hz
+
+static void EmitCursorTick(NSEvent* event) {
+  // event.timestamp is monotonic seconds since boot — coalesce rapid move bursts.
+  NSTimeInterval now = event.timestamp;
+  if (now - gLastCursorEmit < kCursorMinInterval) return;
+  gLastCursorEmit = now;
+  // Queue size 1 + NonBlockingCall => extra ticks are dropped if JS is mid-handling,
+  // which is exactly the coalescing we want (we only need the latest position).
+  if (gCursorActive) gCursorTsfn.NonBlockingCall();
+}
+
+static void StopCursorMonitorImpl() {
+  if (gCursorGlobalMonitor) {
+    [NSEvent removeMonitor:gCursorGlobalMonitor];
+    gCursorGlobalMonitor = nil;
+  }
+  if (gCursorLocalMonitor) {
+    [NSEvent removeMonitor:gCursorLocalMonitor];
+    gCursorLocalMonitor = nil;
+  }
+  if (gCursorActive) {
+    gCursorTsfn.Release();
+    gCursorActive = false;
+  }
+}
+
+// startCursorMonitor(cb) -> boolean. cb() (no args) fires on each coalesced move.
+Napi::Value StartCursorMonitor(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  if (info.Length() < 1 || !info[0].IsFunction()) {
+    Napi::TypeError::New(env, "callback function required").ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
+  StopCursorMonitorImpl(); // idempotent — tear down any existing monitor first
+
+  gCursorTsfn =
+      Napi::ThreadSafeFunction::New(env, info[0].As<Napi::Function>(), "garret-cursor", 1, 1);
+  gCursorActive = true;
+  gLastCursorEmit = 0;
+
+  NSEventMask mask = NSEventMaskMouseMoved | NSEventMaskLeftMouseDragged |
+                     NSEventMaskRightMouseDragged | NSEventMaskOtherMouseDragged;
+  gCursorGlobalMonitor =
+      [NSEvent addGlobalMonitorForEventsMatchingMask:mask
+                                             handler:^(NSEvent* e) { EmitCursorTick(e); }];
+  gCursorLocalMonitor =
+      [NSEvent addLocalMonitorForEventsMatchingMask:mask
+                                            handler:^NSEvent*(NSEvent* e) {
+                                              EmitCursorTick(e);
+                                              return e; // observe only — never swallow
+                                            }];
+
+  // Global monitor is the one that matters for click-through; report its success.
+  return Napi::Boolean::New(env, gCursorGlobalMonitor != nil);
+}
+
+// stopCursorMonitor() -> boolean
+Napi::Value StopCursorMonitor(const Napi::CallbackInfo& info) {
+  StopCursorMonitorImpl();
+  return Napi::Boolean::New(info.Env(), true);
+}
+
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
   exports.Set("pinToDesktop", Napi::Function::New(env, PinToDesktop));
   exports.Set("raiseToHud", Napi::Function::New(env, RaiseToHud));
@@ -231,6 +314,8 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
   exports.Set("frontmostAppName", Napi::Function::New(env, FrontmostAppName));
   exports.Set("rememberFrontmostApp", Napi::Function::New(env, RememberFrontmostApp));
   exports.Set("pasteToPreviousApp", Napi::Function::New(env, PasteToPreviousApp));
+  exports.Set("startCursorMonitor", Napi::Function::New(env, StartCursorMonitor));
+  exports.Set("stopCursorMonitor", Napi::Function::New(env, StopCursorMonitor));
   return exports;
 }
 

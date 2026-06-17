@@ -12,6 +12,8 @@ interface MacWindowAddon {
   frontmostAppName(): string
   rememberFrontmostApp(): boolean
   pasteToPreviousApp(): boolean
+  startCursorMonitor(cb: () => void): boolean
+  stopCursorMonitor(): boolean
 }
 
 let addon: MacWindowAddon | null | undefined
@@ -151,5 +153,33 @@ export function pasteToPreviousApp(): boolean {
     return a.pasteToPreviousApp()
   } catch {
     return false
+  }
+}
+
+/**
+ * Start the event-driven cursor monitor: `cb` is invoked (no args) whenever the
+ * mouse moves, coalesced to ~30Hz, and never while it's idle. Returns false if the
+ * native addon is unavailable (caller should fall back to polling). Idempotent —
+ * calling again replaces the previous monitor.
+ */
+export function startCursorMonitor(cb: () => void): boolean {
+  const a = load()
+  if (!a) return false
+  try {
+    return a.startCursorMonitor(cb)
+  } catch (err) {
+    console.warn('[native] startCursorMonitor failed', err)
+    return false
+  }
+}
+
+/** Tear down the cursor monitor (releases the native event monitors + callback). */
+export function stopCursorMonitor(): void {
+  const a = load()
+  if (!a) return
+  try {
+    a.stopCursorMonitor()
+  } catch {
+    // Best-effort teardown.
   }
 }
