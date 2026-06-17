@@ -77,7 +77,10 @@ export function usePolledQuery<T = unknown>(
   // Manual refresh (↻) wired through ctx.refreshToken.
   const refreshToken = opts?.refreshToken ?? 0
   useEffect(() => {
-    if (refreshToken > 0) window.myview.poll.refresh(key)
+    if (refreshToken > 0) {
+      setState((s) => ({ ...s, loading: true }))
+      window.myview.poll.refresh(key)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshToken])
 
@@ -86,6 +89,9 @@ export function usePolledQuery<T = unknown>(
     error: state.error,
     loading: state.loading,
     ts: state.ts,
-    refresh: () => window.myview.poll.refresh(key)
+    refresh: () => {
+      setState((s) => ({ ...s, loading: true }))
+      window.myview.poll.refresh(key)
+    }
   }
 }

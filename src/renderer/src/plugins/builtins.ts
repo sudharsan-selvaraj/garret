@@ -1,12 +1,8 @@
 import type { AnyWidgetPlugin } from '@sdk'
 import { registry } from '@renderer/plugins/registry'
 import webEmbed from '@plugins/web-embed'
-import googleCalendar from '@plugins/google-calendar'
-import jiraBoard from '@plugins/jira-board'
 import jiraTickets from '@plugins/jira-tickets'
-import bitbucketPrs from '@plugins/bitbucket-prs'
-import bitbucketMyPrs from '@plugins/bitbucket-my-prs'
-import bitbucketReviewPrs from '@plugins/bitbucket-review-prs'
+import pullRequests from '@plugins/pull-requests'
 import gitRepo from '@plugins/git-repo'
 import clock from '@plugins/clock'
 import notes from '@plugins/notes'
@@ -22,11 +18,7 @@ import calendar from '@plugins/calendar'
 const builtins: AnyWidgetPlugin[] = [
   jiraTickets,
   calendar,
-  bitbucketMyPrs,
-  bitbucketReviewPrs,
-  bitbucketPrs,
-  googleCalendar,
-  jiraBoard,
+  pullRequests,
   gitRepo,
   clock,
   weather,

@@ -13,6 +13,8 @@ export interface BitbucketPR {
   url: string
   /** "workspace/repo" — set for multi-repo widgets, used for grouping. */
   repo?: string
-  /** Your review state on this PR (review widget): 'approved' | 'changes_requested' | 'pending'. */
+  /** Your review state on this PR (when filtered to you): 'approved' | 'changes_requested' | 'pending'. */
   reviewState?: string
+  /** Requested reviewers + their approval state, for inline display. */
+  reviewers?: { name?: string; state?: 'approved' | 'changes_requested' | 'pending' }[]
 }

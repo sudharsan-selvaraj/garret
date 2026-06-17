@@ -8,10 +8,30 @@ export interface RepoConfig {
   state: string
   refreshMin: string
   notify: boolean
+  /** Author filter: 'anyone' | 'me' | 'name'. */
+  author?: string
+  /** Author display-name substring (when author === 'name'). */
+  authorName?: string
+  /** Reviewer filter: 'anyone' | 'me'. */
+  reviewer?: string
+  /** My review status (when reviewer === 'me'): 'any'|'pending'|'approved'|'changes_requested'. */
+  reviewState?: string
   /** Hide PRs created more than this many days ago ('0' = no limit). */
   maxAgeDays?: string
   /** PR ids the user has manually muted (hidden from the list). */
   muted?: number[]
+}
+
+/** The PR query params derived from a widget's filter config. */
+export function prQuery(config: RepoConfig): Record<string, unknown> {
+  return {
+    repos: parseReposConfig(config.repos),
+    state: config.state || 'OPEN',
+    author: config.author || 'anyone',
+    authorName: config.author === 'name' ? config.authorName ?? '' : '',
+    reviewer: config.reviewer || 'anyone',
+    reviewState: config.reviewer === 'me' ? config.reviewState ?? 'any' : 'any'
+  }
 }
 
 /** Parse the repos textarea ("workspace/repo" per line) into an array for the query. */
@@ -71,6 +91,51 @@ export function RepoSettings({
               <option value="ALL">All</option>
             </select>
           </Row>
+          <Row label="Author">
+            <select
+              className="row-select"
+              value={config.author || 'anyone'}
+              onChange={(e) => onChange({ author: e.target.value })}
+            >
+              <option value="anyone">Anyone</option>
+              <option value="me">Me</option>
+              <option value="name">Someone…</option>
+            </select>
+          </Row>
+          {config.author === 'name' && (
+            <Row label="Author name">
+              <input
+                className="row-input"
+                placeholder="name contains…"
+                value={config.authorName ?? ''}
+                onChange={(e) => onChange({ authorName: e.target.value })}
+              />
+            </Row>
+          )}
+          <Row label="Reviewer">
+            <select
+              className="row-select"
+              value={config.reviewer || 'anyone'}
+              onChange={(e) => onChange({ reviewer: e.target.value })}
+            >
+              <option value="anyone">Anyone</option>
+              <option value="me">Me</option>
+            </select>
+          </Row>
+          {config.reviewer === 'me' && (
+            <Row label="My review">
+              <select
+                className="row-select"
+                value={config.reviewState || 'any'}
+                onChange={(e) => onChange({ reviewState: e.target.value })}
+              >
+                <option value="any">Any</option>
+                <option value="pending">Needs my review</option>
+                <option value="approved">Approved</option>
+                <option value="changes_requested">Changes requested</option>
+              </select>
+            </Row>
+          )}
           <Row label="Hide older than (days)">
             <input
               className="row-input"

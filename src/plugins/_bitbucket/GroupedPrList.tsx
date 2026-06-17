@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { BellOff, ChevronDown, ChevronRight, ExternalLink, MoreHorizontal } from 'lucide-react'
-import { openExternal } from '@sdk'
+import { openExternal, WidgetStatus } from '@sdk'
 import type { BitbucketPR } from '@shared/types/bitbucket'
 
 /** PRs grouped by repo into collapsible accordion sections. `meta` renders the right-side badges. */
@@ -11,7 +11,8 @@ export function GroupedPrList({
   error,
   empty,
   meta,
-  onMute
+  onMute,
+  onRetry
 }: {
   items: BitbucketPR[] | undefined
   loading: boolean
@@ -20,22 +21,26 @@ export function GroupedPrList({
   meta: (pr: BitbucketPR) => ReactNode
   /** When provided, each row gets a ⋯ menu with a Mute action. */
   onMute?: (id: number) => void
+  /** Retry handler for the stale/error status strip. */
+  onRetry?: () => void
 }): JSX.Element {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
 
-  if (error) {
-    const notConnected = /not connected|identify your account/i.test(error)
-    return (
-      <div className="svc-empty">
-        {notConnected ? 'Connect Atlassian in ⚙ settings, then add repos here.' : error}
-      </div>
-    )
+  // No data yet → full error / loading state. With data, errors are non-destructive.
+  if (!items) {
+    if (error) {
+      const notConnected = /not connected|identify your account/i.test(error)
+      return (
+        <div className="svc-empty">
+          {notConnected ? 'Connect Atlassian in ⚙ settings, then add repos here.' : error}
+        </div>
+      )
+    }
+    return <div className="svc-empty">Loading…</div>
   }
-  if (!items && loading) return <div className="svc-empty">Loading…</div>
-  if (items && items.length === 0) return <div className="svc-empty">{empty}</div>
 
   const groups = new Map<string, BitbucketPR[]>()
-  for (const pr of items ?? []) {
+  for (const pr of items) {
     const k = pr.repo ?? 'Other'
     const arr = groups.get(k) ?? []
     arr.push(pr)
@@ -51,6 +56,8 @@ export function GroupedPrList({
 
   return (
     <div className="pr-groups">
+      <WidgetStatus error={error} loading={loading} onRetry={onRetry} />
+      {items.length === 0 && <div className="svc-empty">{empty}</div>}
       {[...groups.entries()].map(([repo, prs]) => {
         const open = !collapsed.has(repo)
         return (

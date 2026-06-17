@@ -144,9 +144,32 @@ interface RawPR {
   comment_count?: number
   created_on?: string
   links?: { html?: { href?: string } }
-  participants?: { user?: { account_id?: string }; role?: string; state?: string | null; approved?: boolean }[]
+  participants?: {
+    user?: { account_id?: string; display_name?: string }
+    role?: string
+    state?: string | null
+    approved?: boolean
+  }[]
 }
-function normalizePR(pr: RawPR): BitbucketPR {
+
+type ReviewState = 'approved' | 'changes_requested' | 'pending'
+function mapReviewState(s?: string | null): ReviewState {
+  if (s === 'approved') return 'approved'
+  if (s === 'changes_requested') return 'changes_requested'
+  return 'pending'
+}
+
+function normalizePR(pr: RawPR, me?: string | null): BitbucketPR {
+  const reviewers = (pr.participants ?? [])
+    .filter((x) => x.role === 'REVIEWER')
+    .map((x) => ({ name: x.user?.display_name, state: mapReviewState(x.state) }))
+  let reviewState: ReviewState | undefined
+  if (me) {
+    const mine = (pr.participants ?? []).find(
+      (x) => x.user?.account_id === me && x.role === 'REVIEWER'
+    )
+    if (mine) reviewState = mapReviewState(mine.state)
+  }
   return {
     id: pr.id,
     title: pr.title,
@@ -156,7 +179,9 @@ function normalizePR(pr: RawPR): BitbucketPR {
     destBranch: pr.destination?.branch?.name,
     commentCount: pr.comment_count,
     created: pr.created_on,
-    url: pr.links?.html?.href ?? ''
+    url: pr.links?.html?.href ?? '',
+    reviewers,
+    reviewState
   }
 }
 
@@ -220,7 +245,7 @@ function parseRepos(input: unknown): RepoRef[] {
 }
 
 const PR_FIELDS =
-  'values.id,values.title,values.state,values.comment_count,values.created_on,values.author.account_id,values.author.display_name,values.source.branch.name,values.destination.branch.name,values.links.html.href,values.participants.user.account_id,values.participants.role,values.participants.state,values.participants.approved'
+  'values.id,values.title,values.state,values.comment_count,values.created_on,values.author.account_id,values.author.display_name,values.source.branch.name,values.destination.branch.name,values.links.html.href,values.participants.user.account_id,values.participants.user.display_name,values.participants.role,values.participants.state,values.participants.approved'
 
 async function fetchRepoPRs(creds: Creds, ref: RepoRef, state: string): Promise<RawPR[]> {
   const stateQ = state && state !== 'ALL' ? `state=${encodeURIComponent(state)}&` : ''
@@ -279,44 +304,36 @@ export const atlassianService: BackendService = {
       return (data.issues ?? []).map((i) => normalizeIssue(creds.jiraSite as string, i))
     }
 
-    if (method === 'listPullRequests') {
-      const workspace = String(params.workspace ?? '').trim()
-      const repo = String(params.repo ?? '').trim()
-      const state = String(params.state ?? 'OPEN')
-      const max = Number(params.maxResults) || 15
-      if (!workspace || !repo) throw new Error('Workspace and repo are required.')
-      const data = (await bbCall(
-        creds,
-        `/repositories/${encodeURIComponent(workspace)}/${encodeURIComponent(repo)}/pullrequests?state=${encodeURIComponent(state)}&pagelen=${max}&fields=values.id,values.title,values.state,values.author.display_name,values.source.branch.name,values.destination.branch.name,values.comment_count,values.created_on,values.links.html.href`
-      )) as { values?: RawPR[] }
-      return (data.values ?? []).map(normalizePR)
-    }
-
-    if (method === 'listMyPRs' || method === 'listReviewPRs') {
-      const me = await selfAccountId(creds)
-      if (!me) throw new Error('Could not identify your account — set the Jira site in Settings.')
+    if (method === 'listPRs') {
+      const author = String(params.author ?? 'anyone') // 'anyone' | 'me' | 'name'
+      const authorName = String(params.authorName ?? '').trim().toLowerCase()
+      const reviewer = String(params.reviewer ?? 'anyone') // 'anyone' | 'me'
+      const reviewStateFilter = String(params.reviewState ?? 'any')
+      const needMe = author === 'me' || reviewer === 'me'
+      const me = needMe ? await selfAccountId(creds) : null
+      if (needMe && !me) {
+        throw new Error('Could not identify your account — set the Jira site in Settings.')
+      }
       const refs = parseRepos(params.repos)
       const state = String(params.state ?? 'OPEN')
       const groups = await Promise.all(
         refs.map(async (ref) => {
           const prs = await fetchRepoPRs(creds, ref, state)
-          if (method === 'listMyPRs') {
-            return prs
-              .filter((p) => p.author?.account_id === me)
-              .map((p) => ({ ...normalizePR(p), repo: ref.label }))
-          }
           return prs.flatMap((p) => {
-            const mine = (p.participants ?? []).find(
-              (x) => x.user?.account_id === me && x.role === 'REVIEWER'
-            )
-            if (!mine) return []
-            const reviewState =
-              mine.state === 'approved'
-                ? 'approved'
-                : mine.state === 'changes_requested'
-                  ? 'changes_requested'
-                  : 'pending'
-            return [{ ...normalizePR(p), repo: ref.label, reviewState }]
+            if (author === 'me' && p.author?.account_id !== me) return []
+            if (author === 'name' && authorName && !(p.author?.display_name ?? '').toLowerCase().includes(authorName)) {
+              return []
+            }
+            if (reviewer === 'me') {
+              const mine = (p.participants ?? []).find(
+                (x) => x.user?.account_id === me && x.role === 'REVIEWER'
+              )
+              if (!mine) return []
+              if (reviewStateFilter !== 'any' && mapReviewState(mine.state) !== reviewStateFilter) {
+                return []
+              }
+            }
+            return [{ ...normalizePR(p, me), repo: ref.label }]
           })
         })
       )

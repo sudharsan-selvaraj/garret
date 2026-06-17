@@ -5,6 +5,7 @@ export * from './fields'
 export * from './services'
 export * from './poll'
 export * from './files'
+export * from './WidgetStatus'
 export type { NotifySpec, WatchSpec, PollUpdate } from '@shared/types/poll'
 
 /** Identity helper that pins the generic config type for a plugin definition. */

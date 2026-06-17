@@ -13,6 +13,7 @@ import {
   field,
   openExternal,
   usePolledQuery,
+  WidgetStatus,
   type WidgetRenderProps
 } from '@sdk'
 import type { Attendee, CalendarEvent, RsvpStatus } from '@shared/types/calendar'
@@ -99,6 +100,13 @@ function timeRange(e: CalendarEvent): string {
   return `${start}${end ? `–${end}` : ''}${dur ? ` · ${dur}` : ''}`
 }
 
+/** Label for the agenda row's time column. */
+function eventTimeLabel(e: CalendarEvent, ongoing: boolean): string {
+  if (ongoing) return 'NOW'
+  if (e.allDay) return 'all-day'
+  return fmtTime(e.start)
+}
+
 /* ---------------- Shared event detail ---------------- */
 
 function EventDetail({ e }: { e: CalendarEvent }): JSX.Element {
@@ -167,16 +175,20 @@ function EventDetail({ e }: { e: CalendarEvent }): JSX.Element {
 
 function AgendaView({ config, ctx }: WidgetRenderProps<Config>): JSX.Element {
   const params = { range: config.range || 'today', maxResults: Number(config.maxResults) || 12 }
-  const { data, error, loading } = usePolledQuery<CalendarEvent[]>(SERVICE, 'listUpcomingEvents', params, {
-    intervalMs: intervalFor(config),
-    refreshToken: ctx.refreshToken
-  })
+  const { data, error, loading, refresh } = usePolledQuery<CalendarEvent[]>(
+    SERVICE,
+    'listUpcomingEvents',
+    params,
+    { intervalMs: intervalFor(config), refreshToken: ctx.refreshToken }
+  )
   const [expanded, setExpanded] = useState<string | null>(null)
 
-  if (error) return <CalError error={error} />
-  if (!data && loading) return <div className="svc-empty">Loading…</div>
-  const events = data ?? []
-  if (events.length === 0) return <div className="svc-empty">No upcoming events.</div>
+  // No data yet → full error / loading state. With data, errors are non-destructive.
+  if (!data) {
+    if (error) return <CalError error={error} />
+    return <div className="svc-empty">Loading…</div>
+  }
+  const events = data
 
   const now = Date.now()
   const multiDay = (config.range || 'today') === 'week'
@@ -185,6 +197,8 @@ function AgendaView({ config, ctx }: WidgetRenderProps<Config>): JSX.Element {
   let lastDay = ''
   return (
     <div className="native-widget calendar">
+      <WidgetStatus error={error} loading={loading} onRetry={refresh} />
+      {events.length === 0 && <div className="svc-empty">No upcoming events.</div>}
       {events.map((e) => {
         const startMs = new Date(e.start).getTime()
         const endMs = e.end ? new Date(e.end).getTime() : startMs
@@ -203,9 +217,7 @@ function AgendaView({ config, ctx }: WidgetRenderProps<Config>): JSX.Element {
               className={`cal-event${ongoing ? ' ongoing' : ''}${isNext ? ' next' : ''}${isOpen ? ' open' : ''}`}
             >
               <span className="cal-time">
-                <span className="cal-time-start">
-                  {ongoing ? 'NOW' : e.allDay ? 'all-day' : fmtTime(e.start)}
-                </span>
+                <span className="cal-time-start">{eventTimeLabel(e, ongoing)}</span>
                 {!e.allDay && !ongoing && durationLabel(e.start, e.end) && (
                   <span className="cal-time-dur">{durationLabel(e.start, e.end)}</span>
                 )}
@@ -242,6 +254,29 @@ const HOUR_PX = 46
 function minsSinceMidnight(iso: string): number {
   const d = new Date(iso)
   return d.getHours() * 60 + d.getMinutes()
+}
+
+/** Vertical offset (px) of an event's start on the 12am-anchored axis. */
+function topOf(e: CalendarEvent): number {
+  return (minsSinceMidnight(e.start) / 60) * HOUR_PX
+}
+
+/** Hour-axis label, e.g. 0 → 12a, 13 → 1p. */
+function hourLabel(h: number): string {
+  if (h === 0) return '12a'
+  if (h === 12) return '12p'
+  return h < 12 ? `${h}a` : `${h - 12}p`
+}
+
+/** Day header, e.g. "Today · Jun 17" / "Mon, Jun 23". */
+function dayHeaderLabel(offset: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() + offset)
+  const md = d.toLocaleDateString([], { month: 'short', day: 'numeric' })
+  if (offset === 0) return `Today · ${md}`
+  if (offset === -1) return `Yesterday · ${md}`
+  if (offset === 1) return `Tomorrow · ${md}`
+  return d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
 }
 
 interface Placed {
@@ -288,12 +323,96 @@ function layout(timed: CalendarEvent[]): Placed[] {
   return out
 }
 
+/** A single positioned event block on the day grid. */
+function DayBlock({
+  placed,
+  now,
+  offset,
+  onSelect
+}: {
+  placed: Placed
+  now: number
+  offset: number
+  onSelect: (id: string) => void
+}): JSX.Element {
+  const { e, col, lanes } = placed
+  const GAP = 4 // mild vertical breathing room between stacked events
+  const startMs = new Date(e.start).getTime()
+  const endMs = new Date(e.end ?? e.start).getTime()
+  const rawHeight = Math.max(((endMs - startMs) / 3_600_000) * HOUR_PX, 22)
+  const height = Math.max(rawHeight - GAP, 18)
+  const ongoing = offset === 0 && startMs <= now && endMs > now
+  return (
+    <button
+      className={`cal-block${ongoing ? ' ongoing' : ''}${height < 34 ? ' compact' : ''}`}
+      style={{
+        top: topOf(e) + GAP / 2,
+        height,
+        left: `calc(44px + (100% - 44px) * ${col / lanes})`,
+        width: `calc((100% - 44px) / ${lanes} - 4px)`
+      }}
+      title={`${e.title} · ${timeRange(e)}`}
+      onClick={() => onSelect(e.id)}
+    >
+      <span className="cal-block-title">{e.title}</span>
+      {height >= 34 && <span className="cal-block-time">{fmtTime(e.start)}</span>}
+    </button>
+  )
+}
+
+/** The scrollable 24h time grid: hour lines, now-line, and event blocks. */
+function DayGrid({
+  placed,
+  offset,
+  onSelect
+}: {
+  placed: Placed[]
+  offset: number
+  onSelect: (id: string) => void
+}): JSX.Element {
+  const gridRef = useRef<HTMLDivElement>(null)
+  const now = new Date()
+  const nowMs = now.getTime()
+  const nowTop = ((now.getHours() * 60 + now.getMinutes()) / 60) * HOUR_PX
+  const showNow = offset === 0
+
+  // Scroll the now-line (or first event) into view when the day changes.
+  useEffect(() => {
+    const el = gridRef.current
+    if (!el) return
+    let target = 0
+    if (showNow) target = nowTop
+    else if (placed.length) target = Math.min(...placed.map((p) => topOf(p.e)))
+    el.scrollTop = Math.max(0, target - 60)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offset, placed])
+
+  return (
+    <div className="cal-grid-scroll" ref={gridRef}>
+      <div className="cal-grid" style={{ height: 24 * HOUR_PX }}>
+        {Array.from({ length: 25 }, (_, h) => (
+          <div key={h} className="cal-hour" style={{ top: h * HOUR_PX }}>
+            <span className="cal-hour-label">{hourLabel(h)}</span>
+          </div>
+        ))}
+        {showNow && (
+          <div className="cal-now" style={{ top: nowTop }}>
+            <span className="cal-now-dot" />
+          </div>
+        )}
+        {placed.map((p) => (
+          <DayBlock key={p.e.id} placed={p} now={nowMs} offset={offset} onSelect={onSelect} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function DayView({ config, ctx }: WidgetRenderProps<Config>): JSX.Element {
   const [offset, setOffset] = useState(0)
   const [selected, setSelected] = useState<string | null>(null)
-  const gridRef = useRef<HTMLDivElement>(null)
 
-  const { data, error, loading } = usePolledQuery<CalendarEvent[]>(
+  const { data, error, loading, refresh } = usePolledQuery<CalendarEvent[]>(
     SERVICE,
     'listDay',
     { dayOffset: offset },
@@ -301,44 +420,32 @@ function DayView({ config, ctx }: WidgetRenderProps<Config>): JSX.Element {
   )
 
   const events = data ?? []
-  const timed = events.filter((e) => !e.allDay)
   const allDay = events.filter((e) => e.allDay)
-
-  // Always render the full day (12am–12am) so the grid is consistent and free
-  // time is visible; the view auto-scrolls to "now" / the first event.
-  const startHour = 0
-  const endHour = 24
-
-  const placed = useMemo(() => layout(timed), [timed])
-  const gridHeight = (endHour - startHour) * HOUR_PX
-  const headerLabel = (() => {
-    const d = new Date()
-    d.setDate(d.getDate() + offset)
-    const md = d.toLocaleDateString([], { month: 'short', day: 'numeric' })
-    if (offset === 0) return `Today · ${md}`
-    if (offset === -1) return `Yesterday · ${md}`
-    if (offset === 1) return `Tomorrow · ${md}`
-    return d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
-  })()
-
-  const now = new Date()
-  const nowTop = ((now.getHours() * 60 + now.getMinutes()) / 60 - startHour) * HOUR_PX
-  const showNow = offset === 0 && nowTop >= 0 && nowTop <= gridHeight
-
-  // Scroll the now-line (or first event) into view when the day changes.
-  useEffect(() => {
-    const el = gridRef.current
-    if (!el) return
-    const target = showNow ? nowTop : placed.length ? Math.min(...placed.map((p) => topOf(p.e))) : 0
-    el.scrollTop = Math.max(0, target - 60)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [offset, data])
-
-  function topOf(e: CalendarEvent): number {
-    return (minsSinceMidnight(e.start) / 60 - startHour) * HOUR_PX
-  }
-
+  const placed = useMemo(() => layout(events.filter((e) => !e.allDay)), [data]) // eslint-disable-line react-hooks/exhaustive-deps
   const selectedEvent = selected ? events.find((e) => e.id === selected) : null
+
+  const body = (): JSX.Element => {
+    // No data yet → full error / loading. With data, errors are non-destructive.
+    if (!data) {
+      if (error) return <CalError error={error} />
+      return <div className="svc-empty">Loading…</div>
+    }
+    return (
+      <>
+        <WidgetStatus error={error} loading={loading} onRetry={refresh} />
+        {allDay.length > 0 && (
+          <div className="cal-allday">
+            {allDay.map((e) => (
+              <button key={e.id} className="cal-allday-chip" onClick={() => setSelected(e.id)}>
+                {e.title}
+              </button>
+            ))}
+          </div>
+        )}
+        <DayGrid placed={placed} offset={offset} onSelect={setSelected} />
+      </>
+    )
+  }
 
   return (
     <div className="native-widget calendar cal-dayview">
@@ -347,79 +454,14 @@ function DayView({ config, ctx }: WidgetRenderProps<Config>): JSX.Element {
           <ChevronLeft size={16} strokeWidth={2} />
         </button>
         <button className="cal-day-title" onClick={() => setOffset(0)} title="Jump to today">
-          {headerLabel}
+          {dayHeaderLabel(offset)}
         </button>
         <button className="cal-nav" title="Next day" onClick={() => setOffset((o) => o + 1)}>
           <ChevronRight size={16} strokeWidth={2} />
         </button>
       </div>
 
-      {error ? (
-        <CalError error={error} />
-      ) : !data && loading ? (
-        <div className="svc-empty">Loading…</div>
-      ) : (
-        <>
-          {allDay.length > 0 && (
-            <div className="cal-allday">
-              {allDay.map((e) => (
-                <button key={e.id} className="cal-allday-chip" onClick={() => setSelected(e.id)}>
-                  {e.title}
-                </button>
-              ))}
-            </div>
-          )}
-
-          <div className="cal-grid-scroll" ref={gridRef}>
-            <div className="cal-grid" style={{ height: gridHeight }}>
-                {Array.from({ length: endHour - startHour + 1 }, (_, i) => {
-                  const h = startHour + i
-                  return (
-                    <div key={h} className="cal-hour" style={{ top: i * HOUR_PX }}>
-                      <span className="cal-hour-label">
-                        {h === 0 ? '12a' : h < 12 ? `${h}a` : h === 12 ? '12p' : `${h - 12}p`}
-                      </span>
-                    </div>
-                  )
-                })}
-
-                {showNow && (
-                  <div className="cal-now" style={{ top: nowTop }}>
-                    <span className="cal-now-dot" />
-                  </div>
-                )}
-
-                {placed.map(({ e, col, lanes }) => {
-                  const GAP = 4 // mild vertical breathing room between stacked events
-                  const rawTop = topOf(e)
-                  const startMs = new Date(e.start).getTime()
-                  const endMs = new Date(e.end ?? e.start).getTime()
-                  const rawHeight = Math.max(((endMs - startMs) / 3_600_000) * HOUR_PX, 22)
-                  const top = rawTop + GAP / 2
-                  const height = Math.max(rawHeight - GAP, 18)
-                  const ongoing = startMs <= now.getTime() && endMs > now.getTime() && offset === 0
-                  return (
-                    <button
-                      key={e.id}
-                      className={`cal-block${ongoing ? ' ongoing' : ''}${height < 34 ? ' compact' : ''}`}
-                      style={{
-                        top,
-                        height,
-                        left: `calc(44px + (100% - 44px) * ${col / lanes})`,
-                        width: `calc((100% - 44px) / ${lanes} - 4px)`
-                      }}
-                      title={`${e.title} · ${timeRange(e)}`}
-                      onClick={() => setSelected(e.id)}
-                    >
-                      <span className="cal-block-title">{e.title}</span>
-                      {height >= 34 && <span className="cal-block-time">{fmtTime(e.start)}</span>}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          </>
-      )}
+      {body()}
 
       {selectedEvent && (
         <div className="cal-overlay">
@@ -429,10 +471,7 @@ function DayView({ config, ctx }: WidgetRenderProps<Config>): JSX.Element {
             </button>
             <span className="cal-overlay-title">{selectedEvent.title}</span>
             {selectedEvent.joinUrl && (
-              <button
-                className="cal-join"
-                onClick={() => openExternal(selectedEvent.joinUrl as string)}
-              >
+              <button className="cal-join" onClick={() => openExternal(selectedEvent.joinUrl as string)}>
                 <Video size={12} strokeWidth={2} />
                 Join
               </button>

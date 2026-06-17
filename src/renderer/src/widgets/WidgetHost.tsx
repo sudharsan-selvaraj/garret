@@ -81,9 +81,13 @@ export function WidgetHost({ widget }: { widget: PlacedWidget }): JSX.Element {
     setMenu({ x: e.clientX, y: e.clientY })
   }
 
-  const style: CSSProperties = { opacity: widget.opacity / 100 }
+  // "Opacity" drives the BACKGROUND alpha only (100 = opaque), so reducing it lets
+  // the wallpaper show through while text/content stay fully legible.
+  const bgAlpha = (widget.opacity ?? 100) / 100
   const lightTint = widget.color ? isLight(widget.color) : false
-  if (widget.color) style.background = hexToRgba(widget.color, 0.82)
+  const style: CSSProperties = {
+    background: widget.color ? hexToRgba(widget.color, bgAlpha) : `rgba(34, 34, 36, ${bgAlpha})`
+  }
 
   // Headless: no header chrome. The whole card becomes the drag handle (except
   // while editing settings, so form inputs stay usable); settings live in the menu.
@@ -191,7 +195,7 @@ export function WidgetHost({ widget }: { widget: PlacedWidget }): JSX.Element {
             <span className="ctx-row-label">Opacity</span>
             <input
               type="range"
-              min={30}
+              min={10}
               max={100}
               step={5}
               value={widget.opacity}

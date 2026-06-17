@@ -6,6 +6,7 @@ import {
   openExternal,
   usePolledQuery,
   useServiceStatus,
+  WidgetStatus,
   type WidgetRenderProps,
   type WidgetSettingsProps
 } from '@sdk'
@@ -60,26 +61,32 @@ const CATEGORY_CLASS: Record<string, string> = {
 
 function JiraTickets({ config, ctx }: WidgetRenderProps<Config>): JSX.Element {
   const q = jiraQuery(config)
-  const { data: issues, error, loading } = usePolledQuery<JiraIssue[]>(SERVICE, q.method, q.params, {
-    intervalMs: intervalFor(config),
-    refreshToken: ctx.refreshToken
-  })
+  const { data: issues, error, loading, refresh } = usePolledQuery<JiraIssue[]>(
+    SERVICE,
+    q.method,
+    q.params,
+    { intervalMs: intervalFor(config), refreshToken: ctx.refreshToken }
+  )
 
-  if (error) {
-    const notConnected = /not connected/i.test(error)
-    return (
-      <div className="svc-empty">
-        {notConnected ? 'Connect Atlassian in ⚙ settings to see your tickets.' : error}
-      </div>
-    )
+  // No data yet → full error / loading state. With data, errors are non-destructive.
+  if (!issues) {
+    if (error) {
+      const notConnected = /not connected/i.test(error)
+      return (
+        <div className="svc-empty">
+          {notConnected ? 'Connect Atlassian in ⚙ settings to see your tickets.' : error}
+        </div>
+      )
+    }
+    return <div className="svc-empty">Loading…</div>
   }
-  if (!issues && loading) return <div className="svc-empty">Loading…</div>
-  if (issues && issues.length === 0) return <div className="svc-empty">No matching tickets.</div>
 
   return (
     <div className="ticket-list">
+      <WidgetStatus error={error} loading={loading} onRetry={refresh} />
       {config.title && <div className="list-caption">{config.title}</div>}
-      {(issues ?? []).map((it) => (
+      {issues.length === 0 && <div className="svc-empty">No matching tickets.</div>}
+      {issues.map((it) => (
         <button
           key={it.key}
           className="ticket"

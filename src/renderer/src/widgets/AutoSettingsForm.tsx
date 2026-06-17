@@ -1,5 +1,8 @@
 import type { ConfigSchema, Field, SelectField } from '@sdk'
 
+/** Field type → HTML input type (anything not listed renders as text). */
+const INPUT_TYPE: Record<string, string> = { password: 'password', number: 'number' }
+
 interface Props {
   schema: ConfigSchema
   config: Record<string, unknown>
@@ -92,7 +95,7 @@ function Control({
     <input
       id={id}
       className="row-input"
-      type={f.type === 'password' ? 'password' : f.type === 'number' ? 'number' : 'text'}
+      type={INPUT_TYPE[f.type] ?? 'text'}
       value={String(value ?? '')}
       placeholder={f.placeholder}
       onChange={(e) => onChange(e.target.value)}

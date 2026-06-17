@@ -92,7 +92,14 @@ export function teardownSender(wcId: number): void {
 
 export function refresh(key: string): void {
   const job = jobs.get(key)
-  if (job) void runJob(job)
+  if (!job) return
+  // Explicit user intent ("try now") — clear any auth gate / rate pause / backoff
+  // for this service and re-run immediately, so a refresh recovers after the
+  // network comes back instead of waiting out a gate or backoff window.
+  serviceDisabled.delete(job.serviceId)
+  servicePausedUntil.delete(job.serviceId)
+  job.backoffMs = 0
+  void runJob(job)
 }
 
 /** Reconcile the full set of background notification watches (from the saved board). */
@@ -293,9 +300,12 @@ function classify(err: unknown): { kind: 'auth' | 'rate' | 'transient'; message:
 }
 
 function cached(job: Job): PollUpdate {
+  // Stale-while-error: always surface the last good result (if any) alongside the
+  // error, so a failed refresh keeps the content the user was reading. The widget
+  // shows a full error state only when there's no prior data (data === undefined).
   return {
     key: job.key,
-    data: job.lastError ? undefined : job.lastResult,
+    data: job.lastResult,
     error: job.lastError ?? undefined,
     ts: job.lastTs
   }
