@@ -9,11 +9,11 @@ export function GeneralSettings(): JSX.Element {
   const [prefs, setPrefs] = useState<Preferences | null>(null)
 
   useEffect(() => {
-    void window.myview.prefs.get().then(setPrefs)
+    void window.garret.prefs.get().then(setPrefs)
   }, [])
 
   const update = async (patch: Partial<Preferences>): Promise<void> => {
-    const res = await window.myview.prefs.set(patch)
+    const res = await window.garret.prefs.set(patch)
     if (res.ok) setPrefs(res.prefs)
   }
 
@@ -94,7 +94,7 @@ export function GeneralSettings(): JSX.Element {
             History is stored encrypted on this Mac. “Ignore passwords” skips items your password
             manager marks confidential.
           </p>
-          <button className="settings-clear" onClick={() => window.myview.clipboard.clear()}>
+          <button className="settings-clear" onClick={() => window.garret.clipboard.clear()}>
             Clear clipboard history
           </button>
 

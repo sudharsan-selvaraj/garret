@@ -33,13 +33,13 @@ export default function App(): JSX.Element {
   }, [hydrate])
 
   // Tray → Preferences opens the General settings pane.
-  useEffect(() => window.myview.ui.onOpenSettings(() => openSettings('general')), [openSettings])
+  useEffect(() => window.garret.ui.onOpenSettings(() => openSettings('general')), [openSettings])
 
   // Reflect HUD state pushed from main; Esc dismisses while in HUD.
   useEffect(() => {
-    const off = window.myview.hud.onState(setHud)
+    const off = window.garret.hud.onState(setHud)
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape' && useUiStore.getState().hud) window.myview.hud.set(false)
+      if (e.key === 'Escape' && useUiStore.getState().hud) window.garret.hud.set(false)
     }
     window.addEventListener('keydown', onKey)
     return () => {
@@ -50,7 +50,7 @@ export default function App(): JSX.Element {
 
   return (
     <div className={`app${hud ? ' hud-active' : ''}`}>
-      <div className="hud-backdrop" onClick={() => window.myview.hud.set(false)} />
+      <div className="hud-backdrop" onClick={() => window.garret.hud.set(false)} />
       <Toolbar />
       <main className="canvas">
         {ready ? <WidgetCanvas /> : <div className="loading">Loading…</div>}

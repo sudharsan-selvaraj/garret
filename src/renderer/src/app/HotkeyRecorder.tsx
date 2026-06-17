@@ -80,7 +80,7 @@ export function HotkeyRecorder({ prefKey, label }: { prefKey: HotkeyPref; label:
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    void window.myview.prefs.get().then((p) => setHotkey(p[prefKey] as string))
+    void window.garret.prefs.get().then((p) => setHotkey(p[prefKey] as string))
   }, [prefKey])
 
   useEffect(() => {
@@ -98,7 +98,7 @@ export function HotkeyRecorder({ prefKey, label }: { prefKey: HotkeyPref; label:
         setError('Include at least one modifier (⌘ ⌃ ⌥ ⇧).')
         return
       }
-      void window.myview.prefs.set({ [prefKey]: accelerator }).then((res) => {
+      void window.garret.prefs.set({ [prefKey]: accelerator }).then((res) => {
         if (res.ok) {
           setHotkey(res.prefs[prefKey] as string)
           setError(null)

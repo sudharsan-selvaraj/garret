@@ -16,16 +16,16 @@ export function useDesktopClickThrough(): void {
   const hud = useUiStore((s) => s.hud)
 
   useEffect(() => {
-    if (window.myview.windowMode !== 'desktop') return
+    if (window.garret.windowMode !== 'desktop') return
 
     let ignoring = false
     const setIgnore = (next: boolean): void => {
       if (next === ignoring) return
       ignoring = next
-      window.myview.window.setIgnoreMouseEvents(next)
+      window.garret.window.setIgnoreMouseEvents(next)
     }
 
-    const off = window.myview.window.onCursorMove(({ x, y }) => {
+    const off = window.garret.window.onCursorMove(({ x, y }) => {
       if (useUiStore.getState().hud) {
         setIgnore(false) // HUD: capture everything (backdrop dismiss + widgets)
         return
@@ -42,14 +42,14 @@ export function useDesktopClickThrough(): void {
     setIgnore(true)
     return () => {
       off()
-      window.myview.window.setIgnoreMouseEvents(false)
+      window.garret.window.setIgnoreMouseEvents(false)
     }
   }, [])
 
   // Force interactivity the instant HUD opens (don't wait for a cursor move).
   useEffect(() => {
-    if (window.myview.windowMode === 'desktop' && hud) {
-      window.myview.window.setIgnoreMouseEvents(false)
+    if (window.garret.windowMode === 'desktop' && hud) {
+      window.garret.window.setIgnoreMouseEvents(false)
     }
   }, [hud])
 }

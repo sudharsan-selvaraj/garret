@@ -23,11 +23,11 @@ function load(): MacWindowAddon | null {
     return null
   }
   try {
-    const p = join(app.getAppPath(), 'native', 'build', 'Release', 'myview_mac.node')
+    const p = join(app.getAppPath(), 'native', 'build', 'Release', 'garret_mac.node')
     // Dynamic require so the bundler leaves the .node load to runtime.
     addon = require(p) as MacWindowAddon
   } catch (err) {
-    console.warn('[native] myview_mac unavailable — desktop layer will be non-interactive.', err)
+    console.warn('[native] garret_mac unavailable — desktop layer will be non-interactive.', err)
     addon = null
   }
   return addon

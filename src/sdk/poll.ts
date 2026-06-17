@@ -11,7 +11,7 @@ let wired = false
 function ensureWired(): void {
   if (wired) return
   wired = true
-  window.myview.poll.onUpdate((u) => listeners.get(u.key)?.forEach((l) => l(u)))
+  window.garret.poll.onUpdate((u) => listeners.get(u.key)?.forEach((l) => l(u)))
 }
 
 export interface PolledState<T> {
@@ -59,7 +59,7 @@ export function usePolledQuery<T = unknown>(
     set.add(onUpdate)
     setState((s) => ({ ...s, loading: true }))
 
-    void window.myview.poll
+    void window.garret.poll
       .subscribe(subId, key, latest.current.serviceId, latest.current.method, latest.current.params, latest.current.intervalMs)
       .then((cached) => {
         if (cached.ts > 0 || cached.error) {
@@ -70,7 +70,7 @@ export function usePolledQuery<T = unknown>(
     return () => {
       set?.delete(onUpdate)
       if (set && set.size === 0) listeners.delete(key)
-      window.myview.poll.unsubscribe(subId)
+      window.garret.poll.unsubscribe(subId)
     }
   }, [key, intervalMs])
 
@@ -79,7 +79,7 @@ export function usePolledQuery<T = unknown>(
   useEffect(() => {
     if (refreshToken > 0) {
       setState((s) => ({ ...s, loading: true }))
-      window.myview.poll.refresh(key)
+      window.garret.poll.refresh(key)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshToken])
@@ -91,7 +91,7 @@ export function usePolledQuery<T = unknown>(
     ts: state.ts,
     refresh: () => {
       setState((s) => ({ ...s, loading: true }))
-      window.myview.poll.refresh(key)
+      window.garret.poll.refresh(key)
     }
   }
 }

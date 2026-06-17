@@ -25,7 +25,7 @@ export function createClipboardPicker(): BrowserWindow {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      additionalArguments: ['--myview-mode=windowed', '--myview-role=clipboard']
+      additionalArguments: ['--garret-mode=windowed', '--garret-role=clipboard']
     }
   })
 

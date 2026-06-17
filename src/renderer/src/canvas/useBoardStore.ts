@@ -36,7 +36,7 @@ interface BoardStore {
 
 function persist(widgets: PlacedWidget[]): void {
   const board: BoardState = { widgets }
-  void window.myview.board.save(board)
+  void window.garret.board.save(board)
 }
 
 export const useBoardStore = create<BoardStore>((set, get) => {
@@ -55,8 +55,8 @@ export const useBoardStore = create<BoardStore>((set, get) => {
 
     hydrate: async () => {
       const [board, info] = await Promise.all([
-        window.myview.board.load(),
-        window.myview.layouts.list()
+        window.garret.board.load(),
+        window.garret.layouts.list()
       ])
       set({
         widgets: board.widgets,
@@ -99,40 +99,40 @@ export const useBoardStore = create<BoardStore>((set, get) => {
     setColor: (id, color) => mut(id, (w) => ({ ...w, color })),
 
     refreshLayouts: async () => {
-      const info = await window.myview.layouts.list()
+      const info = await window.garret.layouts.list()
       set({ activeLayout: info.active, layoutNames: info.names })
     },
 
     switchLayout: async (name) => {
-      const board = await window.myview.layouts.switch(name)
+      const board = await window.garret.layouts.switch(name)
       set({ widgets: board.widgets, activeLayout: name })
     },
 
     createLayout: async (name) => {
-      const board = await window.myview.layouts.create(name)
-      const info = await window.myview.layouts.list()
+      const board = await window.garret.layouts.create(name)
+      const info = await window.garret.layouts.list()
       set({ widgets: board.widgets, activeLayout: info.active, layoutNames: info.names })
     },
 
     renameLayout: async (from, to) => {
-      const info = await window.myview.layouts.rename(from, to)
+      const info = await window.garret.layouts.rename(from, to)
       set({ activeLayout: info.active, layoutNames: info.names })
     },
 
     deleteLayout: async (name) => {
-      const board = await window.myview.layouts.delete(name)
-      const info = await window.myview.layouts.list()
+      const board = await window.garret.layouts.delete(name)
+      const info = await window.garret.layouts.list()
       set({ widgets: board.widgets, activeLayout: info.active, layoutNames: info.names })
     },
 
     // Clone (new id) into another layout's board. The target is never the active
     // layout (the menu only offers others), so the local board is untouched.
     copyWidgetTo: async (target, widget) => {
-      await window.myview.layouts.addWidget(target, { ...widget, id: crypto.randomUUID() })
+      await window.garret.layouts.addWidget(target, { ...widget, id: crypto.randomUUID() })
     },
 
     moveWidgetTo: async (target, widget) => {
-      await window.myview.layouts.addWidget(target, { ...widget, id: crypto.randomUUID() })
+      await window.garret.layouts.addWidget(target, { ...widget, id: crypto.randomUUID() })
       get().removeWidget(widget.id)
     }
   }

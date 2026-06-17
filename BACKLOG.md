@@ -12,7 +12,7 @@ Contract: [`docs/external-widget-contract.md`](docs/external-widget-contract.md)
 Work, in order:
 1. **Refactor the SDK to the layered core** — `@garret/core` (pure) + `createSDK(React, client)`
    (hook logic, bound per realm) + `ipcClient` (native transport). Behavior-preserving; route
-   hook transport through `client` instead of `window.myview` directly. *Do this first — it
+   hook transport through `client` instead of `window.garret` directly. *Do this first — it
    unblocks everything and is low-risk.*
 2. **iframe host + postMessage capability bridge** — render each external widget in an isolated
    iframe; `bridgeClient` proxies `GarretClient` over the bridge; secrets never cross.

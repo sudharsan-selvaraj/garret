@@ -12,7 +12,7 @@ interface Schema {
   enc: string
 }
 
-const store = new Store<Schema>({ name: 'myview-clipboard', defaults: { enc: '' } })
+const store = new Store<Schema>({ name: 'garret-clipboard', defaults: { enc: '' } })
 
 export function loadHistory(): ClipItem[] {
   const enc = store.get('enc')

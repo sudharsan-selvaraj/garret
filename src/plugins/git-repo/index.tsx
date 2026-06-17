@@ -205,7 +205,7 @@ function RowMenuPopover({
       <button
         className="ctx-item"
         onClick={() => {
-          window.myview.openPath(entry.path)
+          window.garret.openPath(entry.path)
           onClose()
         }}
       >
@@ -218,7 +218,7 @@ function RowMenuPopover({
         <button
           className="ctx-item"
           onClick={() => {
-            window.myview.openInEditor(entry.path, entry.editor)
+            window.garret.openInEditor(entry.path, entry.editor)
             onClose()
           }}
         >
@@ -240,7 +240,7 @@ function GitSettings({ config, onChange }: WidgetSettingsProps<Config>): JSX.Ele
   const setRepos = (next: RepoEntry[]): void => onChange({ repos: next, paths: undefined })
 
   const addFolder = async (): Promise<void> => {
-    const p = await window.myview.pickDirectory()
+    const p = await window.garret.pickDirectory()
     if (!p || repos.some((r) => r.path === p)) return
     setRepos([...repos, { path: p, editor: 'vscode' }])
   }

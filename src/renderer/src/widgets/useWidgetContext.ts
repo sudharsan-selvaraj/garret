@@ -16,8 +16,8 @@ export function useWidgetContext(instanceId: string, refreshToken: number): Widg
       instanceId,
       refreshToken,
       storage: {
-        get: (key) => window.myview.store.get(ns(key)),
-        set: (key, value) => window.myview.store.set(ns(key), value)
+        get: (key) => window.garret.store.get(ns(key)),
+        set: (key, value) => window.garret.store.set(ns(key), value)
       },
       updateConfig: (patch) => updateConfig(instanceId, patch)
     }

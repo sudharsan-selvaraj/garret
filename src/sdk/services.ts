@@ -6,17 +6,17 @@ import type { ServiceStatus } from '@shared/types/services'
  * process over IPC — credentials and HTTP requests live there, never here.
  */
 export const services = {
-  status: (id: string): Promise<ServiceStatus> => window.myview.services.status(id),
+  status: (id: string): Promise<ServiceStatus> => window.garret.services.status(id),
   connect: (id: string, creds: Record<string, unknown>): Promise<ServiceStatus> =>
-    window.myview.services.connect(id, creds),
-  disconnect: (id: string): Promise<ServiceStatus> => window.myview.services.disconnect(id),
+    window.garret.services.connect(id, creds),
+  disconnect: (id: string): Promise<ServiceStatus> => window.garret.services.disconnect(id),
   query: <T = unknown>(id: string, method: string, params: Record<string, unknown>): Promise<T> =>
-    window.myview.services.query<T>(id, method, params)
+    window.garret.services.query<T>(id, method, params)
 }
 
 /** Open a URL in the user's default browser. */
 export function openExternal(url: string): void {
-  window.myview.openExternal(url)
+  window.garret.openExternal(url)
 }
 
 /** Track a service's connection status; `setStatus` lets a connect/disconnect update it. */

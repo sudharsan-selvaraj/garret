@@ -10,7 +10,7 @@ interface SecretSchema {
   secrets: Record<string, string>
 }
 
-const store = new Store<SecretSchema>({ name: 'myview-secrets', defaults: { secrets: {} } })
+const store = new Store<SecretSchema>({ name: 'garret-secrets', defaults: { secrets: {} } })
 
 export const secrets = {
   available(): boolean {

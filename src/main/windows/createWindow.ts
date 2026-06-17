@@ -55,7 +55,7 @@ export function createWindow(mode: WindowMode): BrowserWindow {
       // Required for embedding third-party sites that block iframes (Calendar/Jira).
       webviewTag: true,
       // Surface the window mode + role to the renderer (read in preload from argv).
-      additionalArguments: [`--myview-mode=${mode}`, '--myview-role=board']
+      additionalArguments: [`--garret-mode=${mode}`, '--garret-role=board']
     }
   })
 

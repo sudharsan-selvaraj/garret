@@ -17,13 +17,13 @@ export function useFileWatch(paths: string | string[], opts?: WatchOptions): num
   useEffect(() => {
     if (list.length === 0) return
     const watchId = crypto.randomUUID()
-    const off = window.myview.watch.onEvent((id) => {
+    const off = window.garret.watch.onEvent((id) => {
       if (id === watchId) setVersion((v) => v + 1)
     })
-    window.myview.watch.subscribe(watchId, list, opts ?? {})
+    window.garret.watch.subscribe(watchId, list, opts ?? {})
     return () => {
       off()
-      window.myview.watch.unsubscribe(watchId)
+      window.garret.watch.unsubscribe(watchId)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dep])

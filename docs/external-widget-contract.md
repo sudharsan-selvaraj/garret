@@ -38,7 +38,7 @@ createSDK(React, client)  — hook LOGIC written once; bound to a realm's React 
                       Sandbox: createSDK(widgetReact, bridgeClient)   // inside the widget bundle
 
 GarretClient        — one async, serializable interface; two transports.
-                      ipcClient    → window.myview.*          (native, same realm)
+                      ipcClient    → window.garret.*          (native, same realm)
                       bridgeClient → postMessage to the host  (sandbox; host enforces perms)
 ```
 
@@ -61,8 +61,8 @@ each realm (~10 lines of binding). Capabilities are async/serializable specifica
 calls work whether the transport is a direct IPC call or a postMessage round-trip.
 
 ### Discipline to keep NOW (cheap insurance)
-Hook bodies must **not hard-wire `window.myview`** — route transport through a `client`.
-Today `usePolledQuery`/`useFileWatch` call `window.myview.*` directly; the sandbox refactor
+Hook bodies must **not hard-wire `window.garret`** — route transport through a `client`.
+Today `usePolledQuery`/`useFileWatch` call `window.garret.*` directly; the sandbox refactor
 swaps that for a `client` param. Keeping the transport calls in one thin place makes this a
 mechanical change, not a rewrite.
 

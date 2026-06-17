@@ -21,7 +21,7 @@ interface Schema {
 }
 
 const store = new Store<Schema>({
-  name: 'myview',
+  name: 'garret',
   defaults: {
     layouts: { active: DEFAULT_LAYOUT, layouts: { [DEFAULT_LAYOUT]: EMPTY_BOARD } },
     kv: {},

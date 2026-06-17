@@ -1,13 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { Channels, type MyViewApi, type WindowRole } from '@shared/ipc/channels'
+import { Channels, type GarretApi, type WindowRole } from '@shared/ipc/channels'
 import type { WindowMode } from '@shared/types/window'
 
-const modeArg = process.argv.find((a) => a.startsWith('--myview-mode='))
+const modeArg = process.argv.find((a) => a.startsWith('--garret-mode='))
 const windowMode = (modeArg?.split('=')[1] as WindowMode) ?? 'windowed'
-const roleArg = process.argv.find((a) => a.startsWith('--myview-role='))
+const roleArg = process.argv.find((a) => a.startsWith('--garret-role='))
 const windowRole = (roleArg?.split('=')[1] as WindowRole) ?? 'board'
 
-const api: MyViewApi = {
+const api: GarretApi = {
   board: {
     load: () => ipcRenderer.invoke(Channels.boardLoad),
     save: (state) => ipcRenderer.invoke(Channels.boardSave, state)
@@ -109,4 +109,4 @@ const api: MyViewApi = {
   windowRole
 }
 
-contextBridge.exposeInMainWorld('myview', api)
+contextBridge.exposeInMainWorld('garret', api)

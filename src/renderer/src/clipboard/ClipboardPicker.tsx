@@ -29,14 +29,14 @@ export function ClipboardPicker(): JSX.Element {
   const listRef = useRef<HTMLDivElement>(null)
 
   const reload = useCallback(async (): Promise<void> => {
-    setItems(await window.myview.clipboard.list())
-    setAxOk(await window.myview.clipboard.axStatus())
+    setItems(await window.garret.clipboard.list())
+    setAxOk(await window.garret.clipboard.axStatus())
   }, [])
 
   // Reload on history changes (also fired by main when the picker is summoned).
   useEffect(() => {
     void reload()
-    return window.myview.clipboard.onChanged(() => void reload())
+    return window.garret.clipboard.onChanged(() => void reload())
   }, [reload])
 
   // Each time the window is shown (gains focus), start fresh.
@@ -70,15 +70,15 @@ export function ClipboardPicker(): JSX.Element {
   }, [selected, filtered])
 
   const paste = (it?: ClipItem): void => {
-    if (it) window.myview.clipboard.paste(it.id)
+    if (it) window.garret.clipboard.paste(it.id)
   }
-  const remove = (it: ClipItem): void => window.myview.clipboard.delete(it.id)
+  const remove = (it: ClipItem): void => window.garret.clipboard.delete(it.id)
 
   const onKeyDown = (e: React.KeyboardEvent): void => {
     const mod = e.metaKey || e.ctrlKey
     if (e.key === 'Escape') {
       e.preventDefault()
-      window.myview.clipboard.hide()
+      window.garret.clipboard.hide()
     } else if (e.key === 'ArrowDown') {
       e.preventDefault()
       setSelected((s) => Math.min(filtered.length - 1, s + 1))
@@ -116,7 +116,7 @@ export function ClipboardPicker(): JSX.Element {
         </div>
 
         {!axOk && (
-          <button className="clip-ax" onClick={() => window.myview.clipboard.openAccessibilitySettings()}>
+          <button className="clip-ax" onClick={() => window.garret.clipboard.openAccessibilitySettings()}>
             Enable Accessibility to paste automatically →
           </button>
         )}
@@ -168,7 +168,7 @@ export function ClipboardPicker(): JSX.Element {
             <kbd>↵</kbd> paste <kbd>⌘⌫</kbd> delete <kbd>esc</kbd> close
           </span>
           {items.length > 0 && (
-            <button className="clip-clear" onClick={() => window.myview.clipboard.clear()}>
+            <button className="clip-clear" onClick={() => window.garret.clipboard.clear()}>
               Clear all
             </button>
           )}

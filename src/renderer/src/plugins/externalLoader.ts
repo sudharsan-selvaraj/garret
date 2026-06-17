@@ -107,7 +107,7 @@ function makeRuntime(file: string): Readonly<Record<string, unknown>> {
       url: string,
       init?: { method?: string; headers?: Record<string, string>; body?: string }
     ): Promise<unknown> => {
-      const r = await window.myview.plugins.fetch(url, init)
+      const r = await window.garret.plugins.fetch(url, init)
       if (!r || !r.ok) throw new Error(r?.error || `HTTP ${r?.status ?? '???'}`)
       return r.data
     }
@@ -117,7 +117,7 @@ function makeRuntime(file: string): Readonly<Record<string, unknown>> {
 export async function loadExternalWidgets(): Promise<void> {
   let list: { name: string; source: string }[] = []
   try {
-    list = await window.myview.plugins.listExternal()
+    list = await window.garret.plugins.listExternal()
   } catch (err) {
     console.warn('[plugins] could not list external widgets', err)
     return

@@ -119,7 +119,18 @@ function updateTrayMenu(): void {
   )
 }
 
+// Single-instance lock: only one Garret may own the global hotkeys + data store.
+// A second launch (incl. running `npm run dev` alongside the installed app) just
+// summons the existing instance's overlay instead of double-registering everything.
+const gotInstanceLock = app.requestSingleInstanceLock()
+if (!gotInstanceLock) {
+  app.quit()
+} else {
+  app.on('second-instance', () => setHud(true))
+}
+
 app.whenReady().then(() => {
+  if (!gotInstanceLock) return
   // Accessory (agent) app: no Dock icon, and — crucially — lets the HUD overlay
   // float over other apps' true full-screen Spaces WITHOUT a Space switch (a
   // regular Dock-activating app can't, which caused the flicker over full-screen).

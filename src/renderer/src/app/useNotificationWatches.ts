@@ -14,7 +14,7 @@ export function useNotificationWatches(): void {
   const layoutNames = useBoardStore((s) => s.layoutNames)
 
   useEffect(() => {
-    void window.myview.layouts.allWidgets().then((all) => {
+    void window.garret.layouts.allWidgets().then((all) => {
       const watches: WatchSpec[] = []
       for (const w of all) {
         const plugin = registry.get(w.pluginId)
@@ -34,7 +34,7 @@ export function useNotificationWatches(): void {
           label: `${manifest.name}: ${title}`
         })
       }
-      window.myview.notify.syncWatches(watches)
+      window.garret.notify.syncWatches(watches)
     })
   }, [widgets, activeLayout, layoutNames])
 }

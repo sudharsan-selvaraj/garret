@@ -71,10 +71,10 @@ export interface LayoutsInfo {
 }
 
 /**
- * The typed API surface exposed on `window.myview` by the preload bridge.
+ * The typed API surface exposed on `window.garret` by the preload bridge.
  * Renderer code programs against this interface, never against raw ipc.
  */
-export interface MyViewApi {
+export interface GarretApi {
   board: {
     /** Load the currently-active layout's board. */
     load(): Promise<BoardState>
@@ -201,6 +201,6 @@ export type WindowRole = 'board' | 'clipboard'
 
 declare global {
   interface Window {
-    myview: MyViewApi
+    garret: GarretApi
   }
 }
