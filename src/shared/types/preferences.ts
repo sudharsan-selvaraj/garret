@@ -16,6 +16,8 @@ export interface Preferences {
   calendarRemindBefore: number
   /** How often (minutes) to check the calendar for changes/reminders. */
   calendarSyncMin: number
+  /** Launch Garret automatically at login (packaged app). */
+  openAtLogin: boolean
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -26,5 +28,6 @@ export const DEFAULT_PREFERENCES: Preferences = {
   clipboardIgnoreConfidential: true,
   calendarNotifyChanges: false,
   calendarRemindBefore: 0,
-  calendarSyncMin: 5
+  calendarSyncMin: 5,
+  openAtLogin: false
 }

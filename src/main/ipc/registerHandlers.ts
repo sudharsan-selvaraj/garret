@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { ipcMain, BrowserWindow, shell, dialog } from 'electron'
+import { app, ipcMain, BrowserWindow, shell, dialog } from 'electron'
 import { Channels, type WatchOptions } from '@shared/ipc/channels'
 import type { BoardState } from '@shared/types/board'
 import type { WatchSpec } from '@shared/types/poll'
@@ -125,6 +125,9 @@ export function registerIpcHandlers(hooks: IpcHooks): void {
       'calendarSyncMin' in patch
     ) {
       hooks.refreshCalendarMonitor()
+    }
+    if ('openAtLogin' in patch && app.isPackaged) {
+      app.setLoginItemSettings({ openAtLogin: prefs.openAtLogin })
     }
     return { ok: true, prefs }
   })

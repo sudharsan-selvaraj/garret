@@ -27,6 +27,20 @@ export function GeneralSettings(): JSX.Element {
         </div>
       </div>
 
+      {prefs && (
+        <>
+          <p className="settings-section-label">Startup</p>
+          <div className="settings-group">
+            <div className="settings-row">
+              <label className="settings-row-label">Open at login</label>
+              <div className="settings-row-control">
+                <Toggle on={prefs.openAtLogin} onChange={(v) => void update({ openAtLogin: v })} />
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       <p className="settings-section-label">Shortcuts</p>
       <div className="settings-group">
         <HotkeyRecorder prefKey="hudHotkey" label="Overlay" />

@@ -1,0 +1,30 @@
+appId: com.sudharsanselvaraj.garret
+productName: Garret
+directories:
+  output: dist
+  buildResources: build
+files:
+  - out/**
+  - native/build/Release/*.node
+  - package.json
+# Native addon can't run from inside the asar — keep it unpacked.
+asarUnpack:
+  - native/build/**
+# We build the native addon ourselves (build:native); don't let electron-builder rebuild.
+npmRebuild: false
+mac:
+  category: public.app-category.productivity
+  icon: build/icon.icns
+  darkModeSupport: true
+  # Menu-bar agent: no Dock icon / app-switcher entry (matches app.dock.hide()).
+  extendInfo:
+    LSUIElement: 1
+  # Unsigned local build — set a real identity + notarize for distribution later.
+  identity: null
+  target:
+    - target: dmg
+      arch: arm64
+    - target: zip
+      arch: arm64
+dmg:
+  title: Garret

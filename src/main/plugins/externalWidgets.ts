@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { app } from 'electron'
 
 export interface ExternalWidgetSource {
   name: string
@@ -16,6 +17,10 @@ function widgetsDir(): string {
 }
 
 export function listExternalWidgets(): ExternalWidgetSource[] {
+  // Trusted/dev tier only: it relies on `new Function` (no CSP). Packaged builds
+  // load nothing here so production can keep a strict CSP. The sandbox tier
+  // (see BACKLOG.md) is what enables distributed widgets in packaged apps.
+  if (app.isPackaged) return []
   const dir = widgetsDir()
   if (!existsSync(dir)) return []
   try {

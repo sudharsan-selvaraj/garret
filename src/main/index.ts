@@ -145,6 +145,7 @@ app.whenReady().then(() => {
   const prefs = persistence.getPreferences()
   registerHudHotkey(prefs.hudHotkey)
   registerClipboardHotkey(prefs.clipboardHotkey)
+  if (app.isPackaged) app.setLoginItemSettings({ openAtLogin: prefs.openAtLogin })
 
   // Menu-bar presence — the primary entry point since we run without a Dock icon.
   tray = new Tray(createTrayIcon())
