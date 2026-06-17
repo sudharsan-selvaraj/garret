@@ -32,6 +32,21 @@ export default function App(): JSX.Element {
     void loadExternalWidgets().finally(() => void hydrate())
   }, [hydrate])
 
+  // The desktop window spans the FULL display (so the HUD dim covers the menu bar
+  // and Dock). Expose the work-area inset as a CSS var so floating chrome can sit
+  // clear of the menu bar instead of being clipped under it. availTop reflects the
+  // real menu-bar height (taller on notch displays), so this adapts per machine.
+  useEffect(() => {
+    const apply = (): void => {
+      const s = window.screen as Screen & { availTop?: number; availLeft?: number }
+      document.documentElement.style.setProperty('--safe-top', `${Math.max(s.availTop ?? 0, 0)}px`)
+      document.documentElement.style.setProperty('--safe-left', `${Math.max(s.availLeft ?? 0, 0)}px`)
+    }
+    apply()
+    window.addEventListener('resize', apply)
+    return () => window.removeEventListener('resize', apply)
+  }, [])
+
   // Tray → Preferences opens the General settings pane.
   useEffect(() => window.garret.ui.onOpenSettings(() => openSettings('general')), [openSettings])
 

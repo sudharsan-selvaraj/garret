@@ -117,7 +117,10 @@ button {
 /* ---------- Floating toolbar ---------- */
 .toolbar {
   position: fixed;
-  top: 14px;
+  /* Offset below the menu bar — the window spans the full display, so a fixed
+     14px would sit under the menu bar and clip the pill. --safe-top is the menu-bar
+     height (set from JS; 24px fallback for a standard bar). */
+  top: calc(var(--safe-top, 24px) + 14px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 100;
@@ -133,7 +136,12 @@ button {
   border-radius: var(--r-pill);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   opacity: 0.62;
-  transition: padding 0.22s ease, gap 0.22s ease, opacity 0.18s ease;
+  /* One coordinated curve + duration for every animated property so the pill
+     expands/collapses as a single smooth motion (was mismatched easings/durations). */
+  transition:
+    padding 0.34s cubic-bezier(0.32, 0.72, 0, 1),
+    gap 0.34s cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 0.24s ease;
 }
 .toolbar.expanded {
   gap: 8px;
@@ -156,7 +164,11 @@ button {
   max-width: 0;
   opacity: 0;
   overflow: hidden;
-  transition: max-width 0.24s ease, opacity 0.16s ease;
+  /* Match the pill's curve/duration; fade the contents in slightly faster so they
+     read as appearing *with* the expansion rather than after it. */
+  transition:
+    max-width 0.34s cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 0.26s cubic-bezier(0.32, 0.72, 0, 1);
 }
 .toolbar.expanded .toolbar-expand {
   max-width: 460px;
