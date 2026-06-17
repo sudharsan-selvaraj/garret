@@ -231,4 +231,4 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
   return exports;
 }
 
-NODE_API_MODULE(myview_mac, Init)
+NODE_API_MODULE(garret_mac, Init)

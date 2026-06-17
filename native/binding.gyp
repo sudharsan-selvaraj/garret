@@ -1,7 +1,7 @@
 {
   "targets": [
     {
-      "target_name": "myview_mac",
+      "target_name": "garret_mac",
       "conditions": [
         [
           "OS=='mac'",
