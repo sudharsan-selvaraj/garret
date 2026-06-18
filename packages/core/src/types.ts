@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react'
 import type { ConfigSchema } from './fields'
-import type { NotifySpec } from '@shared/types/poll'
+import type { NotifySpec } from './poll'
 
 /** A widget icon: either an emoji/text string or a React icon component (e.g. lucide). */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -104,3 +104,8 @@ export interface WidgetPlugin<C = Record<string, unknown>> {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type AnyWidgetPlugin = WidgetPlugin<any>
+
+/** Identity helper that pins the generic config type for a plugin definition. */
+export function defineWidget<C = Record<string, unknown>>(plugin: WidgetPlugin<C>): WidgetPlugin<C> {
+  return plugin
+}

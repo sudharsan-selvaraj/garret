@@ -9,13 +9,22 @@ const alias = {
   '@sdk': resolve(__dirname, 'src/sdk'),
   '@main': resolve(__dirname, 'src/main'),
   '@renderer': resolve(__dirname, 'src/renderer/src'),
-  '@plugins': resolve(__dirname, 'src/plugins')
+  '@plugins': resolve(__dirname, 'src/plugins'),
+  // Workspace SDK packages — resolve to TS source so they're bundled in-repo (no
+  // pre-build step in dev). Published builds ship compiled dist instead.
+  'garret-core': resolve(__dirname, 'packages/core/src'),
+  'garret-widget-sdk': resolve(__dirname, 'packages/widget-sdk/src')
 }
+
+// The SDK workspace packages must be BUNDLED (not externalized) since they resolve
+// to TS source — a runtime `require('garret-core')` would have nothing to load.
+const externalize = (): ReturnType<typeof externalizeDepsPlugin> =>
+  externalizeDepsPlugin({ exclude: ['garret-core', 'garret-widget-sdk'] })
 
 export default defineConfig({
   main: {
     resolve: { alias },
-    plugins: [externalizeDepsPlugin()],
+    plugins: [externalize()],
     build: {
       rollupOptions: {
         input: { index: resolve(__dirname, 'src/main/index.ts') }
@@ -24,7 +33,7 @@ export default defineConfig({
   },
   preload: {
     resolve: { alias },
-    plugins: [externalizeDepsPlugin()],
+    plugins: [externalize()],
     build: {
       rollupOptions: {
         input: { index: resolve(__dirname, 'src/preload/index.ts') }

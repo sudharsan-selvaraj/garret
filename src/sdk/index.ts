@@ -1,14 +1,23 @@
-import type { WidgetPlugin } from './types'
+// The app's SDK binding: instantiate the realm-agnostic widget SDK for the NATIVE
+// host realm (the app's React + the ipc client) and re-export it under the stable
+// `@sdk` alias so every built-in widget keeps importing from one place. The hook
+// logic + types live in the published packages (garret-core / garret-widget-sdk);
+// only this realm binding lives in the app.
+import * as React from 'react'
+import { createSDK } from 'garret-widget-sdk'
+import { ipcClient } from './ipcClient'
 
-export * from './types'
-export * from './fields'
-export * from './services'
-export * from './poll'
-export * from './files'
-export * from './WidgetStatus'
-export type { NotifySpec, WatchSpec, PollUpdate } from '@shared/types/poll'
+const sdk = createSDK(React, ipcClient)
 
-/** Identity helper that pins the generic config type for a plugin definition. */
-export function defineWidget<C = Record<string, unknown>>(plugin: WidgetPlugin<C>): WidgetPlugin<C> {
-  return plugin
-}
+export const usePolledQuery = sdk.usePolledQuery
+export const useServiceStatus = sdk.useServiceStatus
+export const useFileWatch = sdk.useFileWatch
+export const services = sdk.services
+export const openExternal = sdk.openExternal
+
+export { WidgetStatus } from 'garret-widget-sdk'
+export type { PolledState } from 'garret-widget-sdk'
+
+// Pure surface (types, field builders, defaults, validators, defineWidget,
+// canonicalKey, GarretClient, …) comes straight from core.
+export * from 'garret-core'

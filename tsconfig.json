@@ -20,8 +20,10 @@
       "@sdk/*": ["src/sdk/*"],
       "@main/*": ["src/main/*"],
       "@renderer/*": ["src/renderer/src/*"],
-      "@plugins/*": ["src/plugins/*"]
+      "@plugins/*": ["src/plugins/*"],
+      "garret-core": ["packages/core/src"],
+      "garret-widget-sdk": ["packages/widget-sdk/src"]
     }
   },
-  "include": ["src", "electron.vite.config.ts"]
+  "include": ["src", "packages", "electron.vite.config.ts"]
 }

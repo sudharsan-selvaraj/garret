@@ -5,6 +5,7 @@
   "main": "out/main/index.js",
   "author": "Sudharsan Selvaraj",
   "license": "MIT",
+  "workspaces": ["packages/*"],
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
@@ -17,6 +18,8 @@
     "pack:mac": "npm run build:native && npm run build && electron-builder --mac --publish never"
   },
   "dependencies": {
+    "garret-core": "*",
+    "garret-widget-sdk": "*",
     "electron-store": "^8.2.0",
     "lucide-react": "^0.460.0",
     "react": "^18.3.1",
