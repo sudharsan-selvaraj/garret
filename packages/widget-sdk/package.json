@@ -4,6 +4,11 @@
   "description": "Build widgets for Garret. createSDK(React, client) binds the hook logic to a realm's React + capability client; re-exports garret-core. The one package widget authors install.",
   "license": "MIT",
   "author": "Sudharsan Selvaraj",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sudharsan-selvaraj/garret.git",
+    "directory": "packages/widget-sdk"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",

@@ -4,6 +4,11 @@
   "description": "Pure shared layer for Garret widgets — types, field descriptors, validators, canonical poll keys. No React, no transport; shared verbatim by the host and by third-party widgets.",
   "license": "MIT",
   "author": "Sudharsan Selvaraj",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sudharsan-selvaraj/garret.git",
+    "directory": "packages/core"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
