@@ -1,4 +1,4 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, Menu, Tray } from 'electron'
+import { app, BrowserWindow, globalShortcut, ipcMain, Menu, session, Tray } from 'electron'
 import { Channels } from '@shared/ipc/channels'
 import { registerIpcHandlers } from '@main/ipc/registerHandlers'
 import { initScheduler } from '@main/poll/scheduler'
@@ -19,6 +19,11 @@ import {
   setHudMode,
   type WindowMode
 } from '@main/windows/createWindow'
+import { registerSandboxScheme, registerSandboxProtocol } from '@main/sandbox/protocol'
+
+// Declare the sandbox widget scheme BEFORE app `ready` (Electron requirement) so it has a
+// real, secure origin for the strict CSP that isolates third-party widgets.
+registerSandboxScheme()
 
 // Spike #1b: run the proven widget board ON the interactive desktop layer.
 // Flip to 'windowed' for plain windowed development.
@@ -142,6 +147,9 @@ app.whenReady().then(() => {
     refreshCalendarMonitor: startCalendarMonitor
   })
   registerClipboardHandlers()
+  // Serve garret-widget:// on the default session. SandboxWidget (step 5) also registers
+  // it on each widget's partition session, where the isolated webviews actually load.
+  registerSandboxProtocol(session.defaultSession.protocol)
   initScheduler()
   win = createWindow(WINDOW_MODE)
 
