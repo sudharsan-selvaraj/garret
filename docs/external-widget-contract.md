@@ -43,16 +43,29 @@ GarretClient        — one async, serializable interface; two transports.
 ```
 
 ### `GarretClient` interface (all async + serializable — survives the bridge)
+As shipped in `garret-core` (v0.0.2). Service calls are namespaced under `services`
+(connect/disconnect/status used by settings flows, not just `query`):
 ```ts
 interface GarretClient {
-  query(serviceId: string, method: string, params: object): Promise<unknown>
-  fetch(url: string, init?: { method?; headers?; body? }): Promise<{ ok; status; data?; error? }>
-  storage: { get(key: string): Promise<unknown>; set(key: string, value: unknown): Promise<void> } // per-widget scoped
-  poll: { subscribe(key, …): Promise<Update>; unsubscribe(id); onUpdate(cb): () => void }
-  watch?: { subscribe(paths, opts); unsubscribe(id); onEvent(cb): () => void } // perm-gated
+  services: {
+    status(id): Promise<ServiceStatus>; connect(id, creds): Promise<ServiceStatus>
+    disconnect(id): Promise<ServiceStatus>; query<T>(id, method, params): Promise<T>
+  }
+  poll: { subscribe(subId, key, …): Promise<PollUpdate>; unsubscribe(subId); refresh(key); onUpdate(cb): () => void }
+  watch: { subscribe(watchId, paths, opts); unsubscribe(watchId); onEvent(cb): () => void } // perm-gated
+  fetch(url, init?): Promise<{ ok; status; data?; error? }>                                   // host-mediated, no CORS
+  storage: { get<T>(key): Promise<T|undefined>; set(key, value): Promise<void> }              // per-widget scoped
   openExternal(url: string): void
 }
 ```
+`onUpdate`/`onEvent` take callbacks: over the postMessage bridge they map to message
+subscriptions (the host pushes; you can't post a function reference).
+
+### SDK injection (decided, v0.0.2)
+The host calls `createSDK(React, client)` **once per widget realm** and injects the result
+as **`WidgetRenderProps.sdk`** (and `WidgetSettingsProps.sdk`). A widget never calls
+`createSDK` itself, so the same `render` runs native or sandboxed. `GarretSDK` lives in
+`garret-core` so the props type can reference it without depending on the React binding.
 
 **Why this works:** a React hook is "logic + a React binding." The logic (subscribe, diff,
 setState) is realm-agnostic; only `useState`/`useEffect` (per-realm React) and the transport

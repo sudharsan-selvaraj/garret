@@ -45,5 +45,22 @@ export interface GarretClient {
     unsubscribe(watchId: string): void
     onEvent(cb: (watchId: string) => void): () => void
   }
+  /**
+   * Host-mediated HTTP — runs in the host (no CORS), so it's the single network
+   * chokepoint a sandbox can gate against a widget's declared `network:` permissions.
+   */
+  fetch(
+    url: string,
+    init?: { method?: string; headers?: Record<string, string>; body?: string }
+  ): Promise<{ ok: boolean; status: number; data?: unknown; error?: string }>
+  /**
+   * Per-widget persistent key/value storage. Each widget realm gets its own client,
+   * so this is naturally scoped to the widget (the host namespaces it) — widgets can't
+   * read each other's data.
+   */
+  storage: {
+    get<T = unknown>(key: string): Promise<T | undefined>
+    set(key: string, value: unknown): Promise<void>
+  }
   openExternal(url: string): void
 }

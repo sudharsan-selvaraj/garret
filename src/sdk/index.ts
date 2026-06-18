@@ -7,7 +7,10 @@ import * as React from 'react'
 import { createSDK } from 'garret-widget-sdk'
 import { ipcClient } from './ipcClient'
 
-const sdk = createSDK(React, ipcClient)
+/** The native-realm SDK instance. Exported so the framework can inject it into each
+ *  widget's render/settings props (WidgetRenderProps.sdk) — the same shape the sandbox
+ *  runtime will inject from a bridge-backed sdk. */
+export const sdk = createSDK(React, ipcClient)
 
 export const usePolledQuery = sdk.usePolledQuery
 export const useServiceStatus = sdk.useServiceStatus

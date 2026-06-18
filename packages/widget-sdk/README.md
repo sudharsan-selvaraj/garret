@@ -3,12 +3,10 @@
 Build widgets for [Garret](https://github.com/sudharsan-selvaraj/garret) — the macOS
 desktop layer for developer focus.
 
-A widget is a small module that declares a **manifest** (what it is, its config) and a
-**render** component. The SDK gives you typed config fields (which auto-generate the
-settings form + validation) and live polling / file-watch hooks. The hooks are bound to
-a host **capability client** via `createSDK(React, client)`, so the very same widget code
-runs in the native host and (when the sandbox tier lands) in an isolated iframe — only
-the injected `React` and `client` differ.
+A widget declares a **manifest** (what it is, its config, the capabilities it needs) and
+a **render** component. The framework injects an **`sdk`** — typed live-data hooks bound
+to a host capability client — so the same widget code runs in the native host today and
+in an isolated sandbox tomorrow; only the injected `sdk`'s transport differs.
 
 ## Install
 
@@ -16,7 +14,7 @@ the injected `React` and `client` differ.
 npm i garret-widget-sdk react lucide-react
 ```
 
-`react` and `lucide-react` are peer dependencies.
+`react` and `lucide-react` are peer dependencies. Ships dual ESM + CJS.
 
 ## Define a widget
 
@@ -28,68 +26,71 @@ interface Config {
 }
 
 export default defineWidget<Config>({
+  apiVersion: 1, // host contract version (host rejects incompatible majors)
   manifest: {
     id: 'github-issues',
     name: 'GitHub Issues',
     defaultSize: { w: 4, h: 4 },
+    // Capabilities you need — shown at install, enforced by the sandbox.
+    permissions: ['network:api.github.com'],
     configSchema: {
       repo: field.text({ label: 'Repository', placeholder: 'owner/name', required: true })
     }
   },
-  render({ config, ctx }: WidgetRenderProps<Config>) {
-    // hooks come from an `sdk` created with createSDK(React, client) — see below.
-    return <div>Issues for {config.repo}</div>
+  render({ config, sdk }: WidgetRenderProps<Config>) {
+    // `sdk` is injected by the host — never call createSDK yourself in production.
+    const { data, loading, error } = sdk.usePolledQuery<{ title: string }[]>(
+      'github', 'issues', { repo: config.repo }
+    )
+    if (loading) return <p>Loading…</p>
+    if (error) return <p>Failed: {error}</p>
+    return <ul>{data?.map((i) => <li key={i.title}>{i.title}</li>)}</ul>
   }
 })
 ```
 
-## Use the hooks — `createSDK(React, client)`
-
-The hooks (`usePolledQuery`, `useServiceStatus`, `useFileWatch`) are produced by binding
-the SDK to a realm's React and a `GarretClient`:
-
-```ts
-import * as React from 'react'
-import { createSDK } from 'garret-widget-sdk'
-
-const sdk = createSDK(React, client) // `client` is provided by the host runtime
-const { data, loading, error } = sdk.usePolledQuery('github', 'issues', { repo })
-```
-
-In Garret's built-in widgets the app supplies a `client` backed by the host. For your own
-widget you test against a **mock** client today, and the in-host runtime that injects the
-live client into distributed widgets arrives with the **sandbox tier** (see Status).
+`sdk` exposes `usePolledQuery`, `useServiceStatus`, `useFileWatch`, `services`, `fetch`
+(host-mediated HTTP, no CORS), `storage` (per-widget), and `openExternal` — the same
+surface Garret's built-in widgets use.
 
 ## Test it — no Garret required
 
-`garret-widget-sdk/testing` provides a fake `GarretClient`, so you can render and assert
-in jsdom (vitest / jest + @testing-library/react):
+`garret-widget-sdk/testing` gives you a fake host client, so you build the `sdk` yourself
+and render in jsdom (vitest / jest + @testing-library/react):
 
 ```tsx
 import * as React from 'react'
 import { render, screen } from '@testing-library/react'
 import { createSDK } from 'garret-widget-sdk'
 import { createMockClient } from 'garret-widget-sdk/testing'
+import Widget from './widget'
 
-const sdk = createSDK(React, createMockClient({
-  query: async (_id, method) => (method === 'issues' ? [{ title: 'A bug' }] : [])
-}))
-// render a component that uses sdk.usePolledQuery(...) and assert on the output.
+test('renders issues', async () => {
+  const sdk = createSDK(React, createMockClient({
+    query: async (_id, method) => (method === 'issues' ? [{ title: 'A bug' }] : [])
+  }))
+  const Render = Widget.render
+  render(<Render config={{ repo: 'a/b' }} ctx={fakeCtx} sdk={sdk} />)
+  expect(await screen.findByText('A bug')).toBeInTheDocument()
+})
 ```
 
-`createMockClient` also returns `emitPoll(update)` / `emitWatch(id)` to drive live-refresh
-paths in a test.
+`createMockClient` also fakes `fetch`/`storage` and returns `emitPoll(update)` /
+`emitWatch(id)` so you can drive live-refresh paths.
 
 ## Layers
 
-- **`garret-core`** — pure, no React: types, `field` + validators, `canonicalKey`, and the
-  `GarretClient` capability interface. Re-exported from this package.
+- **`garret-core`** — pure, no React: types, `field` + validators, `canonicalKey`, the
+  `GarretClient` capability interface, and `GarretSDK`. Re-exported from this package.
 - **`garret-widget-sdk`** — `createSDK(React, client)` (the realm-bound hook logic) +
   `WidgetStatus`.
+
+> Internals: the host calls `createSDK(React, client)` **once per widget realm** and
+> injects the result as `WidgetRenderProps.sdk`. A sandbox runtime must create a fresh
+> sdk per iframe load (don't reuse one across mounts).
 
 ## Status
 
 Authoring + unit-testing work today. The **host runtime** that loads a third-party widget
 and injects a live, permission-enforced `client` (the sandboxed iframe + postMessage
-bridge) is in progress — it's the prerequisite for distributing widgets to other users.
-Until then, widget code runs only in the trusted-local dev tier (you load your own code).
+bridge) is in progress — the prerequisite for distributing widgets to other users.

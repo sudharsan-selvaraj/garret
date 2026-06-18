@@ -1,6 +1,6 @@
 {
   "name": "garret-widget-sdk",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Build widgets for Garret. createSDK(React, client) binds the hook logic to a realm's React + capability client; re-exports garret-core. The one package widget authors install.",
   "license": "MIT",
   "author": "Sudharsan Selvaraj",
@@ -10,28 +10,28 @@
     "directory": "packages/widget-sdk"
   },
   "type": "module",
-  "main": "./dist/index.js",
+  "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "import": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+      "require": { "types": "./dist/index.d.cts", "default": "./dist/index.cjs" }
     },
     "./testing": {
-      "types": "./dist/testing.d.ts",
-      "default": "./dist/testing.js"
+      "import": { "types": "./dist/testing.d.ts", "default": "./dist/testing.js" },
+      "require": { "types": "./dist/testing.d.cts", "default": "./dist/testing.cjs" }
     }
   },
   "files": ["dist"],
   "scripts": {
-    "build": "tsup src/index.ts src/testing.ts --format esm --dts --clean --treeshake"
+    "build": "tsup src/index.ts src/testing.ts --format esm,cjs --dts --clean --treeshake"
   },
   "dependencies": {
-    "garret-core": "*"
+    "garret-core": "^0.0.2"
   },
   "peerDependencies": {
-    "lucide-react": ">=0.4",
+    "lucide-react": ">=0.263.0",
     "react": ">=18"
   }
 }

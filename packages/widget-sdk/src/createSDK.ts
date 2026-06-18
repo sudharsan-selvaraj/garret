@@ -2,11 +2,9 @@ import type * as ReactNS from 'react'
 import {
   canonicalKey,
   field,
-  type ConfigSchema,
   type GarretClient,
-  type PollUpdate,
-  type ServiceStatus,
-  type WatchOptions
+  type GarretSDK,
+  type PollUpdate
 } from 'garret-core'
 
 /** The slice of React the hooks need. Injected per realm so hooks are never duplicated. */
@@ -14,34 +12,16 @@ export type ReactApi = Pick<typeof ReactNS, 'useState' | 'useEffect' | 'useRef' 
 
 const DEFAULT_INTERVAL = 5 * 60 * 1000
 
-export interface PolledState<T> {
-  data: T | undefined
-  error: string | undefined
-  loading: boolean
-  /** Epoch ms of last successful fetch (0 = never). */
-  ts: number
-  refresh: () => void
-}
-
-export interface ServiceStatusState {
-  status: ServiceStatus | null
-  refresh: () => void
-  setStatus: (s: ServiceStatus) => void
-}
-
-export interface GarretSDK {
-  usePolledQuery<T = unknown>(
-    serviceId: string,
-    method: string,
-    params: Record<string, unknown>,
-    opts?: { intervalMs?: number; refreshToken?: number }
-  ): PolledState<T>
-  useServiceStatus(serviceId: string): ServiceStatusState
-  useFileWatch(paths: string | string[], opts?: WatchOptions): number
-  services: GarretClient['services']
-  openExternal(url: string): void
-  field: typeof field
-  canonicalKey: typeof canonicalKey
+/**
+ * A unique id, without assuming `crypto.randomUUID` (only guaranteed in secure
+ * contexts — a sandboxed iframe loaded from blob:/file: may not qualify). Uses it
+ * when available, else a sufficiently-unique fallback (ids are only used to correlate
+ * a subscription with its updates within one realm, not for security).
+ */
+function uniqueId(): string {
+  const c = (globalThis as { crypto?: Crypto }).crypto
+  if (c && typeof c.randomUUID === 'function') return c.randomUUID()
+  return `id-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
 }
 
 /**
@@ -49,6 +29,11 @@ export interface GarretSDK {
  * calls `createSDK(hostReact, ipcClient)`; a sandboxed widget bundle will call
  * `createSDK(widgetReact, bridgeClient)`. The bodies below are realm-agnostic —
  * only `React.*` and `client.*` differ — so nothing is duplicated across realms.
+ *
+ * Lifecycle: create ONE sdk per realm/widget-load (the host does this and injects it
+ * as `WidgetRenderProps.sdk`). The poll fan-out below lives for the sdk's lifetime, so
+ * the sandbox runtime must create a fresh sdk per iframe load, not reuse one across
+ * mounts, or listeners accumulate.
  */
 export function createSDK(React: ReactApi, client: GarretClient): GarretSDK {
   // One shared client listener fans out to hooks by key (avoids N listeners). Scoped
@@ -62,12 +47,12 @@ export function createSDK(React: ReactApi, client: GarretClient): GarretSDK {
     client.poll.onUpdate((u) => listeners.get(u.key)?.forEach((l) => l(u)))
   }
 
-  function usePolledQuery<T = unknown>(
+  const usePolledQuery: GarretSDK['usePolledQuery'] = <T = unknown>(
     serviceId: string,
     method: string,
     params: Record<string, unknown>,
     opts?: { intervalMs?: number; refreshToken?: number }
-  ): PolledState<T> {
+  ) => {
     const key = canonicalKey(serviceId, method, params)
     const intervalMs = opts?.intervalMs ?? DEFAULT_INTERVAL
     const [state, setState] = React.useState<{
@@ -83,7 +68,7 @@ export function createSDK(React: ReactApi, client: GarretClient): GarretSDK {
 
     React.useEffect(() => {
       ensureWired()
-      const subId = crypto.randomUUID()
+      const subId = uniqueId()
       const onUpdate: Listener = (u) =>
         setState({ data: u.data as T, error: u.error, ts: u.ts, loading: false })
 
@@ -139,8 +124,10 @@ export function createSDK(React: ReactApi, client: GarretClient): GarretSDK {
     }
   }
 
-  function useServiceStatus(serviceId: string): ServiceStatusState {
-    const [status, setStatus] = React.useState<ServiceStatus | null>(null)
+  const useServiceStatus: GarretSDK['useServiceStatus'] = (serviceId) => {
+    const [status, setStatus] = React.useState<
+      Awaited<ReturnType<GarretClient['services']['status']>> | null
+    >(null)
     const refresh = React.useCallback(() => {
       void client.services.status(serviceId).then(setStatus)
     }, [serviceId])
@@ -148,14 +135,14 @@ export function createSDK(React: ReactApi, client: GarretClient): GarretSDK {
     return { status, refresh, setStatus }
   }
 
-  function useFileWatch(paths: string | string[], opts?: WatchOptions): number {
+  const useFileWatch: GarretSDK['useFileWatch'] = (paths, opts) => {
     const list = (Array.isArray(paths) ? paths : [paths]).filter(Boolean)
     const dep = JSON.stringify([list, opts])
     const [version, setVersion] = React.useState(0)
 
     React.useEffect(() => {
       if (list.length === 0) return
-      const watchId = crypto.randomUUID()
+      const watchId = uniqueId()
       const off = client.watch.onEvent((id) => {
         if (id === watchId) setVersion((v) => v + 1)
       })
@@ -175,10 +162,10 @@ export function createSDK(React: ReactApi, client: GarretClient): GarretSDK {
     useServiceStatus,
     useFileWatch,
     services: client.services,
+    fetch: client.fetch,
+    storage: client.storage,
     openExternal: (url: string) => client.openExternal(url),
     field,
     canonicalKey
   }
 }
-
-export type { ConfigSchema }

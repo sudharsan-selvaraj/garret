@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react'
 import type { ConfigSchema } from './fields'
 import type { NotifySpec } from './poll'
+import type { GarretSDK } from './sdk-types'
 
 /** A widget icon: either an emoji/text string or a React icon component (e.g. lucide). */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -36,6 +37,13 @@ export interface WidgetManifest {
   minSize?: { w: number; h: number }
   /** Declarative config — drives the auto-generated settings form + validation. */
   configSchema: ConfigSchema
+  /**
+   * Capabilities this widget needs, declared up front, e.g. 'service:atlassian',
+   * 'network:api.github.com', 'clipboard:read', 'files:read', 'storage'. Surfaced at
+   * install (capability disclosure); enforced by the sandbox bridge. Built-ins, which
+   * run in-process with full access, may omit this.
+   */
+  permissions?: string[]
   capabilities?: {
     /** Show a refresh button in the widget header. */
     refreshable?: boolean
@@ -77,11 +85,18 @@ export interface WidgetContext {
 export interface WidgetRenderProps<C = Record<string, unknown>> {
   config: C
   ctx: WidgetContext
+  /**
+   * The SDK bound to this widget's realm (native host or sandbox). The framework
+   * injects it — a widget never calls `createSDK` itself, so the SAME render code
+   * runs in-process or sandboxed; only the injected sdk's transport differs.
+   */
+  sdk: GarretSDK
 }
 
 export interface WidgetSettingsProps<C = Record<string, unknown>> {
   config: C
   ctx: WidgetContext
+  sdk: GarretSDK
   onChange(patch: Partial<C>): void
 }
 
@@ -91,6 +106,11 @@ export interface WidgetSettingsProps<C = Record<string, unknown>> {
  * when omitted, the framework auto-generates a form from `manifest.configSchema`.
  */
 export interface WidgetPlugin<C = Record<string, unknown>> {
+  /**
+   * Host contract version this widget targets. The host rejects incompatible majors.
+   * Required for third-party widgets; built-ins (in-tree) may omit it.
+   */
+  apiVersion?: number
   manifest: WidgetManifest
   render: ComponentType<WidgetRenderProps<C>>
   Settings?: ComponentType<WidgetSettingsProps<C>>

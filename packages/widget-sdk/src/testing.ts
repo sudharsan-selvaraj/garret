@@ -18,6 +18,13 @@ export interface MockClientOptions {
   status?: ServiceStatus
   /** Seed the result a poll subscription resolves with (and pushes via onUpdate). */
   pollResult?: (key: string) => Pick<PollUpdate, 'data' | 'error'>
+  /** Resolve `fetch(url, init)`. Defaults to `{ ok: true, status: 200, data: null }`. */
+  fetch?: (
+    url: string,
+    init?: { method?: string; headers?: Record<string, string>; body?: string }
+  ) => Promise<{ ok: boolean; status: number; data?: unknown; error?: string }>
+  /** Seed initial per-widget storage. */
+  storage?: Record<string, unknown>
   /** Called when the widget asks to open a URL (assert on it in tests). */
   onOpenExternal?: (url: string) => void
 }
@@ -34,6 +41,7 @@ export function createMockClient(opts: MockClientOptions = {}): MockClient {
   const status: ServiceStatus = opts.status ?? { connected: true, account: 'mock@example.com' }
   const pollSubs = new Set<(u: PollUpdate) => void>()
   const watchSubs = new Set<(id: string) => void>()
+  const store = new Map<string, unknown>(Object.entries(opts.storage ?? {}))
   let ts = 1
 
   return {
@@ -64,6 +72,14 @@ export function createMockClient(opts: MockClientOptions = {}): MockClient {
       onEvent: (cb) => {
         watchSubs.add(cb)
         return () => watchSubs.delete(cb)
+      }
+    },
+    fetch: async (url, init) =>
+      opts.fetch ? opts.fetch(url, init) : { ok: true, status: 200, data: null },
+    storage: {
+      get: async (key) => store.get(key) as never,
+      set: async (key, value) => {
+        store.set(key, value)
       }
     },
     openExternal: (url) => opts.onOpenExternal?.(url),

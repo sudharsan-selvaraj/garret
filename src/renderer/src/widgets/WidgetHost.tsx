@@ -10,6 +10,7 @@ import {
   Trash2
 } from 'lucide-react'
 import type { PlacedWidget } from '@shared/types/board'
+import { sdk } from '@sdk'
 import { registry } from '@renderer/plugins/registry'
 import { useBoardStore } from '@renderer/canvas/useBoardStore'
 import { useWidgetContext } from '@renderer/widgets/useWidgetContext'
@@ -133,7 +134,7 @@ export function WidgetHost({ widget }: { widget: PlacedWidget }): JSX.Element {
           <div className="widget-settings">
             <div className="settings-scroll">
               {Settings ? (
-                <Settings config={widget.config} ctx={ctx} onChange={onChange} />
+                <Settings config={widget.config} ctx={ctx} sdk={sdk} onChange={onChange} />
               ) : (
                 <AutoSettingsForm
                   schema={manifest.configSchema}
@@ -151,7 +152,7 @@ export function WidgetHost({ widget }: { widget: PlacedWidget }): JSX.Element {
           </div>
         ) : (
           <WidgetErrorBoundary widgetName={manifest.name}>
-            <Render config={widget.config} ctx={ctx} />
+            <Render config={widget.config} ctx={ctx} sdk={sdk} />
           </WidgetErrorBoundary>
         )}
       </div>

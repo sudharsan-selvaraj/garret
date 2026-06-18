@@ -4,6 +4,7 @@ import type { ServiceStatus } from '../types/services'
 import type { PollUpdate, WatchSpec } from '../types/poll'
 import type { Preferences } from '../types/preferences'
 import type { ClipItem } from '../types/clipboard'
+import type { WatchOptions } from 'garret-core'
 
 /**
  * The single source of truth for the main ↔ renderer contract.
@@ -56,13 +57,8 @@ export const Channels = {
   clipboardOpenAx: 'clipboard:open-ax'
 } as const
 
-/** Options for the file watcher. */
-export interface WatchOptions {
-  recursive?: boolean
-  /** Skip events whose path contains any of these substrings (e.g. '/node_modules/'). */
-  ignore?: string[]
-  debounceMs?: number
-}
+/** Options for the file watcher (single source: garret-core). */
+export type { WatchOptions }
 
 /** Snapshot of available layouts and which one is active. */
 export interface LayoutsInfo {

@@ -5,6 +5,11 @@ import { RotateCw, WifiOff } from 'lucide-react'
  * a "couldn't refresh" notice (stale-while-error) or a subtle "refreshing" hint.
  * Renders nothing when data is fresh and idle. Part of the SDK so any widget
  * (built-in or external) can adopt the same non-destructive refresh UX.
+ *
+ * Realm note: this is bundled into each CONSUMER's output (its `react/jsx-runtime`
+ * resolves to whoever bundles it — the app today, a widget's own React in a sandbox
+ * bundle), so it always runs on the same React as the tree it renders into. It is NOT
+ * a singleton shared across realms.
  */
 export function WidgetStatus({
   error,

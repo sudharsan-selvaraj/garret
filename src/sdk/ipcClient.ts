@@ -25,5 +25,13 @@ export const ipcClient: GarretClient = {
     unsubscribe: (watchId) => window.garret.watch.unsubscribe(watchId),
     onEvent: (cb) => window.garret.watch.onEvent(cb)
   },
+  fetch: (url, init) => window.garret.plugins.fetch(url, init),
+  // Native realm: the app-shared store. Per-INSTANCE scoping in the native realm is
+  // provided via WidgetContext.storage (namespaced by instanceId); the sandbox gives
+  // each widget its own client whose storage the host namespaces per widget.
+  storage: {
+    get: (key) => window.garret.store.get(key),
+    set: (key, value) => window.garret.store.set(key, value)
+  },
   openExternal: (url) => window.garret.openExternal(url)
 }
