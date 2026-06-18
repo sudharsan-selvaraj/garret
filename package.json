@@ -11,6 +11,7 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit",
+    "build:packages": "npm run build -w garret-core && npm run build -w garret-widget-sdk",
     "setup:electron": "node node_modules/electron/install.js",
     "build:native": "cd native && node-gyp rebuild --target=31.7.7 --arch=arm64 --dist-url=https://electronjs.org/headers --devdir=../.electron-gyp",
     "build:icon": "bash scripts/make-icon.sh",
@@ -40,6 +41,7 @@
     "electron-vite": "^2.3.0",
     "node-addon-api": "^8.8.0",
     "node-gyp": "^10.3.1",
+    "tsup": "^8.3.5",
     "typescript": "^5.5.0",
     "vite": "^5.3.0"
   }

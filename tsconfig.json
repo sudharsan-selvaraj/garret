@@ -25,5 +25,6 @@
       "garret-widget-sdk": ["packages/widget-sdk/src"]
     }
   },
-  "include": ["src", "packages", "electron.vite.config.ts"]
+  "include": ["src", "packages", "electron.vite.config.ts"],
+  "exclude": ["**/dist", "**/node_modules"]
 }
