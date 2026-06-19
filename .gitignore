@@ -12,3 +12,4 @@ native/build
 .electron-cache
 
 build/icon.iconset
+examples/**/bundle.js

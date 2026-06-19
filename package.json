@@ -15,6 +15,7 @@
     "setup:electron": "node node_modules/electron/install.js",
     "build:native": "cd native && node-gyp rebuild --target=31.7.7 --arch=arm64 --dist-url=https://electronjs.org/headers --devdir=../.electron-gyp",
     "build:icon": "bash scripts/make-icon.sh",
+    "build:selftest": "esbuild examples/sandbox-selftest/src/index.tsx --bundle --format=iife --jsx=automatic --outfile=examples/sandbox-selftest/bundle.js",
     "pack:dir": "npm run build:native && npm run build && electron-builder --dir",
     "pack:mac": "npm run build:native && npm run build && electron-builder --mac --publish never"
   },

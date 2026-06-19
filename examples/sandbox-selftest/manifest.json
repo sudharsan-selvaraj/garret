@@ -1,0 +1,8 @@
+{
+  "name": "Sandbox Self-Test",
+  "description": "Probes each sandbox capability and reports PASS/blocked (Phase-3 acceptance).",
+  "apiVersion": 1,
+  "defaultSize": { "w": 5, "h": 6 },
+  "permissions": ["network:api.github.com", "network:localtest.me", "openExternal"],
+  "configSchema": {}
+}
