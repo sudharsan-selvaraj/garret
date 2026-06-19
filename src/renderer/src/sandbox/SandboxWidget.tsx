@@ -63,7 +63,17 @@ export function SandboxWidget(props: Props): JSX.Element {
     const bridge = new BridgeHost({
       widgetId,
       permissions,
-      send: (msg) => wv.send('garret:msg', msg),
+      // Best-effort: during unmount the <webview> is detached/destroyed and .send()
+      // throws ("must be attached to the DOM"). Swallow it — a throw here escapes the
+      // effect cleanup past this widget's (also-unmounting) error boundary and would
+      // blank the whole board.
+      send: (msg) => {
+        try {
+          wv.send('garret:msg', msg)
+        } catch {
+          /* guest gone (teardown/reload) — nothing to deliver to */
+        }
+      },
       onUpdateConfig,
       onReady: () => bridge.init(instanceId, latest.current.config, latest.current.refreshToken)
     })

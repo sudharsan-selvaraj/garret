@@ -259,7 +259,13 @@ export class BridgeHost {
   dispose(): void {
     if (this.disposed) return
     this.disposed = true
-    this.send({ kind: 'teardown' })
+    // Notify the guest, but never let a dead-webview send abort the rest of teardown
+    // (the unsubscribes below MUST run, or poll/watch forwarding leaks).
+    try {
+      this.send({ kind: 'teardown' })
+    } catch {
+      /* guest already gone */
+    }
     for (const subId of this.pollSubs.keys()) window.garret.poll.unsubscribe(subId)
     for (const watchId of this.watchSubs) window.garret.watch.unsubscribe(watchId)
     this.pollSubs.clear()
