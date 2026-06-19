@@ -1,6 +1,6 @@
 {
   "name": "garret-widget-sdk",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Build widgets for Garret. createSDK(React, client) binds the hook logic to a realm's React + capability client; re-exports garret-core. The one package widget authors install.",
   "license": "MIT",
   "author": "Sudharsan Selvaraj",
@@ -32,7 +32,7 @@
     "build": "tsup src/index.ts src/testing.ts src/sandbox.ts --format esm,cjs --dts --clean --treeshake"
   },
   "dependencies": {
-    "garret-core": "^0.0.2"
+    "garret-core": "^0.0.3"
   },
   "peerDependencies": {
     "lucide-react": ">=0.263.0",
