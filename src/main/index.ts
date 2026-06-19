@@ -150,6 +150,21 @@ app.whenReady().then(() => {
   // Serve garret-widget:// on the default session. SandboxWidget (step 5) also registers
   // it on each widget's partition session, where the isolated webviews actually load.
   registerSandboxProtocol(session.defaultSession.protocol)
+
+  // Production-only host-renderer CSP: drop `unsafe-eval` (the dev new-Function external
+  // tier is gated off in packaged builds, so production never needs eval) and `object-src`.
+  // Dev keeps Vite's eval-based HMR. No `frame-src` restriction so the Calendar/Jira
+  // web-embed <webview>s still load. (Build-time-verify: confirm the header is present in
+  // a packaged build's DevTools.)
+  if (app.isPackaged) {
+    const HOST_CSP =
+      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
+      "img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https: wss:; " +
+      "object-src 'none'; base-uri 'none'"
+    session.defaultSession.webRequest.onHeadersReceived((details, cb) => {
+      cb({ responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [HOST_CSP] } })
+    })
+  }
   initScheduler()
   win = createWindow(WINDOW_MODE)
 

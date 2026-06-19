@@ -43,6 +43,10 @@ Work, in order:
 4. Verify: `spctl -a -vv Garret.app` reports *accepted / Notarized Developer ID*.
 
 ## Other deferred
+- Sandbox ESLint guardrails (the project has no ESLint yet): a `no-restricted-properties`
+  rule forbidding `ipcRenderer.invoke`/`send` in the bridge-preload, and a rule forbidding
+  `window.addEventListener('message', …)` in the host renderer. Both invariants currently
+  hold (verified by grep); the lint rules would prevent a regression. Needs an ESLint setup.
 - Trusted-local tier polish: hot-reload / "Reload widgets" action; unknown-widget card names the
   missing id; decide dev-cwd vs userData dir.
 - Calendar: non-primary calendars.
