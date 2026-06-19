@@ -141,22 +141,18 @@ Napi::Value DisableFrameConstraint(const Napi::CallbackInfo& info) {
     return env.Undefined();
   }
   dispatch_block_t apply = ^{
-    Class base = object_getClass(window);
-    NSString* subName =
-        [NSString stringWithFormat:@"%@_GarretUnconstrained", NSStringFromClass(base)];
-    Class sub = NSClassFromString(subName);
-    if (!sub) {
-      sub = objc_allocateClassPair(base, subName.UTF8String, 0);
-      if (sub) {
-        NSString* types = [NSString stringWithFormat:@"%s%s%s%s%s", @encode(NSRect),
-                                                     @encode(id), @encode(SEL),
-                                                     @encode(NSRect), @encode(NSScreen*)];
-        class_addMethod(sub, @selector(constrainFrameRect:toScreen:),
-                        (IMP)GarretUnconstrainedFrame, types.UTF8String);
-        objc_registerClassPair(sub);
-      }
+    // Override -constrainFrameRect:toScreen: on THIS window's class to return the rect
+    // unchanged (we manage placement). Use a class-level method override — NOT
+    // object_setClass / isa-swizzling, which corrupts AppKit's KVO on the window
+    // (NSKVOForwarder "cannot remove an observer" crash when a webview attaches).
+    Class cls = object_getClass(window);
+    SEL sel = @selector(constrainFrameRect:toScreen:);
+    NSString* types = [NSString stringWithFormat:@"%s%s%s%s%s", @encode(NSRect), @encode(id),
+                                                 @encode(SEL), @encode(NSRect),
+                                                 @encode(NSScreen*)];
+    if (!class_addMethod(cls, sel, (IMP)GarretUnconstrainedFrame, types.UTF8String)) {
+      method_setImplementation(class_getInstanceMethod(cls, sel), (IMP)GarretUnconstrainedFrame);
     }
-    if (sub && object_getClass(window) != sub) object_setClass(window, sub);
   };
   if ([NSThread isMainThread]) apply();
   else dispatch_sync(dispatch_get_main_queue(), apply);
