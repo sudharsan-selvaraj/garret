@@ -10,6 +10,11 @@ import * as scheduler from '@main/poll/scheduler'
 import { subscribeWatch, unsubscribeWatch, teardownWatchSender } from '@main/watcher'
 import { listExternalWidgets } from '@main/plugins/externalWidgets'
 import { sandboxFetch } from '@main/sandbox/net'
+import {
+  bridgePreloadPath,
+  prepareSandboxPartition,
+  listSandboxedWidgets
+} from '@main/sandbox/session'
 
 /** Hooks the main process provides to IPC handlers (things outside the persistence layer). */
 export interface IpcHooks {
@@ -139,6 +144,12 @@ export function registerIpcHandlers(hooks: IpcHooks): void {
       clearTimeout(timer)
     }
   }
+
+  ipcMain.handle(Channels.sandboxPrepare, (_e, partition: string) => {
+    prepareSandboxPartition(partition)
+    return { preloadUrl: bridgePreloadPath() }
+  })
+  ipcMain.handle(Channels.sandboxList, () => listSandboxedWidgets())
 
   ipcMain.handle(Channels.serviceStatus, (_e, id: string) => getService(id).status())
   ipcMain.handle(Channels.serviceConnect, async (_e, id: string, creds: Record<string, unknown>) => {

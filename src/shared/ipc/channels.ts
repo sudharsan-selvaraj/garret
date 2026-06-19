@@ -26,6 +26,8 @@ export const Channels = {
   pluginsListExternal: 'plugins:list-external',
   pluginsFetch: 'plugins:fetch',
   pluginsOpenExternal: 'plugins:open-external',
+  sandboxPrepare: 'sandbox:prepare',
+  sandboxList: 'sandbox:list',
   serviceStatus: 'service:status',
   serviceConnect: 'service:connect',
   serviceDisconnect: 'service:disconnect',
@@ -175,6 +177,13 @@ export interface GarretApi {
     ): Promise<{ ok: boolean; status: number; data?: unknown; error?: string }>
     /** Open a URL in the browser AFTER a native confirm dialog; resolves true if opened. */
     openExternalConfirmed(url: string): Promise<boolean>
+  }
+  /** Sandboxed (third-party) widget runtime. */
+  sandbox: {
+    /** Configure a widget's partition session guards BEFORE its webview navigates. */
+    prepare(partition: string): Promise<{ preloadUrl: string }>
+    /** Installed sandboxed widgets (id + on-disk manifest). */
+    list(): Promise<{ id: string; manifest: Record<string, unknown> }[]>
   }
   /** Open a URL in the user's default browser. */
   openExternal(url: string): void

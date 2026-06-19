@@ -89,6 +89,10 @@ const api: GarretApi = {
     fetch: (url, init, opts) => ipcRenderer.invoke(Channels.pluginsFetch, url, init, opts),
     openExternalConfirmed: (url) => ipcRenderer.invoke(Channels.pluginsOpenExternal, url)
   },
+  sandbox: {
+    prepare: (partition) => ipcRenderer.invoke(Channels.sandboxPrepare, partition),
+    list: () => ipcRenderer.invoke(Channels.sandboxList)
+  },
   openExternal: (url) => ipcRenderer.send(Channels.openExternal, url),
   openPath: (path) => ipcRenderer.send(Channels.openPath, path),
   openInEditor: (path, editor) => ipcRenderer.send(Channels.openInEditor, path, editor),

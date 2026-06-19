@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { registerBuiltins } from '@renderer/plugins/builtins'
 import { loadExternalWidgets } from '@renderer/plugins/externalLoader'
+import { loadSandboxedWidgets } from '@renderer/sandbox/loader'
 import { registerServices } from '@renderer/services/serviceRegistry'
 import { useBoardStore } from '@renderer/canvas/useBoardStore'
 import { useUiStore } from '@renderer/app/useUiStore'
@@ -27,9 +28,11 @@ export default function App(): JSX.Element {
   useNotificationWatches()
 
   useEffect(() => {
-    // Register external widgets BEFORE hydrating so saved external-widget
-    // instances resolve from the registry on first render.
-    void loadExternalWidgets().finally(() => void hydrate())
+    // Register external widgets (dev tier + installed sandboxed) BEFORE hydrating so
+    // saved instances resolve from the registry on first render.
+    void Promise.allSettled([loadExternalWidgets(), loadSandboxedWidgets()]).finally(
+      () => void hydrate()
+    )
   }, [hydrate])
 
   // The desktop window spans the FULL display (so the HUD dim covers the menu bar
