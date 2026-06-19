@@ -1,5 +1,5 @@
 import { isIP, type LookupFunction } from 'node:net'
-import { lookup as dnsLookup } from 'node:dns'
+import { lookup as dnsLookup, type LookupAddress } from 'node:dns'
 import { Agent, fetch as undiciFetch } from 'undici'
 
 /**
@@ -77,17 +77,23 @@ export function hostAllowed(hostname: string, allowedHosts: string[]): boolean {
  * ANY is blocked, then pin the connection to a validated address (so the IP we checked is
  * the IP we connect to — closing the rebind TOCTOU window).
  */
-const guardedLookup: LookupFunction = (hostname, options, cb) => {
+// undici's connector calls the lookup with `all: true` and expects the callback to
+// return an ARRAY of {address, family} (the all-style). We always resolve all addresses
+// (to reject if ANY is private), then return the array when asked, else single-style.
+function guardedLookup(
+  hostname: string,
+  options: { all?: boolean } & Record<string, unknown>,
+  cb: (err: NodeJS.ErrnoException | null, address: string | LookupAddress[], family?: number) => void
+): void {
   dnsLookup(hostname, { ...options, all: true }, (err, addresses) => {
-    if (err) return cb(err, '', 0)
-    const list = Array.isArray(addresses) ? addresses : []
-    if (list.length === 0) return cb(new Error('garret: no address'), '', 0)
+    if (err) return cb(err, [])
+    const list = (Array.isArray(addresses) ? addresses : []) as LookupAddress[]
+    if (list.length === 0) return cb(new Error('garret: no address'), [])
     for (const a of list) {
-      if (isBlockedIp(a.address)) {
-        return cb(new Error(`garret: blocked address ${a.address}`), '', 0)
-      }
+      if (isBlockedIp(a.address)) return cb(new Error(`garret: blocked address ${a.address}`), [])
     }
-    cb(null, list[0].address, list[0].family)
+    if (options.all) cb(null, list)
+    else cb(null, list[0].address, list[0].family)
   })
 }
 
@@ -107,7 +113,9 @@ export async function sandboxFetch(
   init: { method?: string; headers?: Record<string, string>; body?: string } | undefined,
   allowedHosts: string[]
 ): Promise<SandboxFetchResult> {
-  const agent = new Agent({ connect: { lookup: guardedLookup, timeout: FETCH_TIMEOUT_MS } })
+  const agent = new Agent({
+    connect: { lookup: guardedLookup as unknown as LookupFunction, timeout: FETCH_TIMEOUT_MS }
+  })
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
   let current = url
