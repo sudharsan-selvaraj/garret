@@ -14,3 +14,6 @@ native/build
 build/icon.iconset
 examples/**/bundle.js
 examples/**/dist
+
+# transient esbuild bundle from scripts/test-unpack.mjs
+._unpack_test_bundle.mjs
