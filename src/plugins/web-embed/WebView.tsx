@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 /** Minimal handle onto Electron's <webview> element (avoids pulling electron types). */
 type WebviewEl = HTMLElement & { reload: () => void; src: string }
@@ -18,11 +18,26 @@ interface Props {
  */
 export function WebView({ src, partition, refreshToken = 0 }: Props): JSX.Element {
   const ref = useRef<WebviewEl | null>(null)
+  const [loading, setLoading] = useState(false)
 
   // Set string attributes the custom element expects (React would warn on a
   // boolean `allowpopups`, and the value must be a string for <webview>).
   useEffect(() => {
     ref.current?.setAttribute('allowpopups', 'true')
+  }, [])
+
+  // Drive a top loading bar off the webview's load lifecycle.
+  useEffect(() => {
+    const wv = ref.current
+    if (!wv) return
+    const start = (): void => setLoading(true)
+    const stop = (): void => setLoading(false)
+    wv.addEventListener('did-start-loading', start)
+    wv.addEventListener('did-stop-loading', stop)
+    return () => {
+      wv.removeEventListener('did-start-loading', start)
+      wv.removeEventListener('did-stop-loading', stop)
+    }
   }, [])
 
   useEffect(() => {
@@ -38,11 +53,14 @@ export function WebView({ src, partition, refreshToken = 0 }: Props): JSX.Elemen
   }
 
   return (
-    <webview
-      ref={ref as unknown as React.Ref<HTMLWebViewElement>}
-      src={src}
-      partition={partition}
-      className="widget-webview"
-    />
+    <>
+      {loading && <div className="webview-progress" aria-hidden="true" />}
+      <webview
+        ref={ref as unknown as React.Ref<HTMLWebViewElement>}
+        src={src}
+        partition={partition}
+        className="widget-webview"
+      />
+    </>
   )
 }

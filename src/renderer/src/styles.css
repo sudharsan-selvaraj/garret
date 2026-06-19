@@ -459,6 +459,35 @@ button[disabled],
   display: inline-flex;
   background: #fff;
 }
+/* Indeterminate top loading bar for the Web View widget (a <webview> exposes no load %). */
+.webview-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 5;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  pointer-events: none;
+}
+.webview-progress::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 35%;
+  background: var(--accent);
+  animation: webview-progress-slide 1.05s ease-in-out infinite;
+}
+@keyframes webview-progress-slide {
+  0% {
+    left: -35%;
+  }
+  100% {
+    left: 100%;
+  }
+}
 .widget-placeholder {
   height: 100%;
   display: grid;
