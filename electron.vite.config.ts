@@ -36,7 +36,11 @@ export default defineConfig({
     plugins: [externalize()],
     build: {
       rollupOptions: {
-        input: { index: resolve(__dirname, 'src/preload/index.ts') }
+        input: {
+          index: resolve(__dirname, 'src/preload/index.ts'),
+          // Bridge preload injected into sandboxed widget webviews (step 2).
+          sandboxBridge: resolve(__dirname, 'src/preload/sandboxBridge.ts')
+        }
       }
     }
   },
