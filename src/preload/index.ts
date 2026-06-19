@@ -86,7 +86,8 @@ const api: GarretApi = {
   },
   plugins: {
     listExternal: () => ipcRenderer.invoke(Channels.pluginsListExternal),
-    fetch: (url, init) => ipcRenderer.invoke(Channels.pluginsFetch, url, init)
+    fetch: (url, init, opts) => ipcRenderer.invoke(Channels.pluginsFetch, url, init, opts),
+    openExternalConfirmed: (url) => ipcRenderer.invoke(Channels.pluginsOpenExternal, url)
   },
   openExternal: (url) => ipcRenderer.send(Channels.openExternal, url),
   openPath: (path) => ipcRenderer.send(Channels.openPath, path),

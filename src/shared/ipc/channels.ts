@@ -25,6 +25,7 @@ export const Channels = {
   layoutsAddWidget: 'layouts:add-widget',
   pluginsListExternal: 'plugins:list-external',
   pluginsFetch: 'plugins:fetch',
+  pluginsOpenExternal: 'plugins:open-external',
   serviceStatus: 'service:status',
   serviceConnect: 'service:connect',
   serviceDisconnect: 'service:disconnect',
@@ -162,11 +163,18 @@ export interface GarretApi {
   /** Dev-tier external widgets loaded from the `external-widgets/` folder. */
   plugins: {
     listExternal(): Promise<{ name: string; source: string }[]>
-    /** Host-mediated HTTP (no CORS) — the network-capability chokepoint for widgets. */
+    /**
+     * Host-mediated HTTP (no CORS) — the network chokepoint for widgets. Pass
+     * `allowedHosts` (the sandbox path) to gate the request to a widget's declared hosts
+     * + the resolved-IP rebind guard; omit it only for the trusted dev tier.
+     */
     fetch(
       url: string,
-      init?: { method?: string; headers?: Record<string, string>; body?: string }
+      init?: { method?: string; headers?: Record<string, string>; body?: string },
+      opts?: { allowedHosts?: string[] }
     ): Promise<{ ok: boolean; status: number; data?: unknown; error?: string }>
+    /** Open a URL in the browser AFTER a native confirm dialog; resolves true if opened. */
+    openExternalConfirmed(url: string): Promise<boolean>
   }
   /** Open a URL in the user's default browser. */
   openExternal(url: string): void

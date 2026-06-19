@@ -9,6 +9,7 @@ import { getService } from '@main/services/registry'
 import * as scheduler from '@main/poll/scheduler'
 import { subscribeWatch, unsubscribeWatch, teardownWatchSender } from '@main/watcher'
 import { listExternalWidgets } from '@main/plugins/externalWidgets'
+import { sandboxFetch } from '@main/sandbox/net'
 
 /** Hooks the main process provides to IPC handlers (things outside the persistence layer). */
 export interface IpcHooks {
@@ -48,7 +49,54 @@ export function registerIpcHandlers(hooks: IpcHooks): void {
   // / permission gating is the sandbox tier — this just removes the foot-cannon.
   const FETCH_TIMEOUT_MS = 10_000
   const FETCH_MAX_BYTES = 5 * 1024 * 1024
-  ipcMain.handle(Channels.pluginsFetch, async (_e, url: string, init?: RequestInit) => {
+  ipcMain.handle(
+    Channels.pluginsFetch,
+    async (_e, url: string, init?: RequestInit, opts?: { allowedHosts?: string[] }) => {
+      // Sandbox path: gate by the widget's declared hosts + the resolved-IP rebind guard.
+      if (opts?.allowedHosts) {
+        return sandboxFetch(
+          url,
+          init as { method?: string; headers?: Record<string, string>; body?: string } | undefined,
+          opts.allowedHosts
+        )
+      }
+      return devFetch(url, init)
+    }
+  )
+
+  // Native confirm before a sandboxed widget opens a URL — never silent.
+  ipcMain.handle(Channels.pluginsOpenExternal, async (e, url: string): Promise<boolean> => {
+    let scheme: string
+    try {
+      scheme = new URL(url).protocol
+    } catch {
+      return false
+    }
+    if (scheme !== 'http:' && scheme !== 'https:') return false
+    const win = BrowserWindow.fromWebContents(e.sender) ?? BrowserWindow.getAllWindows()[0]
+    const opts = {
+      type: 'question' as const,
+      buttons: ['Open', 'Cancel'],
+      defaultId: 0,
+      cancelId: 1,
+      message: 'Open this link in your browser?',
+      detail: url
+    }
+    const { response } = win
+      ? await dialog.showMessageBox(win, opts)
+      : await dialog.showMessageBox(opts)
+    if (response === 0) {
+      void shell.openExternal(url)
+      return true
+    }
+    return false
+  })
+
+  /** The original dev-tier host fetch: http(s) only, 10s, 5MB cap, no host allowlist. */
+  async function devFetch(
+    url: string,
+    init?: RequestInit
+  ): Promise<{ ok: boolean; status: number; data?: unknown; error?: string }> {
     let scheme: string
     try {
       scheme = new URL(url).protocol
@@ -90,7 +138,7 @@ export function registerIpcHandlers(hooks: IpcHooks): void {
     } finally {
       clearTimeout(timer)
     }
-  })
+  }
 
   ipcMain.handle(Channels.serviceStatus, (_e, id: string) => getService(id).status())
   ipcMain.handle(Channels.serviceConnect, async (_e, id: string, creds: Record<string, unknown>) => {
