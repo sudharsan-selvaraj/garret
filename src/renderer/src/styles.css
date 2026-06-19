@@ -3021,52 +3021,103 @@ button[disabled],
   border-radius: var(--r-widget);
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
 }
+.consent-head {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.consent-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: rgba(10, 132, 255, 0.16);
+  color: var(--accent);
+}
+.consent-head-text {
+  min-width: 0;
+}
 .consent-title {
   font-size: 15px;
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
-.consent-meta {
-  margin-top: 3px;
+.consent-source {
+  margin-top: 2px;
   color: var(--text-3);
   font-size: 11px;
-  word-break: break-all;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.consent-warn {
-  margin-top: 10px;
+.consent-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 14px;
+  padding: 4px 9px;
+  border-radius: var(--r-pill);
+  background: var(--surface-input);
   color: var(--text-2);
-  font-size: 12px;
+  font-size: 11px;
 }
 .consent-h {
-  margin-top: 14px;
-  font-size: 12px;
+  margin-top: 16px;
+  font-size: 11px;
   font-weight: 600;
-  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-3);
 }
 .consent-h.consent-new {
   color: var(--accent);
 }
-.consent-perms {
-  margin: 6px 0 0;
-  padding-left: 18px;
-  font-size: 12px;
+.consent-caps {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+.consent-cap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  font-size: 13px;
   color: var(--text);
+  border-bottom: 0.5px solid var(--hairline);
 }
-.consent-perms li {
-  margin-bottom: 3px;
+.consent-caps li:last-child {
+  border-bottom: none;
 }
-.consent-perms--new li {
-  color: var(--accent-hover);
+.consent-cap-ic {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  background: var(--surface-input);
+  color: var(--text-2);
+}
+.consent-cap--muted {
+  color: var(--text-2);
+}
+.consent-caps--new .consent-cap-ic {
+  background: rgba(10, 132, 255, 0.16);
+  color: var(--accent);
 }
 .consent-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 18px;
+  margin-top: 20px;
 }
 .consent-cancel,
 .consent-install {
-  height: 30px;
-  padding: 0 16px;
+  height: 32px;
+  padding: 0 18px;
   border-radius: var(--r-pill);
   font-size: 13px;
   font-weight: 500;
@@ -3076,14 +3127,20 @@ button[disabled],
   background: var(--surface-input);
   color: var(--text);
 }
+.consent-cancel:hover {
+  background: var(--surface-hover);
+}
 .consent-install {
   background: var(--accent);
   color: #fff;
   border-color: transparent;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 1px 2px rgba(0, 0, 0, 0.3);
 }
 .consent-install:hover {
   background: var(--accent-hover);
 }
 .consent-install:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
 }
