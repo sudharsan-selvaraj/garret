@@ -26,7 +26,8 @@ Three **sources**, one enforcement path:
 | **Sideloaded** | self-trust + sandboxed + consented | a folder or `.garret` file the user picks |
 
 **In scope:** npm-backed marketplace, a signed+fresh curated allowlist, Discover UI,
-hostile-safe download/extract/install, update detection, provenance UX, `.garret` packaging.
+hostile-safe download/extract/install, update detection, provenance UX, `.garret` packaging,
+**widget packs** (one published unit containing multiple related widgets — §6a).
 
 **Deferred:** floating widgets over other apps (Item 4) + per-pixel click-through; per-*author*
 signing (v1 signs only the index); ratings/analytics; any hosted backend (we use npm + a git
@@ -85,6 +86,13 @@ blesses a now-revoked version. Signature verifies; kill-switch silently disabled
     mark) → anti-rollback.
   - Short `expires` (24–72 h); the signer **re-signs on a schedule even when nothing changed**,
     so the freshness window stays tight.
+  - **High-water-mark storage + threat boundary:** the persisted `seq` is the whole anti-replay
+    defense. It defends against a **network/CDN/proxy** adversary serving an old-but-signed
+    timestamp — *that* is the threat model. A **local-filesystem** attacker who can reset the
+    watermark file (in `userData`) is explicitly **out of scope**: anyone with local write can
+    already tamper installed widget code directly, a strictly higher privilege. Cheap hardening
+    (not required): store the watermark via macOS `safeStorage` (already used for secrets) so a
+    casual edit can't reset it. State the boundary; don't pretend `seq` resists local tampering.
 - **Pin the artifact, NOT the registry URL.** Resolves the rev-1 §8 contradiction: tarballs are
   pinned by `{package, version, sha256}` (immutable); the registry/timestamp are served from a
   path that always returns the *latest* signed copy, with integrity from signature + `seq` +
@@ -173,8 +181,12 @@ main:
   5. extract .tgz with the slip-safe streaming extractor (§4a) to a MAIN-OWNED temp dir,
      enforcing decompressed-size + file-count caps DURING extraction
   6. planInstall(tempDir)                                    (reuse existing validation + hash)
-  7. identity-bind: refuse if id collides with an installed widget of a different
-     origin/author (today commitInstall blindly rm+renames — this guard is NEW)
+  7. identity-bind: refuse if id collides with an installed widget of a different KNOWN
+     origin/author (today commitInstall blindly rm+renames — this guard is NEW). Legacy rule:
+     a prior record with absent/unknown origin (defaults 'sideloaded', no author — §9) is NOT
+     treated as a hard conflict; instead require an explicit "replace your sideloaded <name>
+     with the marketplace version?" confirmation (the user owns their sideloads). Hard-refuse
+     only on marketplace-vs-marketplace author mismatch.
   8. return plan → consent screen → on confirm: commitInstall, writing
      origin='marketplace', npmPackage, author, version into the InstallRecord
   9. cleanup the extract temp dir on success, failure, AND consent-cancel
@@ -270,6 +282,90 @@ funnel (`src/renderer/src/app/AddDialog.tsx`).
 - **Metadata images** (icons/screenshots) are **derived + host-allowlisted** (§3.1 paranoia),
   not free-form URLs from the index; rendered as inert `<img>` under the host `img-src`.
 
+## 6a. Widget packs (multi-widget packages)
+
+A single published unit may contain **multiple related widgets** (e.g. an "MDM" pack: Device
+List, Compliance, Enrollment). The **pack** is the install / update / remove / **trust** unit;
+the contained widgets are what users place. This is the extension-pack pattern.
+
+- **Manifest:** `kind: "pack"` (vs `kind: "widget"` for a single — the umbrella discriminator
+  also used by `.garret`), a pack `id` + `name`, and
+  `widgets: [{ id, name, defaultSize, minSize?, permissions[], configSchema, capabilities? }]`.
+  One pack = one npm package / one `.garret`.
+- **Identity — THREE distinct namespaces (a colon-id conflation the critic caught):**
+  - **Webview origin / served files / install dir = `<packId>`** — one `SAFE_ID`-clean
+    hostname, served at `garret-widget://<packId>/`. It **must not contain `:`** (a URL
+    hostname can't, and `SAFE_ID`/`ID_RE` forbid it). The pack's single bundle is served here.
+  - **Renderer registry plugin id = `sandbox:<packId>:<widgetId>`** — a Map key **only**
+    (`loader.ts`/`registry`), never a URL/hostname/dir; `:` is safe here, and the `sandbox:`
+    prefix that `resync`/unregister match on still holds.
+  - **Storage partition = per-widget** (`garret-widget-<packId>__<widgetId>`) so pack-widgets
+    don't share native web storage, even though they share the pack origin + bundle.
+  One install record per pack (dir `sandboxWidgetsDir()/<packId>`); integrity hashes the whole
+  pack; install / remove / update operate on the pack as a unit. Both `<packId>` and every
+  `<widgetId>` must independently pass `ID_RE`.
+- **Isolation — each PLACED instance is its own webview (own OS process + JS realm +
+  partition).** "One bundle" means the same `bundle.js` *file* is loaded into each separate
+  webview — **not** a shared runtime. Two placed pack-widgets share neither a realm nor a
+  partition, so a pack-widget is isolated from its siblings exactly as two unrelated widgets
+  are. (Corrects the rev-3 "no new isolation surface, reuse existing threading" wording, which
+  was true of the *webview-per-instance mechanism* but glossed the identity/partition split.)
+- **Widget selection — host-controlled at the URL, NOT a bridge message (changed from rev 3).**
+  The host sets the target in the webview URL —
+  `garret-widget://<packId>/?w=<widgetId>` — and `runWidgetPack(map)` reads it from `location`
+  at load and mounts that widget *before* `ready`. This is **better than carrying a `widgetId`
+  in `init`** (which today is `{instanceId, config, refreshToken}` — adding a field is an SDK
+  `HostMessage` wire-format change, AND `init` fires only post-`ready`, after arbitrary guest JS
+  has run, letting the *guest* pick): the URL is set by the host before the bundle loads, so the
+  host decides what's served. The guest is untrusted regardless — if it ignores `?w=` and mounts
+  a sibling, the host-side `BridgeHost` still enforces the **placed** widget's permission ceiling
+  and host-set `nsKey`, so it's contained (no escalation; only mis-rendered chrome — within the
+  already-accepted unverified-author model). Only widget-side addition: the `runWidgetPack` SDK
+  entry reading the URL selector. **No `HostMessage`/`init` change.**
+- **Per-widget enforcement — the mechanism exists, the PLUMBING is net-new (corrects "+S–M").**
+  `BridgeHost` already enforces a per-instance `consentedPermissions` (sound). But today
+  `listSandboxedWidgets` returns **one `InstalledWidget` per directory** and
+  `makeSandboxedPlugin(id, m, perms)` is strictly **1:1** with one flat permission set. Packs
+  require an explicit **1→N fan-out, located in `listSandboxedWidgets`**: read the pack record's
+  `widgets` map and emit **N `InstalledWidget` rows from one dir**, each with its `manifest`
+  slice + `consentedPermissions` slice; `loadSandboxedWidgets` then calls `makeSandboxedPlugin`
+  N times. `makeSandboxedPlugin`/`SandboxWidget` must thread **three** ids: origin/src =
+  `<packId>`, partition = `garret-widget-<packId>__<widgetId>`, identity (perms + `nsKey`) = the
+  per-widget compound. The `InstalledWidget` type (single `enabled`/`tampered`/perms) gains an
+  N-widget representation (or the list expands to N rows) — a type change rippling to
+  `loader.ts`, `ExtensionsManager`, `AddDialog`. **This is real work, not reuse.**
+- **Storage — PER-WIDGET isolation (decision), two layers.** `sdk.storage` is host-namespaced
+  `nsKey(<packId>:<widgetId>)` (the `widgetId` handed to `BridgeHost` is the per-widget compound
+  — a plain string for `nsKey`, never a URL; `ID_RE` forbids `:` in components so the
+  NUL-joined key can't collide), AND the per-widget partition isolates raw
+  `localStorage`/IndexedDB. No `services.connect` (host-only) ⇒ no shared credential ⇒ no
+  pack-shared storage in v1 (possible future opt-in).
+- **Consent — pack-level, ALL-OR-NOTHING; "least privilege" is an ENFORCEMENT property, not a
+  consent lever (honest framing).** Consent is once at install: the screen shows a per-widget
+  permission **breakdown** (disclosure) and the **union**, but the user's only choice is
+  install / don't-install the *pack* — they can't decline widget B's `network:` while keeping
+  A. What per-widget least-privilege buys is **enforcement** (each webview capped to its own
+  slice, so a benign widget can't use a sibling's grant), not per-widget consent. Do **not**
+  imply per-widget toggles (they'd conflict with pack-level enable/disable). A blessed pack
+  declaring a broad `network:` host is the human reviewer's call at re-bless time.
+- **Integrity / install / remove — pack unit.** One record per pack, one sha256 over the whole
+  dir (`verifyIntegrity` already hashes a dir). `tampered` is **pack-level** — a tampered pack
+  marks all N unavailable together. Install/remove/update + enable/disable are pack-level in v1
+  (per-widget toggle later).
+- **Discover / UX:** one Discover card ("Mobile Device Management — 5 widgets") with per-widget
+  disclosure; installing registers all N, grouped under the pack name (`buildGroups`); removing
+  removes all N (→ "removed" placeholder).
+- **Registry entry:** one `{npmPackage, version, sha256}` for the pack; the entry lists
+  contained widget ids + each one's declared permissions (Discover display + consent breakdown).
+- **Caps:** 20 MB / 200 files apply to the whole pack dir — plausibly tight at N≈5; raise for
+  `kind:"pack"` if needed.
+- **Data model:** a pack `InstallRecord` carries `kind:'pack'` + a `widgets` map
+  `{ widgetId → { consentedPermissions, attemptedBlocked } }` instead of the flat fields.
+  Slice 0 (§9): absent `kind` ⇒ `'widget'`.
+- **Effort: M–L** (not "+S–M") — the 1→N fan-out + `InstalledWidget`/IPC shape change +
+  three-id threading + `runWidgetPack`/URL-selector, spread across slices 0/4/5. Single-widget
+  stays the default path and is unaffected.
+
 ## 7. Security requirements (gate before shipping)
 
 1. Signed chain: **quorum roots (pinned) → delegation → signing key**; verify before trusting
@@ -293,8 +389,9 @@ funnel (`src/renderer/src/app/AddDialog.tsx`).
   (§3.4). registry/timestamp served via jsDelivr `/gh/` always-latest (integrity from the
   chain, not URL immutability).
 - **Submission = PR.** **CI = static validation only** (feasible on a plain runner): npm
-  package resolves at the pinned version; unpack + run the `collectFiles`/extractor guards;
-  schema-validate; lint declared `network:`/`service:` permissions; confirm sha256. A
+  package resolves at the pinned version; unpack **via the same net-new tar extractor as
+  production install (§4a), not `collectFiles`** (which never sees a tarball), then run its
+  guards; schema-validate; lint declared `network:`/`service:` permissions; confirm sha256. A
   webview-based "runtime smoke-test" is **structurally unable** to catch runtime abuse (a
   widget can detect headless / time-bomb / gate on a remote flag) and needs Electron + xvfb in
   CI — so it is **manual-review-time / aspirational defense-in-depth, NOT a merge gate or trust
@@ -318,6 +415,9 @@ pre-existing widgets **vanish** from the Installed tab + board.
 
 - `origin?: 'marketplace' | 'sideloaded'` → **default `'sideloaded'`** when absent (every legacy
   record *was* a folder sideload — correct).
+- `kind?: 'widget' | 'pack'` → **default `'widget'`** when absent (every legacy record is a
+  single widget). A `'pack'` record carries a `widgets` map (per-widget consentedPermissions +
+  attemptedBlocked) instead of the flat fields — §6a.
 - `author?`, `npmPackage?` → optional, undefined for legacy/sideloaded.
 - `version`: coerce invalid/absent → treated as "no update available; re-consent on code-hash
   change." Never throw on bad semver.
@@ -343,6 +443,14 @@ pre-existing widgets **vanish** from the Installed tab + board.
 Smallest honest end-to-end value slice = **0 → 2 → 3 → 4** + a minimal Discover (5). Rev 1's
 "#2 + minimal #3" was too big (it bundled extractor + signing + the async-AddDialog rewrite).
 
+**Widget packs (§6a)** layer across existing slices (not a new slice), but the critic round
+re-priced them: the 1→N fan-out in `listSandboxedWidgets`, the `InstalledWidget`/IPC shape
+change, the three-id threading in `makeSandboxedPlugin`/`SandboxWidget`, and the
+`runWidgetPack` SDK entry + URL selector are **real plumbing, not reuse**. Net: **+M–L** —
+slice 0 (`kind` + per-widget consent map + the InstalledWidget shape), slice 4 (fan-out +
+three-id threading + `runWidgetPack`), slice 5 (one Discover card → N widgets). Single-widget
+remains the default, unaffected path. **Defer packs until single-widget is shipped end-to-end.**
+
 ## 11. Open questions (trimmed — most now answered in §3)
 
 - **Root key custody:** hardware token vs offline machine for the 2 roots; the precise overlap
@@ -351,7 +459,9 @@ Smallest honest end-to-end value slice = **0 → 2 → 3 → 4** + a minimal Dis
   and the **delegation lifetime** — confirm all three are mutually consistent. Proposed
   resolution (§3.5): online verification rejects an expired delegation, but offline-load within
   the 14-day staleness window accepts the last-fetched delegation regardless of its own
-  `expires`. Must be settled before slice 2's offline-load path is coded.
+  `expires`. Working defaults to confirm: **`expires` 48 h, max-staleness 14 days, delegation
+  ~30 days**. Slice 2 (online verify only) is **unblocked**; these numbers are needed by the
+  **load path (slice 4+)**, not by slice 2 — so this is not a slice-2 blocker (reconciles §10).
 - **Extractor dependency** (§4a): add `tar`/`yauzl` (supply-chain surface in the hostile path)
   vs hand-roll (time). **Decision needed before slice 3.**
 - **Icon/screenshot hosting** (§6): in-repo via jsDelivr `/gh/` vs from the tarball; size/format
