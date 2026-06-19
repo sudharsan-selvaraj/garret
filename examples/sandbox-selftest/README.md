@@ -6,17 +6,16 @@ PASS/blocked — adding it visually runs the Phase-3 sandbox acceptance suite.
 It declares `network:api.github.com`, `network:localtest.me` (which resolves to
 127.0.0.1, to exercise the resolved-IP rebind gate), and `openExternal`.
 
-## Build & stage
+## Build & install
 
 ```bash
-npm run build:selftest        # bundle src/index.tsx → bundle.js (its React + the SDK)
-# stage into the app's installed-widgets dir:
-mkdir -p "$HOME/Library/Application Support/garret/widgets/sandbox-selftest"
-cp index.html bundle.js manifest.json "$HOME/Library/Application Support/garret/widgets/sandbox-selftest/"
+npm run build:selftest   # → examples/sandbox-selftest/dist/ (manifest.json + index.html + bundle.js)
 ```
 
-Restart Garret, open **+ Add → Sandbox Self-Test**, drop it on the board, and read the
-report. Expected:
+In Garret: **Settings → Widgets → Install widget…** → pick `examples/sandbox-selftest/dist`
+→ approve the consent screen. Then **+ Add → Sandbox Self-Test**, drop it on the board, and
+read the report. (The install allowlist rejects `src/*.tsx`, so install the built `dist/`,
+not the source folder.) Expected:
 
 | Probe | Expected |
 |---|---|

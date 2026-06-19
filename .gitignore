@@ -13,3 +13,4 @@ native/build
 
 build/icon.iconset
 examples/**/bundle.js
+examples/**/dist

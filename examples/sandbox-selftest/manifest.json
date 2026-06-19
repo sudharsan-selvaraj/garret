@@ -1,4 +1,5 @@
 {
+  "id": "sandbox-selftest",
   "name": "Sandbox Self-Test",
   "description": "Probes each sandbox capability and reports PASS/blocked (Phase-3 acceptance).",
   "apiVersion": 1,
