@@ -2923,3 +2923,167 @@ button[disabled],
 .clip-clear:hover {
   color: var(--danger);
 }
+
+/* ---------- Extensions manager (sandboxed widgets) ---------- */
+.ext-empty {
+  padding: 10px 12px;
+  color: var(--text-3);
+  font-size: 12px;
+}
+.ext-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-bottom: 0.5px solid var(--hairline);
+}
+.ext-row:last-child {
+  border-bottom: none;
+}
+.ext-info {
+  flex: 1;
+  min-width: 0;
+}
+.ext-name {
+  font-size: 13px;
+  font-weight: 500;
+}
+.ext-ver {
+  color: var(--text-3);
+  font-weight: 400;
+  font-size: 11px;
+}
+.ext-perms {
+  margin-top: 2px;
+  color: var(--text-2);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ext-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ext-remove {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  color: var(--text-3);
+  border-radius: var(--r-input);
+}
+.ext-remove:hover {
+  color: var(--danger);
+  background: var(--surface-hover);
+}
+.ext-install {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 6px 12px;
+  border: 0.5px solid var(--hairline);
+  background: var(--surface-input);
+  color: var(--text);
+  border-radius: var(--r-pill);
+  font-size: 12px;
+}
+.ext-install:hover {
+  background: var(--surface-hover);
+}
+.ext-error {
+  margin-top: 8px;
+  color: var(--danger);
+  font-size: 12px;
+}
+
+/* Consent modal */
+.consent-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+.consent-card {
+  width: 380px;
+  max-width: calc(100vw - 40px);
+  padding: 18px 20px 16px;
+  background: var(--surface-raised);
+  border: 0.5px solid var(--hairline);
+  border-radius: var(--r-widget);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+}
+.consent-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+.consent-meta {
+  margin-top: 3px;
+  color: var(--text-3);
+  font-size: 11px;
+  word-break: break-all;
+}
+.consent-warn {
+  margin-top: 10px;
+  color: var(--text-2);
+  font-size: 12px;
+}
+.consent-h {
+  margin-top: 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+.consent-h.consent-new {
+  color: var(--accent);
+}
+.consent-perms {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: var(--text);
+}
+.consent-perms li {
+  margin-bottom: 3px;
+}
+.consent-perms--new li {
+  color: var(--accent-hover);
+}
+.consent-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+.consent-cancel,
+.consent-install {
+  height: 30px;
+  padding: 0 16px;
+  border-radius: var(--r-pill);
+  font-size: 13px;
+  font-weight: 500;
+  border: 0.5px solid var(--hairline);
+}
+.consent-cancel {
+  background: var(--surface-input);
+  color: var(--text);
+}
+.consent-install {
+  background: var(--accent);
+  color: #fff;
+  border-color: transparent;
+}
+.consent-install:hover {
+  background: var(--accent-hover);
+}
+.consent-install:disabled {
+  opacity: 0.6;
+}

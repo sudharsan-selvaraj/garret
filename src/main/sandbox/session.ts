@@ -62,7 +62,9 @@ export async function listSandboxedWidgets(): Promise<InstalledWidget[]> {
         consentedPermissions: Array.isArray(record.consentedPermissions)
           ? record.consentedPermissions
           : [],
-        enabled: record.enabled !== false
+        enabled: record.enabled !== false,
+        version: typeof record.version === 'string' ? record.version : '0.0.0',
+        source: typeof record.source === 'string' ? record.source : ''
       })
     } catch {
       // no valid install record — not a managed install; skip

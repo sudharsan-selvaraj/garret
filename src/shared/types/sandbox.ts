@@ -6,6 +6,9 @@ export interface InstalledWidget {
   /** Authoritative permission ceiling — from the host-written install record. */
   consentedPermissions: string[]
   enabled: boolean
+  /** From the install record (manager display). */
+  version: string
+  source: string
 }
 
 /** A validated install proposal shown on the consent screen before any files are written. */

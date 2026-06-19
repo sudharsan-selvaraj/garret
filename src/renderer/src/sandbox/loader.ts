@@ -64,3 +64,11 @@ export async function loadSandboxedWidgets(): Promise<void> {
     console.warn('[sandbox] failed to load installed widgets', err)
   }
 }
+
+/** Re-sync the registry's sandboxed widgets after an install/remove/enable change. */
+export async function resyncSandboxedWidgets(): Promise<void> {
+  for (const p of registry.list()) {
+    if (p.manifest.id.startsWith('sandbox:')) registry.unregister(p.manifest.id)
+  }
+  await loadSandboxedWidgets()
+}

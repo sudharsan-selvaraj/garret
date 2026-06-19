@@ -19,6 +19,11 @@ class PluginRegistry {
     plugins.forEach((p) => this.register(p))
   }
 
+  /** Remove a plugin (used when a sandboxed widget is uninstalled/disabled/re-synced). */
+  unregister(id: string): void {
+    this.plugins.delete(id)
+  }
+
   get(id: string): AnyWidgetPlugin | undefined {
     return this.plugins.get(id)
   }
