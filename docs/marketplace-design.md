@@ -117,9 +117,10 @@ A single pinned signing key has no recovery path (leak ⇒ every shipped build t
 attacker until users install a new binary) and "ship 2 keys (OR)" *doubles* the compromise
 surface. Adopt a two-tier scheme:
 
-- **Root keys — offline, air-gapped/hardware, pinned in the binary as a 2-of-2 quorum** (AND,
-  not OR: an attacker needs *both*; this *narrows* the surface). Their only job: sign a
-  short-lived **delegation** — "these signing key(s) are valid until `<expiry>`."
+- **Root keys — TWO hardware tokens (DECIDED, e.g. YubiKeys), 2-of-2 quorum** pinned in the
+  binary (AND, not OR: an attacker needs *both* tokens; this *narrows* the surface). Key
+  material never leaves the tokens. Their only job: sign a short-lived **delegation** — "these
+  signing key(s) are valid until `<expiry>`."
 - **Signing key — operationally hot** (may live in CI), signs `registry.json` +
   `timestamp.json`.
 - **Recovery:** if the signing key leaks, the roots sign a new delegation that excludes it —
@@ -207,11 +208,12 @@ highest-CVE-risk code:
 - Stream gzip with a **running decompressed-byte counter that aborts mid-stream** (no
   "extract-then-check" convenience API). `collectFiles`'s 20 MB/200-file caps then run as a
   **second** check on the temp dir.
-- **Dependency decision (DECIDE before building):** Node has gzip (`zlib`) but **no built-in
-  tar**. Options: (a) add the `tar` npm package — pure-JS, no install scripts (satisfies the
-  org `--ignore-scripts` policy) but pulls a dep chain into the hostile-byte path; (b) hand-roll
-  the 512-byte-block tar reader (~a week with adversarial tests). `.garret` is **zip**, a
-  *different* format → a second extractor (`yauzl` or hand-rolled, its own Zip-Slip surface).
+- **Dependency decision (DECIDED):** use **`tar`** (tar.gz, npm install path) + **`yauzl`**
+  (zip, `.garret`) — both pure-JS, no install scripts (satisfy the org `--ignore-scripts`
+  policy). **Pin exact versions + vendor-audit** the dep chains, since they parse hostile bytes;
+  the sandbox remains the real safety net. (Rejected: hand-rolling tar PAX/GNU + zip safely is
+  ~a week each and its own CVE risk.) The guards (typeflag/slip/caps) wrap these parsers; we own
+  the policy, the libs own the byte-format parsing.
 - Ship the extractor as a **standalone, unit-tested module with adversarial fixtures**
   (tar-slip, symlink, hardlink, device, bomb, `package/` prefix abuse, long-path) **before**
   wiring it to install.
@@ -453,8 +455,9 @@ remains the default, unaffected path. **Defer packs until single-widget is shipp
 
 ## 11. Open questions (trimmed — most now answered in §3)
 
-- **Root key custody:** hardware token vs offline machine for the 2 roots; the precise overlap
-  procedure for a root rotation (app-update path).
+- **Root key custody: DECIDED — two hardware tokens, 2-of-2 quorum.** Remaining: the precise
+  overlap procedure for a (rare) root rotation via app update.
+- **Extractor dependency: DECIDED — `tar` + `yauzl`, pinned + vendor-audited** (§4a).
 - **Max-staleness number** (§3.5 proposes 14 days), the timestamp `expires` window (24–72 h),
   and the **delegation lifetime** — confirm all three are mutually consistent. Proposed
   resolution (§3.5): online verification rejects an expired delegation, but offline-load within
