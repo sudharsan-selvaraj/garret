@@ -29,6 +29,14 @@ The through-line: **reduce context-switching cost toward zero.**
 | **Snippets** | Per-tool click-to-copy cheat sheets (one widget for Git, one for your project, …). |
 | **Clock · Notes · Weather · Web embed** | The essentials, plus any site as a live `<webview>`. |
 
+## Build your own widget
+
+Third-party widgets run **sandboxed** (isolated webview, capability-gated). Install
+[`garret-widget-sdk`](https://www.npmjs.com/package/garret-widget-sdk), write a React
+component, declare what it needs, and install the built folder via **Settings → Widgets**.
+Full walkthrough: **[docs/widget-authoring.md](docs/widget-authoring.md)** · working example:
+[`examples/sandbox-selftest`](examples/sandbox-selftest).
+
 ## Highlights
 
 - **Free-form canvas** — drag/resize anywhere; named **layouts** you can rename and
