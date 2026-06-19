@@ -28,8 +28,10 @@ export function sandboxWidgetsDir(): string {
   return join(app.getPath('userData'), 'widgets')
 }
 
-/** A widget id is part of the origin + a directory name — keep it to a safe charset. */
-const SAFE_ID = /^[a-zA-Z0-9._-]+$/
+/** A widget id is part of the origin + a directory name. Leading alphanumeric + lowercase
+ *  charset means no `..`/leading-dot path forms can reach the filesystem (defense in depth;
+ *  install validation is the primary gate). */
+const SAFE_ID = /^[a-z0-9][a-z0-9._-]*$/
 
 const MIME: Record<string, string> = {
   '.html': 'text/html',

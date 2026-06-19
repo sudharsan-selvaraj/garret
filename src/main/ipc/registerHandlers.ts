@@ -15,6 +15,8 @@ import {
   prepareSandboxPartition,
   listSandboxedWidgets
 } from '@main/sandbox/session'
+import { planInstall, commitInstall, removeWidget, setEnabled } from '@main/sandbox/install'
+import type { InstallPlan } from '@shared/types/sandbox'
 
 /** Hooks the main process provides to IPC handlers (things outside the persistence layer). */
 export interface IpcHooks {
@@ -88,6 +90,10 @@ export function registerIpcHandlers(hooks: IpcHooks): void {
     return { preloadUrl: bridgePreloadPath() }
   })
   ipcMain.handle(Channels.sandboxList, () => listSandboxedWidgets())
+  ipcMain.handle(Channels.sandboxInstallPlan, (_e, srcDir: string) => planInstall(srcDir))
+  ipcMain.handle(Channels.sandboxInstallCommit, (_e, plan: InstallPlan) => commitInstall(plan))
+  ipcMain.handle(Channels.sandboxRemove, (_e, id: string) => removeWidget(id))
+  ipcMain.handle(Channels.sandboxSetEnabled, (_e, id: string, on: boolean) => setEnabled(id, on))
 
   ipcMain.handle(Channels.serviceStatus, (_e, id: string) => getService(id).status())
   ipcMain.handle(Channels.serviceConnect, async (_e, id: string, creds: Record<string, unknown>) => {

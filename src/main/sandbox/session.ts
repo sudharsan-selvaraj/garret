@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url'
 import { readdir, readFile } from 'node:fs/promises'
 import { app, session as electronSession } from 'electron'
 import { registerSandboxProtocol, sandboxWidgetsDir, SANDBOX_SCHEME } from './protocol'
+import type { InstalledWidget } from '@shared/types/sandbox'
 
 /**
  * Absolute file URL to the bridge preload injected into widget webviews.
@@ -35,12 +36,12 @@ export function prepareSandboxPartition(partition: string): void {
   })
 }
 
-export interface InstalledWidget {
-  id: string
-  manifest: Record<string, unknown>
-}
-
-/** Discover installed sandboxed widgets: <userData>/widgets/<id>/manifest.json. */
+/**
+ * Discover installed sandboxed widgets. A directory counts as installed only if it has a
+ * host-written `.garret-install.json` record; permissions + enabled come from THAT record,
+ * never from the widget's own manifest.json (which is display-only). Returns disabled
+ * widgets too (flagged), so the manager can list them; the loader filters on `enabled`.
+ */
 export async function listSandboxedWidgets(): Promise<InstalledWidget[]> {
   let dirs: string[]
   try {
@@ -50,11 +51,21 @@ export async function listSandboxedWidgets(): Promise<InstalledWidget[]> {
   }
   const out: InstalledWidget[] = []
   for (const id of dirs) {
+    if (id.startsWith('.')) continue // skip temp/hidden dirs
     try {
-      const raw = await readFile(join(sandboxWidgetsDir(), id, 'manifest.json'), 'utf8')
-      out.push({ id, manifest: JSON.parse(raw) as Record<string, unknown> })
+      const base = join(sandboxWidgetsDir(), id)
+      const manifest = JSON.parse(await readFile(join(base, 'manifest.json'), 'utf8'))
+      const record = JSON.parse(await readFile(join(base, '.garret-install.json'), 'utf8'))
+      out.push({
+        id,
+        manifest: manifest as Record<string, unknown>,
+        consentedPermissions: Array.isArray(record.consentedPermissions)
+          ? record.consentedPermissions
+          : [],
+        enabled: record.enabled !== false
+      })
     } catch {
-      // not a widget directory — skip
+      // no valid install record — not a managed install; skip
     }
   }
   return out

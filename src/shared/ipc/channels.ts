@@ -4,6 +4,7 @@ import type { ServiceStatus } from '../types/services'
 import type { PollUpdate, WatchSpec } from '../types/poll'
 import type { Preferences } from '../types/preferences'
 import type { ClipItem } from '../types/clipboard'
+import type { InstallPlan, InstalledWidget } from '../types/sandbox'
 import type { WatchOptions } from 'garret-core'
 
 /**
@@ -28,6 +29,10 @@ export const Channels = {
   pluginsOpenExternal: 'plugins:open-external',
   sandboxPrepare: 'sandbox:prepare',
   sandboxList: 'sandbox:list',
+  sandboxInstallPlan: 'sandbox:install-plan',
+  sandboxInstallCommit: 'sandbox:install-commit',
+  sandboxRemove: 'sandbox:remove',
+  sandboxSetEnabled: 'sandbox:set-enabled',
   serviceStatus: 'service:status',
   serviceConnect: 'service:connect',
   serviceDisconnect: 'service:disconnect',
@@ -178,12 +183,20 @@ export interface GarretApi {
     /** Open a URL in the browser AFTER a native confirm dialog; resolves true if opened. */
     openExternalConfirmed(url: string): Promise<boolean>
   }
-  /** Sandboxed (third-party) widget runtime. */
+  /** Sandboxed (third-party) widget runtime + install lifecycle. */
   sandbox: {
     /** Configure a widget's partition session guards BEFORE its webview navigates. */
     prepare(partition: string): Promise<{ preloadUrl: string }>
-    /** Installed sandboxed widgets (id + on-disk manifest). */
-    list(): Promise<{ id: string; manifest: Record<string, unknown> }[]>
+    /** Installed sandboxed widgets (display manifest + the authoritative consented perms). */
+    list(): Promise<InstalledWidget[]>
+    /** Validate a source folder + produce a consent plan (writes nothing). */
+    planInstall(srcDir: string): Promise<InstallPlan>
+    /** Commit a plan the user confirmed (safe copy + install record). */
+    commitInstall(plan: InstallPlan): Promise<{ ok: boolean; error?: string }>
+    /** Uninstall a widget (deletes its dir + record). */
+    remove(id: string): Promise<void>
+    /** Enable/disable without uninstalling. */
+    setEnabled(id: string, enabled: boolean): Promise<void>
   }
   /** Open a URL in the user's default browser. */
   openExternal(url: string): void
