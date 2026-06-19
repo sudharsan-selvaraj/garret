@@ -1,4 +1,4 @@
-import { app, BrowserWindow, globalShortcut, ipcMain, Menu, session, Tray } from 'electron'
+import { app, BrowserWindow, globalShortcut, ipcMain, Menu, session, shell, Tray } from 'electron'
 import { Channels } from '@shared/ipc/channels'
 import { registerIpcHandlers } from '@main/ipc/registerHandlers'
 import { initScheduler } from '@main/poll/scheduler'
@@ -147,21 +147,51 @@ app.whenReady().then(() => {
     refreshCalendarMonitor: startCalendarMonitor
   })
   registerClipboardHandlers()
+
+  // Webview guests must never spawn an in-app popup: an unhandled window.open also crashes
+  // the main process with "Render frame was disposed before WebFrameMain could be accessed"
+  // (Electron touches the popup's frame after it's torn down). Web-embed guests open http(s)
+  // links in the user's browser; sandbox guests (garret-widget://) deny silently — they must
+  // route links through sdk.openExternal, which prompts the user.
+  app.on('web-contents-created', (_e, contents) => {
+    if (contents.getType() !== 'webview') return
+    contents.setWindowOpenHandler(({ url }) => {
+      const fromSandbox = contents.getURL().startsWith('garret-widget:')
+      if (!fromSandbox && /^https?:\/\//i.test(url)) void shell.openExternal(url)
+      return { action: 'deny' }
+    })
+  })
+
   // Serve garret-widget:// on the default session. SandboxWidget (step 5) also registers
   // it on each widget's partition session, where the isolated webviews actually load.
   registerSandboxProtocol(session.defaultSession.protocol)
 
-  // Production-only host-renderer CSP: drop `unsafe-eval` (the dev new-Function external
-  // tier is gated off in packaged builds, so production never needs eval) and `object-src`.
-  // Dev keeps Vite's eval-based HMR. No `frame-src` restriction so the Calendar/Jira
-  // web-embed <webview>s still load. (Build-time-verify: confirm the header is present in
-  // a packaged build's DevTools.)
-  if (app.isPackaged) {
-    const HOST_CSP =
-      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
-      "img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https: wss:; " +
-      "object-src 'none'; base-uri 'none'"
+  // Host-renderer CSP — applied in BOTH dev and production. (Gating it to packaged builds
+  // hid CSP-violation bugs until release and left dev with no policy at all.) Production is
+  // strict; dev additionally permits Vite's eval/inline HMR + its dev-server websocket.
+  //
+  // `frame-src` must allow `https:` because the Web-embed widget loads user-chosen sites in a
+  // <webview> — a `garret-widget:`-only frame-src (per design §11) would break it. `https:`
+  // + `garret-widget:` covers both real cases; `http:`/`data:`/`blob:` frames stay blocked.
+  // Marketplace metadata (names/descriptions/icons) must be rendered as inert text + img-src
+  // images, never framed.
+  {
+    const dev = !app.isPackaged
+    const HOST_CSP = [
+      "default-src 'self'",
+      dev ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'" : "script-src 'self'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: https:",
+      "font-src 'self' data:",
+      dev ? "connect-src 'self' http: https: ws: wss:" : "connect-src 'self' https: wss:",
+      "frame-src 'self' garret-widget: https:",
+      "object-src 'none'",
+      "base-uri 'none'"
+    ].join('; ')
     session.defaultSession.webRequest.onHeadersReceived((details, cb) => {
+      // Never override the sandbox protocol's own stricter WIDGET_CSP if a garret-widget://
+      // response is served on the default session — leave those headers untouched.
+      if (details.url.startsWith('garret-widget:')) return cb({})
       cb({ responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [HOST_CSP] } })
     })
   }
