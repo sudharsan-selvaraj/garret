@@ -1,17 +1,23 @@
-# Garret Widget Marketplace — design
+# Garret Widget Marketplace — design (rev 2)
 
-Status: **design, pre-implementation.** Reviewed by a three-lens staff panel (native
-windowing · security/supply-chain · distribution). This doc captures the decisions that
-survived that review. Build nothing until the **trust model** (§3) is settled.
+Status: **design, pre-implementation.** Two critic rounds applied:
+- Round 1 — three-lens panel (windowing · security · distribution): set the direction
+  (npm-backed + signed allowlist; Item 4 deferred).
+- Round 2 — two adversarial reviews of *this doc* (trust/key-custody · implementation
+  realism). Rev 2 folds in their must-fixes: a **freshness/anti-rollback layer**, a **two-tier
+  key hierarchy**, a **net-new slip-safe extractor** treated as its own slice, **data-model
+  back-compat as slice 0**, CI downgraded to **static validation**, and honest re-estimates.
+
+Build nothing until §3 (trust) and §10 slice 0 are agreed.
 
 ## 1. Goal & scope
 
-Let users **discover and one-click-install** community widgets from inside Garret, and let
-authors **publish** their own — without Garret shipping every widget in-tree. Built-ins stay
-core; everything else is a sandboxed third-party widget installed through the existing
-consent + integrity path.
+Let users **discover and one-click-install** community widgets inside Garret, and let authors
+**publish** their own — without Garret shipping every widget in-tree. Built-ins stay core;
+everything else is a sandboxed third-party widget installed through the existing consent +
+integrity path.
 
-Three widget **sources**, one enforcement path:
+Three **sources**, one enforcement path:
 
 | Source | Trust | How it arrives |
 |---|---|---|
@@ -19,219 +25,342 @@ Three widget **sources**, one enforcement path:
 | **Marketplace** | curated + sandboxed + consented | npm package, vouched by a signed allowlist |
 | **Sideloaded** | self-trust + sandboxed + consented | a folder or `.garret` file the user picks |
 
-**In scope:** npm-backed marketplace, a signed curated allowlist, Discover UI, hostile-safe
-download/install, update detection, provenance UX, `.garret` packaging for sideload.
+**In scope:** npm-backed marketplace, a signed+fresh curated allowlist, Discover UI,
+hostile-safe download/extract/install, update detection, provenance UX, `.garret` packaging.
 
-**Out of scope (deferred):** floating widgets over other apps (Item 4) and per-pixel
-click-through; per-*author* cryptographic signing (only the *index* is signed in v1 — see
-§3); ratings/analytics; a hosted backend service (we use npm + a git repo + a CDN, no server).
+**Deferred:** floating widgets over other apps (Item 4) + per-pixel click-through; per-*author*
+signing (v1 signs only the index); ratings/analytics; any hosted backend (we use npm + a git
+repo + a CDN, no server).
 
 ## 2. Decisions (locked)
 
-- **Backend = the npm registry + a curated, signed allowlist.** Authors `npm publish` a
-  `garret-widget-*` package; a small `registry.json` we control lists the *blessed* packages.
-  npm gives versioning, immutable per-version tarballs, `deprecate`/yank, a CDN, and
-  per-publish provenance — and we already publish `garret-core`/`garret-widget-sdk` to npm
-  with provenance (`.github/workflows/publish-sdk.yml` is the template).
-- **`.garret` is NOT a marketplace prerequisite.** The installer already takes a *directory*
-  (`planInstall(srcDir)` / `commitInstall` in `src/main/sandbox/install.ts`). The marketplace
-  ships folder-first: download → unpack to a temp dir → existing `planInstall`. `.garret` is a
-  *sideload convenience* only.
-- **Item 4 (float over other apps) is parked.** It needs a per-widget-window refactor + a
-  security review; it does not gate any of the distribution work.
+- **Backend = npm registry + a curated, signed, fresh allowlist.** Authors `npm publish` a
+  `garret-widget-*` package; a `registry.json` we control lists *blessed* `{package, version,
+  sha256}` triples. npm gives immutable-per-version tarballs, `deprecate`/yank, a CDN, and
+  per-publish provenance (`.github/workflows/publish-sdk.yml` is the template).
+- **`.garret` is NOT a marketplace prerequisite.** The installer takes a *directory*
+  (`planInstall`/`commitInstall`). Marketplace ships folder-first: download → extract to temp →
+  existing `planInstall`. `.garret` is a *sideload convenience* (and a **second**, zip
+  extractor — see §10).
+- **Item 4 (float over apps) is parked.** Independent of the distribution work.
+- **Data-model back-compat is slice 0** (existing installs must not break — §9).
 
-## 3. Trust model (the part the review broke — read this first)
+## 3. Trust model
 
-The naive plan — "fetch `registry.json`, read `{downloadUrl, sha256}`, download, verify the
-hash against the index" — is **circular**: the bytes and the hash come from the same document
-over the same channel, so anyone who controls the index (a compromised maintainer token, a
-merged-but-malicious PR, a CDN/edge compromise) just lists a matching hash for malicious bytes
-and verification passes. sha256-from-the-index proves only *transit integrity*, not publisher
-honesty.
+The naive "fetch index, verify its self-listed sha256" is **circular** and was rejected in
+rev 1. Rev 2's root is a key pinned in the binary — but a *signature alone proves
+authenticity, not recency*, so we add a freshness layer (a scaled-down TUF posture) and a key
+hierarchy with a real recovery path.
 
-**Fix — anchor the trust root to a key pinned in the Garret binary:**
+### 3.1 Artifact integrity (sound, keep)
 
-1. **The allowlist is signed.** `registry.json` has a detached signature
-   `registry.json.sig` (ed25519 / minisign). Garret ships the maintainer's **public key
-   compiled into the app**. Main verifies the signature before trusting *any* entry. An
-   attacker who alters the index can't re-sign it without the private key.
-2. **Each entry pins an exact, reviewed version + its hash:**
-   `{ id, npmPackage, version, sha256, author, permissions[], categories[], iconUrl,
-   screenshots[], blessed: true, revoked?: bool, minApiVersion }`. Because the *index* is
-   signed, the `sha256` is now an attacker-uncontrollable assertion — it's vouched by the
-   pinned key, not self-referential. That makes the post-download hash check meaningful.
-3. **Artifact = the npm tarball for that exact version.** npm tarballs are immutable per
-   version and carry provenance. The download host is therefore *fixed*
-   (`registry.npmjs.org` / jsDelivr `/npm/`), derived from `{npmPackage, version}` — **never a
-   free-form `downloadUrl` from the index** (that would reintroduce SSRF).
+- The signed index pins each widget as `{npmPackage, version, sha256}`. Because the **index is
+  signed**, the `sha256` is attacker-uncontrollable (forging it needs the signing key) — this
+  is what makes the post-download hash check meaningful (not circular).
+- **Artifact = the exact npm tarball for that version.** Download host is **fixed**
+  (`registry.npmjs.org`, jsDelivr `/npm/` as verified-by-hash mirror) and *derived* from
+  `{package, version}` — **never a free-form URL from the index** (that was the SSRF hole).
+- The sha256 pin is precisely what defends against npm's **unpublish/republish-within-72h** and
+  a **compromised npm account**: republished bytes won't match the signed hash → install fails
+  closed (an integrity attack degrades to a denial-of-service, the correct trade).
+- **No code execution at any point** (verified against the code): `collectFiles` enforces a
+  static `ALLOWED_EXT` (html/js/css/json/img/font — no `.sh`/binaries); nothing runs `npm
+  install` or any lifecycle script; the tarball's `package.json` is served as an inert `.json`
+  file, never interpreted; files are served read-only via `protocol.handle` under the sandbox
+  CSP. A `node_modules`/`postinstall` inside a tarball is therefore inert.
 
-Threat model after this:
+### 3.2 Freshness & anti-rollback (NEW — fixes the rev-1 replay hole)
+
+A revocation flag inside a non-expiring signed document is defeatable: a network/CDN/proxy
+adversary (the org even runs a jfrog proxy) serves an **old, validly-signed** index that still
+blesses a now-revoked version. Signature verifies; kill-switch silently disabled. Fix:
+
+- **Two signed documents.** A small, **always-fetched** `timestamp.json` —
+  `{ schemaVersion, seq (monotonic int), signed_at, expires, registrySha256, revoked:
+  [{npmPackage, version}] }` — and the larger `registry.json` it pins by hash. (TUF's
+  timestamp/snapshot split, minimized.)
+- **Client rules (fail closed):**
+  - Reject any `timestamp.json` whose `expires` is in the past.
+  - Reject any whose `seq` is **lower than the highest seq ever seen** (persisted high-water
+    mark) → anti-rollback.
+  - Short `expires` (24–72 h); the signer **re-signs on a schedule even when nothing changed**,
+    so the freshness window stays tight.
+- **Pin the artifact, NOT the registry URL.** Resolves the rev-1 §8 contradiction: tarballs are
+  pinned by `{package, version, sha256}` (immutable); the registry/timestamp are served from a
+  path that always returns the *latest* signed copy, with integrity from signature + `seq` +
+  `expires`, not URL immutability. (URL-pinning and revocation are mutually exclusive.)
+
+### 3.3 Revocation (single source, fail-closed at load)
+
+- **One canonical list:** `timestamp.json.revoked` at **`{npmPackage, version}` granularity**
+  ("revoked beats blessed, always"). Drop the per-entry `revoked?` bool. A bad version can be
+  killed without killing the good one.
+- **At install:** require a fresh (`seq`/`expires`-valid) timestamp; refuse revoked.
+- **At load** (`loadSandboxedWidgets`, today fully offline): check against the **cached** last
+  verified timestamp (network not required to load). Define staleness behavior (§3.5).
+- **Limitation (must state in UI/docs):** the by-name "Develop" install path (§8) is **not**
+  covered by the registry, so revocation does not reach by-name installs. Acceptable because
+  that path is gated behind the Develop tab + full unverified-author consent + the sandbox — but
+  it must be stated, not implied universal.
+
+### 3.4 Key hierarchy & rotation (NEW — fixes the single-pinned-key dead end)
+
+A single pinned signing key has no recovery path (leak ⇒ every shipped build trusts the
+attacker until users install a new binary) and "ship 2 keys (OR)" *doubles* the compromise
+surface. Adopt a two-tier scheme:
+
+- **Root keys — offline, air-gapped/hardware, pinned in the binary as a 2-of-2 quorum** (AND,
+  not OR: an attacker needs *both*; this *narrows* the surface). Their only job: sign a
+  short-lived **delegation** — "these signing key(s) are valid until `<expiry>`."
+- **Signing key — operationally hot** (may live in CI), signs `registry.json` +
+  `timestamp.json`.
+- **Recovery:** if the signing key leaks, the roots sign a new delegation that excludes it —
+  **and already-shipped builds recover**, because they trust the *roots* and the roots can
+  retire a signing key online. No app update needed for signing-key rotation.
+- **Root rotation** (rare) still needs an app update; mitigated by the 2-of-2 quorum and a
+  documented overlap window. Loss of one root ⇒ re-key via app update; loss of both ⇒ the true
+  ceiling (treat root custody accordingly).
+- Verification chain: pinned roots → verify delegation (quorum, unexpired) → delegation names
+  signing key → verify `timestamp.json` (fresh) → verify `registry.json` (hash matches
+  timestamp) → trust entries.
+
+### 3.5 Offline & staleness (NEW — fixes "use cached forever")
+
+- **Install:** requires a fresh, verified timestamp. No network / expired / rolled-back → **no
+  install**.
+- **Load of already-installed widgets:** use the cached verified registry **only if within a
+  max-staleness** (proposed **14 days**). Within window + refresh fails → load normally but show
+  a "couldn't verify (cached N days ago)" banner. **Beyond max-staleness → hard-disable
+  marketplace widgets** (built-in + sideloaded keep loading). Pick the number explicitly; never
+  "trust cached forever."
+- **Offline-load is governed by the cached-timestamp staleness clock, NOT the delegation's own
+  `expires`.** The delegation (§3.4) is short-lived for *online* freshness; an offline client
+  within the 14-day window accepts the last-fetched delegation+timestamp even if the
+  delegation's own `expires` has passed (it's already in a degraded, banner-flagged state, and
+  hard-disabled at the window edge). Otherwise a client offline longer than the (hours-scale)
+  delegation lifetime could never load its widgets — the staleness window would be moot. So:
+  online verify rejects an expired delegation; offline-within-window does not. Confirm the two
+  lifetimes (delegation `expires` vs 14-day window) so they don't contradict — see §11.
+
+### 3.6 Threat model (rev 2)
 
 | Threat | Mitigation |
 |---|---|
-| Tampered index (CDN/MITM/bad merge) | signature check against pinned key (§3.1) |
-| Malicious bytes with matching hash | hash is signed; can't forge without the key |
-| SSRF via download URL | host is fixed (npm), not index-supplied |
-| Compromised **maintainer signing key** | residual — rotate-key + revocation list (§8); the real ceiling |
-| Hostile-but-*consented* widget | the sandbox caps capabilities (this is the real safety net) |
-| Blind code-swap on update | no silent code update; re-consent on any code change (§5) |
-
-> The runtime sandbox (isolation + the `net.ts` SSRF gate + the consent-ceiling install) is
-> genuinely strong and is the impact-limiter. The marketplace must supply **provenance** the
-> sandbox can't: *who* wrote this and *did the code change*. "The sandbox is the safety net"
-> is true for blast radius, false for "is this widget trustworthy."
+| Tampered index (CDN/MITM/bad merge) | signature vs pinned roots → delegation → signing key (§3.4) |
+| **Replay of old signed index (revocation bypass)** | `seq` high-water-mark + `expires` fail-closed (§3.2) |
+| Malicious bytes w/ matching hash | hash signed; unforgeable without the signing key |
+| SSRF via download URL | host fixed (npm), not index-supplied (§3.1) |
+| npm unpublish/republish, compromised npm acct | sha256 pin → mismatch fails closed (§3.1) |
+| Signing-key compromise | roots retire it via delegation; shipped builds recover (§3.4) |
+| **Root-key compromise (both)** | residual ceiling → offline quorum custody; app-update re-key |
+| Stale/offline client trusting old blessings | max-staleness hard-disable (§3.5) |
+| Hostile-but-consented widget | sandbox caps capabilities (the real blast-radius limit) |
+| Blind code-swap on update | re-consent on any code-hash change + author shown (§5) |
+| Beacon via metadata image URL | icons derived + `img-src` host-allowlisted, not free-form (§6) |
 
 ## 4. Install pipeline
 
 Main owns the entire remote flow; the renderer only says "install blessed entry `<id>`."
 
 ```
-Discover (renderer)
-  └─ invoke: marketplace.install(id)         ← an id, NOT a path
+renderer → invoke marketplace.install(id)         (an id, NOT a path)
 main:
-  1. load + verify signed registry  → entry{npmPackage, version, sha256, author, perms}
-  2. resolve tarball URL from {npmPackage, version} on registry.npmjs.org
-  3. download via the GUARDED undici agent (reuse net.ts: resolved-IP block, https-only,
-     per-redirect re-check), with a COMPRESSED-size cap + content-type check
-  4. verify sha256(tarball) === entry.sha256        ← now non-circular (signed index)
-  5. extract .tgz to a main-owned temp dir with a SLIP-SAFE extractor
-     (port collectFiles' lstat/containment/symlink/extension guards; cap DECOMPRESSED
-     size + file count DURING extraction, not after)
-  6. planInstall(tempDir)            ← reuse existing validation + hashing
-  7. bind identity: refuse if id collides with an installed widget of a different
-     origin/author (block takeover of another widget's dir — commitInstall does rm+rename)
-  8. consent screen (existing) → commitInstall, writing origin='marketplace',
-     npmPackage, author into the InstallRecord
+  1. verify chain: roots → delegation → timestamp(fresh) → registry → entry
+  2. resolve tarball URL from {npmPackage, version} (registry.npmjs.org)
+  3. download via the GUARDED net.ts agent (resolved-IP block, https-only, per-redirect
+     re-check), with a COMPRESSED-size cap + content-type check + streamed-to-temp
+  4. verify sha256(tarball) === entry.sha256                 (non-circular: signed index)
+  5. extract .tgz with the slip-safe streaming extractor (§4a) to a MAIN-OWNED temp dir,
+     enforcing decompressed-size + file-count caps DURING extraction
+  6. planInstall(tempDir)                                    (reuse existing validation + hash)
+  7. identity-bind: refuse if id collides with an installed widget of a different
+     origin/author (today commitInstall blindly rm+renames — this guard is NEW)
+  8. return plan → consent screen → on confirm: commitInstall, writing
+     origin='marketplace', npmPackage, author, version into the InstallRecord
+  9. cleanup the extract temp dir on success, failure, AND consent-cancel
 ```
 
-Hostile-download requirements (security review, non-negotiable):
-- Reuse `net.ts`'s guarded agent — do **not** write a fresh `undiciFetch` (it would bypass the
-  SSRF defenses).
-- https-only; host allowlisted to the npm registry / CDN.
-- Cap **compressed** size before/while reading **and** **decompressed** size during
-  extraction (zip/tar-bomb). The existing 20 MB / 200-file caps apply to the *expanded* tree.
-- Slip-safe extractor for **both** archive types: npm tarballs are `.tgz` (gzip+tar);
-  sideloaded `.garret` is a zip. Both need per-entry containment + symlink rejection.
-- `session.ts`'s `onBeforeRequest` cancels every non-`garret-widget:` request on widget
-  partitions — so the download must run in **main**, never in a sandbox session.
+### 4a. The extractor (net-new module, its own slice — not a "port")
+
+The existing `collectFiles` guards operate on an *already-materialized folder* (`readdir` +
+`lstat` real inodes). A tar extractor decides safety on a **byte stream before anything hits
+disk** — the guards must be **rewritten against the tar model**, the project's single
+highest-CVE-risk code:
+
+- Reject non-regular entries by tar `typeflag`: symlink (2), **hardlink (1)**, char/block
+  device, FIFO. (`collectFiles` never had to consider hardlinks/devices.)
+- Strip exactly one leading `package/` segment (npm convention) — itself an injection surface
+  (`package/../../evil`); normalize + containment-check the *declared* path **after** strip.
+- Handle GNU/PAX long-name/long-link extension records.
+- Stream gzip with a **running decompressed-byte counter that aborts mid-stream** (no
+  "extract-then-check" convenience API). `collectFiles`'s 20 MB/200-file caps then run as a
+  **second** check on the temp dir.
+- **Dependency decision (DECIDE before building):** Node has gzip (`zlib`) but **no built-in
+  tar**. Options: (a) add the `tar` npm package — pure-JS, no install scripts (satisfies the
+  org `--ignore-scripts` policy) but pulls a dep chain into the hostile-byte path; (b) hand-roll
+  the 512-byte-block tar reader (~a week with adversarial tests). `.garret` is **zip**, a
+  *different* format → a second extractor (`yauzl` or hand-rolled, its own Zip-Slip surface).
+- Ship the extractor as a **standalone, unit-tested module with adversarial fixtures**
+  (tar-slip, symlink, hardlink, device, bomb, `package/` prefix abuse, long-path) **before**
+  wiring it to install.
+
+### 4b. Temp-dir lifecycle, concurrency, rollback
+
+- **Two distinct temp dirs:** the **extract** dir (download/unpack) and `commitInstall`'s own
+  `.tmp-*` dir, which must live **inside `sandboxWidgetsDir()`** because `rename` is atomic only
+  on the same filesystem. The extract dir may be elsewhere, but `planInstall`/`commitInstall`
+  read from it — never assume a cross-volume rename. Specify the extract location.
+- **Cleanup** the extract dir on success, failure/hash-mismatch, **and consent-cancel** (the
+  Cancel button leaves a fully-extracted widget otherwise). `commitInstall` only cleans its own
+  `.tmp-*`.
+- **Concurrency:** serialize marketplace installs (a simple in-main mutex), and coordinate the
+  background update check (§5) so it can't fire mid-install.
+- **Rollback:** failures before step 8 commit nothing; just delete temp + return a typed error
+  to the renderer.
+
+### 4c. IPC surface (NEW — enumerate, matching `channels.ts` rigor)
+
+- `marketplace:fetchIndex` → verified entries (or a typed signature/freshness error). Used by
+  Discover + the update checker.
+- `marketplace:install(id)` → runs steps 1–7, returns an `InstallPlan` for consent (tarball is
+  on disk during the prompt — see cleanup).
+- `marketplace:commit(plan)` → step 8 (or fold into the existing `sandboxInstallCommit`).
+- `marketplace:checkUpdates` + a push channel (e.g. `marketplace:updateAvailable`) for the
+  badge.
+- New `src/main/sandbox/registry.ts`: `loadVerifiedRegistry()`, `verifyChain()`,
+  `isRevoked(pkg, version)`, the pinned root keys + delegation logic.
 
 ## 5. Updates
 
-`InstallRecord.version` is free-text today and compared nowhere; update logic is **net-new**.
+`InstallRecord.version` is free-text today, compared nowhere; update logic is **net-new**.
 
-- **Detection:** background-compare installed `record.version` to the signed registry's pinned
-  version (semver). Show an "update available" badge in the Installed tab.
-- **No silent code auto-update.** A malicious v2 that keeps the *same* permission set
-  (reusing its one consented `network:` host + `storage`) passes integrity and adds zero
-  permissions — the existing re-consent (which fires only on *added* permissions) would never
-  prompt. So: **prompt on any code change**, showing **author identity** and a "code changed
-  since you installed" notice — not just on new permissions.
-- **Curation = version review.** The signed registry pins a *reviewed* version; a new version
-  appears to users only after the maintainer re-blesses (re-reviews + bumps + re-signs). This
-  keeps the maintainer as the code-review gate (the point of "under my supervision") at the
-  cost of update latency. Per-author signing (so trusted authors can ship updates without
-  re-review) is the documented scaling path — deferred.
-- **Revoke/yank:** the signed registry carries a `revoked` flag (and we honor npm
-  `deprecate`). Garret checks it at install **and at load**, and surfaces "this version was
-  withdrawn." This is the kill-switch the self-publish model needs.
-- Default is **manual** update (user clicks). Auto-update may later be opt-in *only* for
-  unchanged-code/permission cases.
+- **Where:** a **main-side** scheduler (renderer can't verify the signed index and isn't always
+  mounted) on a cadence with backoff; pushes the badge to the renderer.
+- **Join key:** installed records ↔ verified index by `npmPackage` (legacy records lack it —
+  §9). Semver-compare; **coerce** invalid/absent versions → "no update; still re-consent on any
+  code-hash change" (a malformed version must not suppress updates).
+- **No silent code auto-update.** A malicious v2 reusing the same permission set adds zero
+  permissions, so the existing `addedPermissions` re-consent never fires. Gate on **any
+  code-hash change** (`commitInstall` already computes a stable `sourceHash`) and show **author
+  identity** + "code changed since you installed." Detecting this re-runs the full
+  download→verify→extract→hash pipeline (not cheap — state it).
+- **Revoke at load** uses the **cached** verified timestamp (offline-safe; §3.3/§3.5), not a
+  blocking network fetch.
+- Default **manual** update. Auto-update may later be opt-in only for unchanged-code cases.
 
 ## 6. UX & workflow segregation
 
-**Discover lives in the Add-widget dialog, not Settings.** Installing from a Settings tab and
-then separately opening the Add dialog to place it is a broken funnel. Discover sits in
-`AddDialog` (`src/renderer/src/app/AddDialog.tsx`) so *find → install → place* is one flow.
+**Discover lives in the Add-widget dialog**, not Settings — so *find → install → place* is one
+funnel (`src/renderer/src/app/AddDialog.tsx`).
 
-- **Add widget dialog:** existing built-in groups **+ a "Discover" section** (search,
-  categories, screenshots, per-entry declared permissions). Install → existing consent →
-  immediately placeable in the same dialog.
-- **Settings → Widgets:** two tabs — **Installed** (manage / enable / disable / remove /
-  update, integrity + "tried (blocked)" disclosure — exists today in `ExtensionsManager.tsx`)
-  and **Develop** (sideload a folder or `.garret`, link to `docs/widget-authoring.md`).
+- `AddDialog` today is **fully synchronous** over an in-memory `registry.list()`; it has no
+  loading/error/**offline** states, and `buildGroups` assumes every item is a full
+  `AnyWidgetPlugin`. Discover entries are **not** plugins (`{id, npmPackage, author, perms,
+  screenshots}`) and arrive async over IPC. So Discover is a **structural** change: a
+  dual-source model + loading/error/offline UI + a shared consent flow (today `ConsentDialog`
+  lives in `ExtensionsManager` and must be extracted/shared). Honest effort **L**, and it
+  **depends on the data model (§9) + IPC (§4c)** existing first.
+- **Settings → Widgets:** two tabs — **Installed** (manage/enable/remove/update, integrity +
+  "tried (blocked)" disclosure — exists) and **Develop** (sideload folder/`.garret`, link to
+  `docs/widget-authoring.md`).
+- **Provenance badge at placement.** `buildGroups` lumps built-in/marketplace/sideloaded into
+  "General". Add a `provenance` field (`builtin | marketplace | sideloaded`) onto the plugin
+  (`loader.ts`) and a visible badge ("Unverified author" for marketplace/sideloaded) at
+  *placement*, not only at install consent.
+- **Metadata images** (icons/screenshots) are **derived + host-allowlisted** (§3.1 paranoia),
+  not free-form URLs from the index; rendered as inert `<img>` under the host `img-src`.
 
-**Provenance must be visible at placement time.** Today `buildGroups` (`AddDialog.tsx`) groups
-by `serviceId`, else "General" — so built-in, marketplace, and sideloaded widgets all land in
-one undifferentiated bucket. Add a `provenance` field (`builtin | marketplace | sideloaded`)
-carried onto the plugin (`loader.ts` `makeSandboxedPlugin`) and a **badge** on each widget
-item (e.g. "Unverified author" for marketplace/sideloaded). The consent screen already says
-unverified — but that's at install; the badge must also show at *placement*.
+## 7. Security requirements (gate before shipping)
 
-## 7. Security requirements (consolidated — gate before shipping)
-
-1. **Sign the allowlist; verify against a key pinned in the binary** (§3). Non-negotiable.
-2. **Treat the download as hostile** (§4): guarded agent, https-only, host allowlist,
-   compressed + decompressed caps, content-type, slip-safe extractor.
-3. **No silent code auto-update**; re-consent + author identity on any code change (§5).
-4. **Main owns the staging path** for remote installs; **bind install to registry identity**
-   and refuse cross-author id takeover (§4 step 7).
-5. **Provenance everywhere** + visible badge at placement (§6).
-6. **Host CSP** already hardened (`src/main/index.ts`: dev+prod, `frame-src` set, sandbox CSP
-   preserved). Marketplace metadata (names/descriptions/icons) must be rendered as **inert
-   text + `<img>`** (governed by `img-src`), **never** interpolated as HTML or framed.
+1. Signed chain: **quorum roots (pinned) → delegation → signing key**; verify before trusting
+   any entry (§3.4).
+2. **Freshness:** signed `timestamp.json` with `seq` + `expires`; client high-water-mark +
+   fail-closed (§3.2). Max-staleness hard-disable at load (§3.5).
+3. **Revocation** at `{package, version}`, single list, revoked-beats-blessed; by-name installs
+   explicitly uncovered (§3.3).
+4. **Hostile-safe download/extract** (§4/§4a): guarded agent, fixed host, compressed +
+   decompressed caps, slip/symlink/hardlink/device-safe streaming extractor.
+5. **Main owns staging; identity-bind**; no cross-author id takeover (§4 step 7).
+6. **No silent code update**; re-consent + author on any code change (§5).
+7. Host CSP already hardened (dev+prod, `frame-src`, sandbox CSP preserved). Metadata images
+   derived + allowlisted; never HTML-interpolated or framed (§6).
+8. Provenance field + badge at placement (§6).
 
 ## 8. The `garret-widgets` repo
 
-- **`registry.json`** — the curated allowlist (the entry schema in §3.2) + a top-level
-  `revoked: []`. **Signed** → `registry.json.sig`. Served via jsDelivr `/gh/` from a **pinned
-  tag/commit** (immutable), not a mutable `@main` (so a force-push can't silently change what
-  clients see between signature checks).
-- **Submission = PR.** CI validates each entry: the npm package resolves at the pinned
-  version; unpack the tarball and run the same allowlist (`collectFiles`) guards; schema +
-  size + permission sanity; a headless sandbox smoke-test (loads in a webview, asserts no
-  guard violations). Maintainer reviews → merges.
-- **Signing step** regenerates + signs `registry.json` (maintainer-held key; never in repo).
-- **Naming:** convention `garret-widget-<name>` (unscoped — `@garret` is unavailable; we
-  already own `garret-core`/`garret-widget-sdk`). The allowlist — not the name — is what makes
-  a package appear in Discover, which neutralizes typo/namespace squatting for *discovery*.
-  Develop/advanced users may install any `garret-widget-*` by name (with the full
-  unverified-author consent + sandbox).
+- **`registry.json`** (blessed `{id, npmPackage, version, sha256, author, permissions[],
+  categories[], minApiVersion}`) + **`timestamp.json`** (§3.2) + a **`delegation`** doc
+  (§3.4). registry/timestamp served via jsDelivr `/gh/` always-latest (integrity from the
+  chain, not URL immutability).
+- **Submission = PR.** **CI = static validation only** (feasible on a plain runner): npm
+  package resolves at the pinned version; unpack + run the `collectFiles`/extractor guards;
+  schema-validate; lint declared `network:`/`service:` permissions; confirm sha256. A
+  webview-based "runtime smoke-test" is **structurally unable** to catch runtime abuse (a
+  widget can detect headless / time-bomb / gate on a remote flag) and needs Electron + xvfb in
+  CI — so it is **manual-review-time / aspirational defense-in-depth, NOT a merge gate or trust
+  signal.** The real gate is the human re-bless + the sandbox.
+- **Signing** (delegation + timestamp + registry) uses the maintainer-held keys (roots offline;
+  signing key may be a CI secret) — never committed.
+- **Naming:** `garret-widget-<name>` (unscoped; `@garret` unavailable; we already own
+  `garret-core`/`garret-widget-sdk`). The **allowlist**, not the name, gates Discover, which
+  neutralizes typo/namespace squatting for discovery. Develop users may install any
+  `garret-widget-*` by name (full consent + sandbox; **not** revocation-covered — §3.3).
+- **Curation policy:** the human reviewer must scrutinize declared `network:` hosts (a blessed
+  widget declaring `network:*.attacker.com` is consented+sandboxed but the reviewer is the only
+  gate on whether that host should be allowed at all).
 
-## 9. Data-model changes
+## 9. Data model & back-compat (SLICE 0 — do first)
 
-`InstallRecord` (`src/main/sandbox/install.ts`) gains:
-```ts
-origin: 'marketplace' | 'sideloaded'   // 'builtin' never has a record
-npmPackage?: string                    // marketplace only
-author?: string                        // from the signed entry; shown on install/update
-// version is now semver-compared, not just stored
-```
-`InstalledWidget` / the plugin manifest (`loader.ts`) gains `provenance` for the badge.
-The signed-entry shape and the pinned public key live in a new `src/main/sandbox/registry.ts`.
+Existing installs have `.garret-install.json` records with **no `origin`/`author`/`npmPackage`**
+and a free-text `version`. New fields must be **optional with safe defaults**, or
+`listSandboxedWidgets` (which silently `continue`s on a record it can't handle) will make
+pre-existing widgets **vanish** from the Installed tab + board.
 
-## 10. Build order (vertical slices — value first, not horizontal layers)
+- `origin?: 'marketplace' | 'sideloaded'` → **default `'sideloaded'`** when absent (every legacy
+  record *was* a folder sideload — correct).
+- `author?`, `npmPackage?` → optional, undefined for legacy/sideloaded.
+- `version`: coerce invalid/absent → treated as "no update available; re-consent on code-hash
+  change." Never throw on bad semver.
+- `listSandboxedWidgets` must **keep defaulting absent fields** (it already does for
+  `version`/`source`) — never make a field required.
+- Plugin/`InstalledWidget` gains `provenance` for the badge (§6).
+- The signed-entry shape + pinned root keys live in `src/main/sandbox/registry.ts`.
 
-1. **Quick wins (mostly done).** `img-src 'self'` CSP relax for raster widget skins (host CSP
-   already hardened in this branch). **S**
-2. **Trust core + network-install slice.** `registry.ts` (fetch + **verify signed index**),
-   guarded download, slip-safe extract → temp → existing `planInstall`/`commitInstall`, with
-   identity binding. Folder-first; no `.garret`. **M–L** (the signing + hostile-download work
-   is the bulk).
-3. **Discover in the Add dialog** + provenance field & badge. **M**
-4. **Update detection** — semver compare, badge, changelog field, revoke/yank honored;
-   code-changed re-consent. **M**
-5. **`.garret` packaging** — sideload convenience (zip + the slip-safe extractor from #2). **S**
-6. **Render track (orthogonal):** bare/transparent render mode (Item 5 minus over-apps).
+## 10. Build order (rev 2 — honest effort)
 
-Smallest end-to-end value slice = #2 + a minimal #3: *open Add widget → Discover → pick →
-consent → installed & placeable, zero local files*. Ship that before polishing.
+| # | Slice | Effort | Notes |
+|---|---|---|---|
+| **0** | **Data-model back-compat** | **S** | Optional fields + defaults + version coercion. Prereq for everything; was missing in rev 1. |
+| 1 | CSP `img-src 'self'` relax | S | Raster widget skins (host CSP already hardened). |
+| 2 | **Signed-chain verify** (`registry.ts`: roots→delegation→timestamp→registry, freshness/anti-rollback) behind `marketplace:fetchIndex` | **M** | De-risk the crypto independently; no download yet. |
+| 3 | **Slip-safe extractor** (tar.gz) as a standalone unit-tested module | **M–L** | Dependency decision (add `tar` vs hand-roll); adversarial fixtures. Highest-CVE code. |
+| 4 | **Network install** (guarded download → extractor → temp → `planInstall`/`commitInstall`, identity-bind, cleanup, IPC) | **L** | Wires 2+3 to install. |
+| 5 | **Discover in AddDialog** + provenance badge | **L** | Sync→async, dual-source, shared consent. Depends on 0/4 + part of 6. |
+| 6 | **Update detection** (main scheduler, semver+coerce, revoke-at-load cache, code-change re-consent) | **M–L** | New scheduler + push channel. |
+| 7 | `.garret` packaging (sideload; **second/zip** extractor) | **M** | Not "S" — zip ≠ tar. |
+| 8 | Render track: bare/transparent mode (Item 5 minus over-apps) | — | Orthogonal; defer. |
 
-## 11. Open questions
+Smallest honest end-to-end value slice = **0 → 2 → 3 → 4** + a minimal Discover (5). Rev 1's
+"#2 + minimal #3" was too big (it bundled extractor + signing + the async-AddDialog rewrite).
 
-- **Signing key custody + rotation.** Where does the maintainer private key live (local-only
-  vs a CI secret)? How is the *pinned public key* rotated in the app without bricking old
-  builds (ship 2 valid keys during overlap)?
-- **CI smoke-test fidelity.** How faithfully can headless CI exercise a widget enough to catch
-  abuse before merge, given the sandbox needs a webview + bridge?
-- **Update bottleneck vs. autonomy.** Is maintainer-re-blesses-every-version acceptable at
-  small scale, and what's the trigger to invest in per-author signing?
-- **Icon/screenshot hosting** for Discover (host-UI images, not sandbox): in-repo via jsDelivr
-  vs. the npm package — and a size/format policy.
+## 11. Open questions (trimmed — most now answered in §3)
+
+- **Root key custody:** hardware token vs offline machine for the 2 roots; the precise overlap
+  procedure for a root rotation (app-update path).
+- **Max-staleness number** (§3.5 proposes 14 days), the timestamp `expires` window (24–72 h),
+  and the **delegation lifetime** — confirm all three are mutually consistent. Proposed
+  resolution (§3.5): online verification rejects an expired delegation, but offline-load within
+  the 14-day staleness window accepts the last-fetched delegation regardless of its own
+  `expires`. Must be settled before slice 2's offline-load path is coded.
+- **Extractor dependency** (§4a): add `tar`/`yauzl` (supply-chain surface in the hostile path)
+  vs hand-roll (time). **Decision needed before slice 3.**
+- **Icon/screenshot hosting** (§6): in-repo via jsDelivr `/gh/` vs from the tarball; size/format
+  policy.
 
 ## 12. References
 - Install/enforcement: `src/main/sandbox/{install,session,protocol,net}.ts`,
   `src/renderer/src/sandbox/{BridgeHost,SandboxWidget,loader,ExtensionsManager}.tsx`
-- Placement funnel: `src/renderer/src/app/AddDialog.tsx`
+- Placement funnel: `src/renderer/src/app/AddDialog.tsx` · IPC: `src/shared/ipc/channels.ts`
 - Author guide: `docs/widget-authoring.md` · Sandbox internals: `docs/sandbox-design.md`
 - npm publish template: `.github/workflows/publish-sdk.yml`
 </content>
