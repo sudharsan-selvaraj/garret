@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url'
 import { readdir, readFile } from 'node:fs/promises'
 import { app, session as electronSession } from 'electron'
 import { registerSandboxProtocol, sandboxWidgetsDir, SANDBOX_SCHEME } from './protocol'
+import { verifyIntegrity } from './install'
 import type { InstalledWidget } from '@shared/types/sandbox'
 
 /**
@@ -56,6 +57,7 @@ export async function listSandboxedWidgets(): Promise<InstalledWidget[]> {
       const base = join(sandboxWidgetsDir(), id)
       const manifest = JSON.parse(await readFile(join(base, 'manifest.json'), 'utf8'))
       const record = JSON.parse(await readFile(join(base, '.garret-install.json'), 'utf8'))
+      const tampered = !(await verifyIntegrity(id, typeof record.sha256 === 'string' ? record.sha256 : ''))
       out.push({
         id,
         manifest: manifest as Record<string, unknown>,
@@ -65,7 +67,8 @@ export async function listSandboxedWidgets(): Promise<InstalledWidget[]> {
         enabled: record.enabled !== false,
         version: typeof record.version === 'string' ? record.version : '0.0.0',
         source: typeof record.source === 'string' ? record.source : '',
-        attemptedBlocked: Array.isArray(record.attemptedBlocked) ? record.attemptedBlocked : []
+        attemptedBlocked: Array.isArray(record.attemptedBlocked) ? record.attemptedBlocked : [],
+        tampered
       })
     } catch {
       // no valid install record — not a managed install; skip

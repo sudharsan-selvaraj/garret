@@ -11,6 +11,8 @@ export interface InstalledWidget {
   source: string
   /** Capabilities the widget tried but wasn't granted (undeclared attempts) — disclosure. */
   attemptedBlocked: string[]
+  /** Files no longer match the recorded integrity hash (tamper/corruption) — not loaded. */
+  tampered: boolean
 }
 
 /** A validated install proposal shown on the consent screen before any files are written. */

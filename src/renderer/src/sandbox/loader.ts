@@ -56,8 +56,8 @@ export function makeSandboxedPlugin(
 export async function loadSandboxedWidgets(): Promise<void> {
   try {
     const installed = await window.garret.sandbox.list()
-    for (const { id, manifest, consentedPermissions, enabled } of installed) {
-      if (!enabled) continue
+    for (const { id, manifest, consentedPermissions, enabled, tampered } of installed) {
+      if (!enabled || tampered) continue // disabled or integrity-failed → don't load
       registry.register(makeSandboxedPlugin(id, manifest as DiskManifest, consentedPermissions))
     }
   } catch (err) {

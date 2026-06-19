@@ -89,6 +89,7 @@ async function collectFiles(srcDir: string): Promise<{ rel: string; abs: string 
   async function walk(dir: string): Promise<void> {
     const entries = await readdir(dir)
     for (const name of entries) {
+      if (name.startsWith('.')) continue // skip dotfiles (.garret-install.json, .DS_Store, …)
       const abs = join(dir, name)
       // Containment: never escape the source root.
       if (abs !== root && !abs.startsWith(root + sep)) {
@@ -129,6 +130,16 @@ async function hashFiles(files: { rel: string; abs: string }[]): Promise<string>
 
 function recordPath(id: string): string {
   return join(sandboxWidgetsDir(), id, '.garret-install.json')
+}
+
+/** Re-hash the installed files and compare to the recorded sha256 (tamper/corruption check). */
+export async function verifyIntegrity(id: string, expected: string): Promise<boolean> {
+  if (!ID_RE.test(id) || !expected) return false
+  try {
+    return (await hashFiles(await collectFiles(join(sandboxWidgetsDir(), id)))) === expected
+  } catch {
+    return false
+  }
 }
 
 export async function readRecord(id: string): Promise<InstallRecord | null> {

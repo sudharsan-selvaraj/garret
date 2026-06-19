@@ -103,6 +103,9 @@ export function ExtensionsManager(): JSX.Element {
                     ? w.consentedPermissions.map(describePermission).join(' · ')
                     : 'No network or account access'}
                 </div>
+                {w.tampered && (
+                  <div className="ext-blocked">⚠ Integrity check failed — reinstall this widget.</div>
+                )}
                 {w.attemptedBlocked.length > 0 && (
                   <div className="ext-blocked">
                     Tried (blocked): {w.attemptedBlocked.map(describePermission).join(' · ')}
