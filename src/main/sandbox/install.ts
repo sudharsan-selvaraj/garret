@@ -37,7 +37,8 @@ export interface InstallRecord {
   version: string
   sha256: string
   consentedPermissions: string[]
-  everUsedCapabilities: string[]
+  /** Capabilities the widget TRIED but wasn't granted (undeclared attempts) — disclosure. */
+  attemptedBlocked: string[]
   enabled: boolean
   installedAt: number
 }
@@ -211,7 +212,7 @@ export async function commitInstall(plan: InstallPlan): Promise<{ ok: boolean; e
       version: plan.version,
       sha256: hash,
       consentedPermissions: plan.permissions, // replace, never accumulate
-      everUsedCapabilities: prior?.everUsedCapabilities ?? [],
+      attemptedBlocked: prior?.attemptedBlocked ?? [],
       enabled: prior?.enabled ?? true,
       installedAt: Date.now()
     }
@@ -233,4 +234,14 @@ export async function setEnabled(id: string, enabled: boolean): Promise<void> {
   const rec = await readRecord(id)
   if (!rec) return
   await writeFile(recordPath(id), JSON.stringify({ ...rec, enabled }, null, 2))
+}
+
+/** Merge capabilities a running widget attempted-but-was-denied into its record (disclosure). */
+export async function recordUsage(id: string, attemptedBlocked: string[]): Promise<void> {
+  if (!ID_RE.test(id)) return
+  const rec = await readRecord(id)
+  if (!rec) return
+  const merged = [...new Set([...(rec.attemptedBlocked ?? []), ...attemptedBlocked])]
+  if (merged.length === (rec.attemptedBlocked?.length ?? 0)) return // nothing new
+  await writeFile(recordPath(id), JSON.stringify({ ...rec, attemptedBlocked: merged }, null, 2))
 }

@@ -95,7 +95,9 @@ const api: GarretApi = {
     planInstall: (srcDir) => ipcRenderer.invoke(Channels.sandboxInstallPlan, srcDir),
     commitInstall: (plan) => ipcRenderer.invoke(Channels.sandboxInstallCommit, plan),
     remove: (id) => ipcRenderer.invoke(Channels.sandboxRemove, id),
-    setEnabled: (id, enabled) => ipcRenderer.invoke(Channels.sandboxSetEnabled, id, enabled)
+    setEnabled: (id, enabled) => ipcRenderer.invoke(Channels.sandboxSetEnabled, id, enabled),
+    recordUsage: (id, attemptedBlocked) =>
+      ipcRenderer.send(Channels.sandboxRecordUsage, id, attemptedBlocked)
   },
   openExternal: (url) => ipcRenderer.send(Channels.openExternal, url),
   openPath: (path) => ipcRenderer.send(Channels.openPath, path),

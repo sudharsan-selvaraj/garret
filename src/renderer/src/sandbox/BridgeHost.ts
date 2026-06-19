@@ -54,7 +54,7 @@ export class BridgeHost {
   private readonly pollSubs = new Map<string, string>() // subId → key
   private readonly pollKeys = new Set<string>() // keys with ≥1 active sub (O(1) forward filter)
   private readonly watchSubs = new Set<string>()
-  private readonly used = new Set<string>() // capabilities actually exercised (disclosure)
+  private readonly blocked = new Set<string>() // undeclared caps the widget tried (disclosure)
   private offPoll?: () => void
   private offWatch?: () => void
 
@@ -70,28 +70,30 @@ export class BridgeHost {
     this.onReady = opts.onReady
   }
 
-  /** Capabilities the widget actually invoked — feeds the Phase-4 disclosure diff. */
-  usedCapabilities(): string[] {
-    return [...this.used]
+  /** Record (once) an undeclared capability the widget attempted; report it for disclosure. */
+  private recordBlocked(perm: string): void {
+    if (this.blocked.has(perm)) return
+    this.blocked.add(perm)
+    window.garret.sandbox.recordUsage(this.widgetId, [perm])
   }
 
   /** Handle a message from the guest. Never throws. */
   handle(msg: GuestMessage): void {
     if (this.disposed) return
     if (msg.kind === 'ready') return this.onReady()
+    // Size-guard + rate-limit everything else (calls AND config updates).
+    if (JSON.stringify(msg).length > MAX_MSG_BYTES) {
+      if (msg.kind === 'call' && msg.id) this.send({ kind: 'error', id: msg.id, message: 'message too large' })
+      return
+    }
+    if (!this.takeToken()) {
+      if (msg.kind === 'call' && msg.id) this.send({ kind: 'error', id: msg.id, message: 'rate limited' })
+      return
+    }
     if (msg.kind === 'updateConfig') {
       return this.onUpdateConfig(msg.patch && typeof msg.patch === 'object' ? msg.patch : {})
     }
     if (msg.kind !== 'call') return
-    // Size guard before any work.
-    if (JSON.stringify(msg).length > MAX_MSG_BYTES) {
-      if (msg.id) this.send({ kind: 'error', id: msg.id, message: 'message too large' })
-      return
-    }
-    if (!this.takeToken()) {
-      if (msg.id) this.send({ kind: 'error', id: msg.id, message: 'rate limited' })
-      return
-    }
     void this.handleCall(msg)
   }
 
@@ -118,7 +120,6 @@ export class BridgeHost {
   /** Explicit method allowlist + permission enforcement. Unknown/blocked → throws. */
   private dispatch(method: string, args: unknown[]): Promise<unknown> | unknown {
     const g = window.garret
-    this.used.add(method)
     switch (method) {
       case 'services.query': {
         const [serviceId, m, params] = args as [string, string, Record<string, unknown>]
@@ -133,6 +134,7 @@ export class BridgeHost {
       case 'services.connect':
       case 'services.disconnect':
         // Credentials/auth are host-UI only — never reachable by a sandboxed widget.
+        this.recordBlocked('services.connect')
         throw new Error('permission denied: connect/disconnect is host-only')
       case 'poll.subscribe': {
         const [subId, key, serviceId, m, params, intervalMs] = args as [
@@ -166,7 +168,10 @@ export class BridgeHost {
       }
       case 'watch.subscribe': {
         const [watchId, paths, opts] = args as [string, string[], Record<string, unknown>]
-        if (!this.perms.files) throw new Error('permission denied: files:read')
+        if (!this.perms.files) {
+          this.recordBlocked('files:read')
+          throw new Error('permission denied: files:read')
+        }
         this.watchSubs.add(watchId)
         this.ensureWatchForwarding()
         g.watch.subscribe(watchId, paths, opts)
@@ -199,16 +204,23 @@ export class BridgeHost {
       }
       case 'openExternal': {
         const [url] = args as [string]
-        if (!this.perms.openExternal) throw new Error('permission denied: openExternal')
+        if (!this.perms.openExternal) {
+          this.recordBlocked('openExternal')
+          throw new Error('permission denied: openExternal')
+        }
         return g.plugins.openExternalConfirmed(url)
       }
       default:
+        this.recordBlocked(method)
         throw new Error(`method not allowed: ${method}`)
     }
   }
 
   private requireService(id: string): void {
-    if (!this.perms.services.has(id)) throw new Error(`permission denied: service:${id}`)
+    if (!this.perms.services.has(id)) {
+      this.recordBlocked(`service:${id}`)
+      throw new Error(`permission denied: service:${id}`)
+    }
   }
 
   /** Per-widget storage scope — NUL can't appear in ids or keys, so no collision/escape. */

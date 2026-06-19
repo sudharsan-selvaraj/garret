@@ -66,10 +66,15 @@ export function WidgetHost({ widget }: { widget: PlacedWidget }): JSX.Element {
   const ctx = useWidgetContext(widget.id, refreshToken)
 
   if (!plugin) {
+    const isSandbox = widget.pluginId.startsWith('sandbox:')
     return (
       <div className="widget widget-error">
-        <strong>Unknown widget</strong>
-        <code>No plugin registered for “{widget.pluginId}”.</code>
+        <strong>{isSandbox ? 'Widget unavailable' : 'Unknown widget'}</strong>
+        <code>
+          {isSandbox
+            ? 'Removed or disabled — manage it in Settings → Widgets.'
+            : `No plugin registered for “${widget.pluginId}”.`}
+        </code>
         <button onClick={() => removeWidget(widget.id)}>Remove</button>
       </div>
     )

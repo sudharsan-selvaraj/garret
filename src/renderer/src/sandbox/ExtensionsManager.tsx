@@ -103,6 +103,11 @@ export function ExtensionsManager(): JSX.Element {
                     ? w.consentedPermissions.map(describePermission).join(' · ')
                     : 'No network or account access'}
                 </div>
+                {w.attemptedBlocked.length > 0 && (
+                  <div className="ext-blocked">
+                    Tried (blocked): {w.attemptedBlocked.map(describePermission).join(' · ')}
+                  </div>
+                )}
               </div>
               <div className="ext-actions">
                 <ExtToggle on={w.enabled} onChange={() => void toggle(w)} />

@@ -64,7 +64,8 @@ export async function listSandboxedWidgets(): Promise<InstalledWidget[]> {
           : [],
         enabled: record.enabled !== false,
         version: typeof record.version === 'string' ? record.version : '0.0.0',
-        source: typeof record.source === 'string' ? record.source : ''
+        source: typeof record.source === 'string' ? record.source : '',
+        attemptedBlocked: Array.isArray(record.attemptedBlocked) ? record.attemptedBlocked : []
       })
     } catch {
       // no valid install record — not a managed install; skip

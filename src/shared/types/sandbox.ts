@@ -9,6 +9,8 @@ export interface InstalledWidget {
   /** From the install record (manager display). */
   version: string
   source: string
+  /** Capabilities the widget tried but wasn't granted (undeclared attempts) — disclosure. */
+  attemptedBlocked: string[]
 }
 
 /** A validated install proposal shown on the consent screen before any files are written. */

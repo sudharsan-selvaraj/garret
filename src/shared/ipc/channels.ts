@@ -33,6 +33,7 @@ export const Channels = {
   sandboxInstallCommit: 'sandbox:install-commit',
   sandboxRemove: 'sandbox:remove',
   sandboxSetEnabled: 'sandbox:set-enabled',
+  sandboxRecordUsage: 'sandbox:record-usage',
   serviceStatus: 'service:status',
   serviceConnect: 'service:connect',
   serviceDisconnect: 'service:disconnect',
@@ -197,6 +198,8 @@ export interface GarretApi {
     remove(id: string): Promise<void>
     /** Enable/disable without uninstalling. */
     setEnabled(id: string, enabled: boolean): Promise<void>
+    /** Record capabilities a running widget attempted-but-was-denied (disclosure). */
+    recordUsage(id: string, attemptedBlocked: string[]): void
   }
   /** Open a URL in the user's default browser. */
   openExternal(url: string): void

@@ -2961,6 +2961,11 @@ button[disabled],
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.ext-blocked {
+  margin-top: 2px;
+  color: var(--danger);
+  font-size: 11px;
+}
 .ext-actions {
   display: flex;
   align-items: center;
