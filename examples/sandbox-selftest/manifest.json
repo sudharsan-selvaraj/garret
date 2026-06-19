@@ -1,6 +1,7 @@
 {
   "id": "sandbox-selftest",
   "name": "Sandbox Self-Test",
+  "version": "1.0.0",
   "description": "Probes each sandbox capability and reports PASS/blocked (Phase-3 acceptance).",
   "apiVersion": 1,
   "defaultSize": { "w": 5, "h": 6 },
