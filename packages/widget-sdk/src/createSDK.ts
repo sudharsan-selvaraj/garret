@@ -6,23 +6,12 @@ import {
   type GarretSDK,
   type PollUpdate
 } from 'garret-core'
+import { uid } from './uid'
 
 /** The slice of React the hooks need. Injected per realm so hooks are never duplicated. */
 export type ReactApi = Pick<typeof ReactNS, 'useState' | 'useEffect' | 'useRef' | 'useCallback'>
 
 const DEFAULT_INTERVAL = 5 * 60 * 1000
-
-/**
- * A unique id, without assuming `crypto.randomUUID` (only guaranteed in secure
- * contexts — a sandboxed iframe loaded from blob:/file: may not qualify). Uses it
- * when available, else a sufficiently-unique fallback (ids are only used to correlate
- * a subscription with its updates within one realm, not for security).
- */
-function uniqueId(): string {
-  const c = (globalThis as { crypto?: Crypto }).crypto
-  if (c && typeof c.randomUUID === 'function') return c.randomUUID()
-  return `id-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
-}
 
 /**
  * Bind the widget hook LOGIC to a realm's React + capability `client`. Native host
@@ -68,7 +57,7 @@ export function createSDK(React: ReactApi, client: GarretClient): GarretSDK {
 
     React.useEffect(() => {
       ensureWired()
-      const subId = uniqueId()
+      const subId = uid()
       const onUpdate: Listener = (u) =>
         setState({ data: u.data as T, error: u.error, ts: u.ts, loading: false })
 
@@ -142,7 +131,7 @@ export function createSDK(React: ReactApi, client: GarretClient): GarretSDK {
 
     React.useEffect(() => {
       if (list.length === 0) return
-      const watchId = uniqueId()
+      const watchId = uid()
       const off = client.watch.onEvent((id) => {
         if (id === watchId) setVersion((v) => v + 1)
       })

@@ -1,11 +1,5 @@
 import type { BridgeTransport, GarretClient, HostMessage, PollUpdate } from 'garret-core'
-
-function uid(): string {
-  const c = (globalThis as { crypto?: Crypto }).crypto
-  return c && typeof c.randomUUID === 'function'
-    ? c.randomUUID()
-    : `id-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
-}
+import { uid } from './uid'
 
 /**
  * A {@link GarretClient} that proxies every capability over the host bridge — the sandbox

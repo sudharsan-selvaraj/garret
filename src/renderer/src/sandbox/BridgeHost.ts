@@ -52,6 +52,7 @@ export class BridgeHost {
   private readonly onReady: () => void
 
   private readonly pollSubs = new Map<string, string>() // subId → key
+  private readonly pollKeys = new Set<string>() // keys with ≥1 active sub (O(1) forward filter)
   private readonly watchSubs = new Set<string>()
   private readonly used = new Set<string>() // capabilities actually exercised (disclosure)
   private offPoll?: () => void
@@ -144,20 +145,23 @@ export class BridgeHost {
         ]
         this.requireService(serviceId)
         this.pollSubs.set(subId, key)
+        this.pollKeys.add(key)
         this.ensurePollForwarding()
         return g.poll.subscribe(subId, key, serviceId, m, params, intervalMs)
       }
       case 'poll.unsubscribe': {
         const [subId] = args as [string]
-        if (this.pollSubs.has(subId)) {
+        const key = this.pollSubs.get(subId)
+        if (key !== undefined) {
           this.pollSubs.delete(subId)
           g.poll.unsubscribe(subId)
+          if (![...this.pollSubs.values()].includes(key)) this.pollKeys.delete(key)
         }
         return undefined
       }
       case 'poll.refresh': {
         const [key] = args as [string]
-        if ([...this.pollSubs.values()].includes(key)) g.poll.refresh(key)
+        if (this.pollKeys.has(key)) g.poll.refresh(key)
         return undefined
       }
       case 'watch.subscribe': {
@@ -177,10 +181,13 @@ export class BridgeHost {
         return undefined
       }
       case 'fetch': {
-        const [url, init] = args as [string, Record<string, unknown> | undefined]
+        const [url, init] = args as [
+          string,
+          { method?: string; headers?: Record<string, string>; body?: string } | undefined
+        ]
         // Renderer layer: scope to the widget's OWN declared hosts; main re-checks
         // host + resolved IP. No network perms ⇒ empty list ⇒ main denies everything.
-        return g.plugins.fetch(url, init as never, { allowedHosts: this.perms.networkHosts })
+        return g.plugins.fetch(url, init, { allowedHosts: this.perms.networkHosts })
       }
       case 'storage.get': {
         const [key] = args as [string]
@@ -212,7 +219,7 @@ export class BridgeHost {
   private ensurePollForwarding(): void {
     if (this.offPoll) return
     this.offPoll = window.garret.poll.onUpdate((u: PollUpdate) => {
-      if ([...this.pollSubs.values()].includes(u.key)) {
+      if (this.pollKeys.has(u.key)) {
         this.send({ kind: 'event', channel: 'poll', payload: u })
       }
     })
@@ -244,10 +251,9 @@ export class BridgeHost {
     for (const subId of this.pollSubs.keys()) window.garret.poll.unsubscribe(subId)
     for (const watchId of this.watchSubs) window.garret.watch.unsubscribe(watchId)
     this.pollSubs.clear()
+    this.pollKeys.clear()
     this.watchSubs.clear()
     this.offPoll?.()
     this.offWatch?.()
   }
 }
-
-export { parsePermissions }

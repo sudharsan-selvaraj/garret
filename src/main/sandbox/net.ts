@@ -39,17 +39,23 @@ function v4Blocked(ip: string): boolean {
   )
 }
 
+/** Reconstruct dotted IPv4 from two 16-bit hex groups (e.g. `7f00:1` → `127.0.0.1`). */
+function hexPairToV4(hi: string, lo: string): string {
+  const a = parseInt(hi, 16)
+  const b = parseInt(lo, 16)
+  return `${(a >> 8) & 0xff}.${a & 0xff}.${(b >> 8) & 0xff}.${b & 0xff}`
+}
+
 function v6Blocked(raw: string): boolean {
   const ip = raw.toLowerCase()
   if (ip === '::1' || ip === '::') return true
-  // IPv4-mapped: ::ffff:a.b.c.d
-  const mapped = ip.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/)
-  if (mapped) return v4Blocked(mapped[1])
-  // NAT64: 64:ff9b::a.b.c.d (dotted) or hex tail — treat the whole prefix as blocked.
-  if (ip.startsWith('64:ff9b:')) {
-    const dotted = ip.match(/(\d+\.\d+\.\d+\.\d+)$/)
-    return dotted ? v4Blocked(dotted[1]) : true
-  }
+  // IPv4-mapped, dotted (::ffff:a.b.c.d) or hex (::ffff:7f00:1).
+  const mappedDotted = ip.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/)
+  if (mappedDotted) return v4Blocked(mappedDotted[1])
+  const mappedHex = ip.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/)
+  if (mappedHex) return v4Blocked(hexPairToV4(mappedHex[1], mappedHex[2]))
+  // NAT64 (64:ff9b::…) — treat the whole prefix as blocked.
+  if (ip.startsWith('64:ff9b:')) return true
   if (/^fe[89ab]/.test(ip)) return true // link-local fe80::/10
   if (/^f[cd]/.test(ip)) return true // ULA fc00::/7
   return false
@@ -104,6 +110,71 @@ export interface SandboxFetchResult {
   error?: string
 }
 
+/** Read a response body with the size cap and parse JSON (falling back to text). Shared
+ *  by the sandbox + dev fetch paths so the capped-read logic lives in one place. */
+async function readCappedBody(
+  res: Awaited<ReturnType<typeof undiciFetch>>,
+  controller: AbortController
+): Promise<SandboxFetchResult> {
+  const reader = res.body?.getReader()
+  const chunks: Buffer[] = []
+  let received = 0
+  if (reader) {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      received += value.byteLength
+      if (received > FETCH_MAX_BYTES) {
+        controller.abort()
+        return { ok: false, status: res.status, error: 'Response too large (>5MB)' }
+      }
+      chunks.push(Buffer.from(value))
+    }
+  }
+  const text = Buffer.concat(chunks).toString('utf8')
+  let data: unknown
+  try {
+    data = JSON.parse(text)
+  } catch {
+    data = text
+  }
+  return { ok: res.ok, status: res.status, data }
+}
+
+/**
+ * Unrestricted host fetch for the trusted-local DEV tier (no host allowlist) — http(s),
+ * 10s, 5MB. Sandboxed widgets do NOT use this; they go through {@link sandboxFetch}.
+ */
+export async function devFetch(
+  url: string,
+  init: { method?: string; headers?: Record<string, string>; body?: string } | undefined
+): Promise<SandboxFetchResult> {
+  let scheme: string
+  try {
+    scheme = new URL(url).protocol
+  } catch {
+    return { ok: false, status: 0, error: 'Invalid URL' }
+  }
+  if (scheme !== 'http:' && scheme !== 'https:') {
+    return { ok: false, status: 0, error: 'Only http(s) URLs are allowed' }
+  }
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+  try {
+    const res = await undiciFetch(url, {
+      method: init?.method,
+      headers: init?.headers,
+      body: init?.body,
+      signal: controller.signal
+    })
+    return await readCappedBody(res, controller)
+  } catch (err) {
+    return { ok: false, status: 0, error: err instanceof Error ? err.message : String(err) }
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 /**
  * Host-mediated fetch for a sandboxed widget, gated by `allowedHosts` + the resolved-IP
  * guard, with manual redirect following (each hop re-checked). Never throws.
@@ -114,12 +185,14 @@ export async function sandboxFetch(
   allowedHosts: string[]
 ): Promise<SandboxFetchResult> {
   const agent = new Agent({
+    // undici's LookupFunction type can't express the `all:true` overload; cast is safe (see guardedLookup).
     connect: { lookup: guardedLookup as unknown as LookupFunction, timeout: FETCH_TIMEOUT_MS }
   })
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
   let current = url
   try {
+    // hop 0..MAX_REDIRECTS = 1 initial request + up to MAX_REDIRECTS follows.
     for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
       let u: URL
       try {
@@ -147,34 +220,12 @@ export async function sandboxFetch(
       if (res.status >= 300 && res.status < 400) {
         const loc = res.headers.get('location')
         if (loc) {
+          await res.body?.cancel() // release the connection before following the redirect
           current = new URL(loc, current).toString()
           continue // re-validate the new host + re-run the IP guard on the next connect
         }
       }
-      // Read with a size cap.
-      const reader = res.body?.getReader()
-      const chunks: Buffer[] = []
-      let received = 0
-      if (reader) {
-        for (;;) {
-          const { done, value } = await reader.read()
-          if (done) break
-          received += value.byteLength
-          if (received > FETCH_MAX_BYTES) {
-            controller.abort()
-            return { ok: false, status: res.status, error: 'Response too large (>5MB)' }
-          }
-          chunks.push(Buffer.from(value))
-        }
-      }
-      const text = Buffer.concat(chunks).toString('utf8')
-      let data: unknown
-      try {
-        data = JSON.parse(text)
-      } catch {
-        data = text
-      }
-      return { ok: res.ok, status: res.status, data }
+      return await readCappedBody(res, controller)
     }
     return { ok: false, status: 0, error: 'Too many redirects' }
   } catch (err) {

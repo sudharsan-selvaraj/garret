@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type Ref } from 'react'
+import type { GuestMessage } from '@sdk'
 import { SANDBOX_API_VERSION } from '@renderer/sandbox/constants'
 import { BridgeHost } from '@renderer/sandbox/BridgeHost'
 
@@ -7,6 +8,9 @@ type WebviewEl = HTMLElement & {
   send: (channel: string, ...args: unknown[]) => void
   setWebRTCIPHandlingPolicy: (policy: string) => void
 }
+
+/** Electron's webview `ipc-message` event (not in the renderer DOM typings). */
+type WebviewIpcEvent = Event & { channel: string; args: unknown[] }
 
 interface Props {
   /** Stable installed-widget id — drives the origin, partition, and storage namespace. */
@@ -65,8 +69,8 @@ export function SandboxWidget(props: Props): JSX.Element {
     })
     bridgeRef.current = bridge
     const onIpc = (e: Event): void => {
-      const ev = e as unknown as { channel: string; args: unknown[] }
-      if (ev.channel === 'garret:msg') bridge.handle(ev.args[0] as never)
+      const ev = e as WebviewIpcEvent
+      if (ev.channel === 'garret:msg') bridge.handle(ev.args[0] as GuestMessage)
     }
     // WebRTC bypasses CSP; kill IP leakage as early as possible (before the guest doc loads).
     const onAttach = (): void => wv.setWebRTCIPHandlingPolicy('disable_non_proxied_udp')

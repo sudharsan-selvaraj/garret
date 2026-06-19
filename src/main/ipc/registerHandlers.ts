@@ -9,7 +9,7 @@ import { getService } from '@main/services/registry'
 import * as scheduler from '@main/poll/scheduler'
 import { subscribeWatch, unsubscribeWatch, teardownWatchSender } from '@main/watcher'
 import { listExternalWidgets } from '@main/plugins/externalWidgets'
-import { sandboxFetch } from '@main/sandbox/net'
+import { sandboxFetch, devFetch } from '@main/sandbox/net'
 import {
   bridgePreloadPath,
   prepareSandboxPartition,
@@ -24,12 +24,6 @@ export interface IpcHooks {
   setClipboardHotkey(accelerator: string): boolean
   /** (Re)start the background calendar monitor (after prefs or Google connect/disconnect). */
   refreshCalendarMonitor(): void
-}
-
-/** Friendly message for a failed host-mediated fetch. */
-function fetchErrorMessage(err: unknown): string {
-  if (err instanceof Error) return err.name === 'AbortError' ? 'Request timed out' : err.message
-  return String(err)
 }
 
 /** Binds the shared IPC channels to their main-process handlers. Call once on ready. */
@@ -48,25 +42,17 @@ export function registerIpcHandlers(hooks: IpcHooks): void {
     persistence.addWidgetToLayout(name, widget)
   )
   ipcMain.handle(Channels.pluginsListExternal, () => listExternalWidgets())
-  // Host-mediated fetch for external widgets (no CORS). Returns a structured
-  // result (never throws) so the renderer gets clean errors. Bounded even in the
-  // dev tier: http(s) only, 10s timeout, 5MB streamed cap. The per-host allowlist
-  // / permission gating is the sandbox tier — this just removes the foot-cannon.
-  const FETCH_TIMEOUT_MS = 10_000
-  const FETCH_MAX_BYTES = 5 * 1024 * 1024
+  // Host-mediated fetch for external widgets (no CORS); structured result, never throws.
+  // Sandbox path (opts.allowedHosts) adds the per-host allowlist + resolved-IP rebind guard;
+  // the dev tier is bounded but unrestricted. Both live in @main/sandbox/net.
   ipcMain.handle(
     Channels.pluginsFetch,
-    async (_e, url: string, init?: RequestInit, opts?: { allowedHosts?: string[] }) => {
-      // Sandbox path: gate by the widget's declared hosts + the resolved-IP rebind guard.
-      if (opts?.allowedHosts) {
-        return sandboxFetch(
-          url,
-          init as { method?: string; headers?: Record<string, string>; body?: string } | undefined,
-          opts.allowedHosts
-        )
-      }
-      return devFetch(url, init)
-    }
+    (
+      _e,
+      url: string,
+      init?: { method?: string; headers?: Record<string, string>; body?: string },
+      opts?: { allowedHosts?: string[] }
+    ) => (opts?.allowedHosts ? sandboxFetch(url, init, opts.allowedHosts) : devFetch(url, init))
   )
 
   // Native confirm before a sandboxed widget opens a URL — never silent.
@@ -96,54 +82,6 @@ export function registerIpcHandlers(hooks: IpcHooks): void {
     }
     return false
   })
-
-  /** The original dev-tier host fetch: http(s) only, 10s, 5MB cap, no host allowlist. */
-  async function devFetch(
-    url: string,
-    init?: RequestInit
-  ): Promise<{ ok: boolean; status: number; data?: unknown; error?: string }> {
-    let scheme: string
-    try {
-      scheme = new URL(url).protocol
-    } catch {
-      return { ok: false, status: 0, error: 'Invalid URL' }
-    }
-    if (scheme !== 'http:' && scheme !== 'https:') {
-      return { ok: false, status: 0, error: 'Only http(s) URLs are allowed' }
-    }
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
-    try {
-      const res = await fetch(url, { ...init, signal: controller.signal })
-      const reader = res.body?.getReader()
-      const chunks: Buffer[] = []
-      let received = 0
-      if (reader) {
-        for (;;) {
-          const { done, value } = await reader.read()
-          if (done) break
-          received += value.byteLength
-          if (received > FETCH_MAX_BYTES) {
-            controller.abort()
-            return { ok: false, status: res.status, error: 'Response too large (>5MB)' }
-          }
-          chunks.push(Buffer.from(value))
-        }
-      }
-      const text = Buffer.concat(chunks).toString('utf8')
-      let data: unknown
-      try {
-        data = JSON.parse(text)
-      } catch {
-        data = text
-      }
-      return { ok: res.ok, status: res.status, data }
-    } catch (err) {
-      return { ok: false, status: 0, error: fetchErrorMessage(err) }
-    } finally {
-      clearTimeout(timer)
-    }
-  }
 
   ipcMain.handle(Channels.sandboxPrepare, (_e, partition: string) => {
     prepareSandboxPartition(partition)

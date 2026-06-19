@@ -30,5 +30,6 @@ export type HostMessage =
  */
 export interface BridgeTransport {
   post(msg: GuestMessage): void
-  onMessage(cb: (msg: HostMessage) => void): void
+  /** Subscribe to host→guest messages. Returns an unsubscriber. */
+  onMessage(cb: (msg: HostMessage) => void): () => void
 }

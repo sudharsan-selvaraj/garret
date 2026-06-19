@@ -13,8 +13,11 @@ import type { BridgeTransport, GuestMessage, HostMessage } from 'garret-core'
  */
 const transport: BridgeTransport = {
   post: (msg: GuestMessage) => ipcRenderer.sendToHost('garret:msg', msg),
-  onMessage: (cb: (msg: HostMessage) => void) =>
-    ipcRenderer.on('garret:msg', (_e, msg: HostMessage) => cb(msg))
+  onMessage: (cb: (msg: HostMessage) => void) => {
+    const listener = (_e: unknown, msg: HostMessage): void => cb(msg)
+    ipcRenderer.on('garret:msg', listener)
+    return () => ipcRenderer.removeListener('garret:msg', listener)
+  }
 }
 
 contextBridge.exposeInMainWorld('__garretBridge', transport)

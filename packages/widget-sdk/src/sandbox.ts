@@ -50,7 +50,8 @@ export function runWidget(plugin: WidgetPlugin): void {
     root.render(React.createElement(plugin.render, { config, ctx, sdk }))
   }
 
-  transport.onMessage((msg: HostMessage) => {
+  let off: (() => void) | undefined
+  off = transport.onMessage((msg: HostMessage) => {
     if (accept(msg)) return // result / error / event handled by the bridge client
     switch (msg.kind) {
       case 'init':
@@ -70,6 +71,7 @@ export function runWidget(plugin: WidgetPlugin): void {
       case 'teardown':
         root?.unmount()
         root = null
+        off?.()
         break
     }
   })

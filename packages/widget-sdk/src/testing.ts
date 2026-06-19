@@ -77,7 +77,7 @@ export function createMockClient(opts: MockClientOptions = {}): MockClient {
     fetch: async (url, init) =>
       opts.fetch ? opts.fetch(url, init) : { ok: true, status: 200, data: null },
     storage: {
-      get: async (key) => store.get(key) as never,
+      get: (async (key: string) => store.get(key)) as GarretClient['storage']['get'],
       set: async (key, value) => {
         store.set(key, value)
       }

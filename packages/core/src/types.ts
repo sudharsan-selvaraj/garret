@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react'
 import type { ConfigSchema } from './fields'
 import type { NotifySpec } from './poll'
+import type { StorageApi } from './client'
 import type { GarretSDK } from './sdk-types'
 
 /** A widget icon: either an emoji/text string or a React icon component (e.g. lucide). */
@@ -72,10 +73,7 @@ export interface WidgetManifest {
 export interface WidgetContext {
   instanceId: string
   /** Persistent, per-instance key/value storage (tokens, cursors, cache). */
-  storage: {
-    get<T = unknown>(key: string): Promise<T | undefined>
-    set(key: string, value: unknown): Promise<void>
-  }
+  storage: StorageApi
   /** Increments when the user hits refresh; render may watch it. */
   refreshToken: number
   /** Patch this instance's config — persisted by the framework. */

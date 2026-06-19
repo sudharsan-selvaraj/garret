@@ -1,6 +1,12 @@
 import type { PollUpdate } from './poll'
 import type { WatchOptions } from './watch'
 
+/** Per-widget persistent key/value storage. Shared by GarretClient + WidgetContext. */
+export interface StorageApi {
+  get<T = unknown>(key: string): Promise<T | undefined>
+  set(key: string, value: unknown): Promise<void>
+}
+
 /** Connection status of a backend service (Jira, Bitbucket, Google, …). */
 export interface ServiceStatus {
   connected: boolean
@@ -58,9 +64,6 @@ export interface GarretClient {
    * so this is naturally scoped to the widget (the host namespaces it) — widgets can't
    * read each other's data.
    */
-  storage: {
-    get<T = unknown>(key: string): Promise<T | undefined>
-    set(key: string, value: unknown): Promise<void>
-  }
+  storage: StorageApi
   openExternal(url: string): void
 }
