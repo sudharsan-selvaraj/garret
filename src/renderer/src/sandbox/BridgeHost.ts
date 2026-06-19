@@ -81,13 +81,15 @@ export class BridgeHost {
   handle(msg: GuestMessage): void {
     if (this.disposed) return
     if (msg.kind === 'ready') return this.onReady()
-    // Size-guard + rate-limit everything else (calls AND config updates).
-    if (JSON.stringify(msg).length > MAX_MSG_BYTES) {
-      if (msg.kind === 'call' && msg.id) this.send({ kind: 'error', id: msg.id, message: 'message too large' })
-      return
-    }
+    // Rate-limit FIRST, then size-guard: a flood of oversized messages must be rejected
+    // cheaply, before we pay to JSON.stringify attacker-controlled payloads (doing the
+    // stringify first is a renderer-thread DoS that freezes the whole board).
     if (!this.takeToken()) {
       if (msg.kind === 'call' && msg.id) this.send({ kind: 'error', id: msg.id, message: 'rate limited' })
+      return
+    }
+    if (JSON.stringify(msg).length > MAX_MSG_BYTES) {
+      if (msg.kind === 'call' && msg.id) this.send({ kind: 'error', id: msg.id, message: 'message too large' })
       return
     }
     if (msg.kind === 'updateConfig') {
@@ -149,14 +151,17 @@ export class BridgeHost {
         this.pollSubs.set(subId, key)
         this.pollKeys.add(key)
         this.ensurePollForwarding()
-        return g.poll.subscribe(subId, key, serviceId, m, params, intervalMs)
+        // Namespace the subId per widget: the guest chooses it, and the main scheduler
+        // indexes subs globally by subId — without this, two widgets reusing the same id
+        // (e.g. a per-guest counter "sub-0") would clobber/cancel each other's subscriptions.
+        return g.poll.subscribe(this.nsKey(subId), key, serviceId, m, params, intervalMs)
       }
       case 'poll.unsubscribe': {
         const [subId] = args as [string]
         const key = this.pollSubs.get(subId)
         if (key !== undefined) {
           this.pollSubs.delete(subId)
-          g.poll.unsubscribe(subId)
+          g.poll.unsubscribe(this.nsKey(subId))
           if (![...this.pollSubs.values()].includes(key)) this.pollKeys.delete(key)
         }
         return undefined
@@ -261,17 +266,24 @@ export class BridgeHost {
     this.disposed = true
     // Notify the guest, but never let a dead-webview send abort the rest of teardown
     // (the unsubscribes below MUST run, or poll/watch forwarding leaks).
+    // Each step is best-effort and independently guarded: this runs inside a React effect
+    // cleanup during unmount, so a throw here would escape past the (also-unmounting) error
+    // boundary and blank the whole board. Nothing in teardown may throw.
     try {
       this.send({ kind: 'teardown' })
     } catch {
       /* guest already gone */
     }
-    for (const subId of this.pollSubs.keys()) window.garret.poll.unsubscribe(subId)
-    for (const watchId of this.watchSubs) window.garret.watch.unsubscribe(watchId)
+    try {
+      for (const subId of this.pollSubs.keys()) window.garret.poll.unsubscribe(this.nsKey(subId))
+      for (const watchId of this.watchSubs) window.garret.watch.unsubscribe(watchId)
+      this.offPoll?.()
+      this.offWatch?.()
+    } catch {
+      /* renderer context tearing down — ignore */
+    }
     this.pollSubs.clear()
     this.pollKeys.clear()
     this.watchSubs.clear()
-    this.offPoll?.()
-    this.offWatch?.()
   }
 }

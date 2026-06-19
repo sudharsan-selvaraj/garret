@@ -67,8 +67,22 @@ export async function loadSandboxedWidgets(): Promise<void> {
 
 /** Re-sync the registry's sandboxed widgets after an install/remove/enable change. */
 export async function resyncSandboxedWidgets(): Promise<void> {
+  // Fetch the new set BEFORE touching the registry, then unregister + re-register in one
+  // synchronous block. The old code awaited list() *between* the unregister and the
+  // re-register, leaving a window where a placed widget that re-rendered saw an empty
+  // registry and flipped to the "unavailable" placeholder. No await in the mutation now.
+  let installed: Awaited<ReturnType<typeof window.garret.sandbox.list>>
+  try {
+    installed = await window.garret.sandbox.list()
+  } catch (err) {
+    console.warn('[sandbox] resync failed to list widgets', err)
+    return
+  }
   for (const p of registry.list()) {
     if (p.manifest.id.startsWith('sandbox:')) registry.unregister(p.manifest.id)
   }
-  await loadSandboxedWidgets()
+  for (const { id, manifest, consentedPermissions, enabled, tampered } of installed) {
+    if (!enabled || tampered) continue
+    registry.register(makeSandboxedPlugin(id, manifest as DiskManifest, consentedPermissions))
+  }
 }

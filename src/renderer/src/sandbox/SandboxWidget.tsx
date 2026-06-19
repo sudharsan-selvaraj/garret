@@ -83,7 +83,15 @@ export function SandboxWidget(props: Props): JSX.Element {
       if (ev.channel === 'garret:msg') bridge.handle(ev.args[0] as GuestMessage)
     }
     // WebRTC bypasses CSP; kill IP leakage as early as possible (before the guest doc loads).
-    const onAttach = (): void => wv.setWebRTCIPHandlingPolicy('disable_non_proxied_udp')
+    // Best-effort + guarded: the call throws if the webContents isn't ready yet, and an
+    // uncaught throw in this listener would surface as a console error / break wiring.
+    const onAttach = (): void => {
+      try {
+        wv.setWebRTCIPHandlingPolicy('disable_non_proxied_udp')
+      } catch {
+        /* webContents not ready on this event — a later did-attach/dom-ready retries */
+      }
+    }
     wv.addEventListener('ipc-message', onIpc)
     wv.addEventListener('did-attach', onAttach)
     wv.addEventListener('dom-ready', onAttach)

@@ -39,25 +39,58 @@ function v4Blocked(ip: string): boolean {
   )
 }
 
-/** Reconstruct dotted IPv4 from two 16-bit hex groups (e.g. `7f00:1` → `127.0.0.1`). */
-function hexPairToV4(hi: string, lo: string): string {
-  const a = parseInt(hi, 16)
-  const b = parseInt(lo, 16)
-  return `${(a >> 8) & 0xff}.${a & 0xff}.${(b >> 8) & 0xff}.${b & 0xff}`
+/**
+ * Parse any textual IPv6 (compressed `::`, fully-expanded, or with a trailing dotted-IPv4
+ * suffix) into its 8 numeric hextets. Returns null if it isn't well-formed IPv6 — callers
+ * treat null as "blocked" (fail safe). String-matching textual forms is fragile (a resolver
+ * or URL can present the expanded form); operating on the numeric value closes that gap.
+ */
+function parseV6(raw: string): number[] | null {
+  let s = raw.toLowerCase().split('%')[0] // drop any zone id
+  if (!s) return null
+  // Expand a trailing dotted-IPv4 (e.g. ::ffff:127.0.0.1) into two hextets.
+  const v4 = s.match(/^(.*:)(\d{1,3}(?:\.\d{1,3}){3})$/)
+  if (v4) {
+    const oct = v4[2].split('.').map(Number)
+    if (oct.some((o) => o > 255)) return null
+    s = `${v4[1]}${(((oct[0] << 8) | oct[1]) >>> 0).toString(16)}:${(((oct[2] << 8) | oct[3]) >>> 0).toString(16)}`
+  }
+  const groups = (part: string): number[] | null => {
+    if (part === '') return []
+    const xs = part.split(':')
+    const g: number[] = []
+    for (const x of xs) {
+      if (!/^[0-9a-f]{1,4}$/.test(x)) return null
+      g.push(parseInt(x, 16))
+    }
+    return g
+  }
+  const halves = s.split('::')
+  if (halves.length > 2) return null
+  if (halves.length === 2) {
+    const head = groups(halves[0])
+    const tail = groups(halves[1])
+    if (!head || !tail) return null
+    const fill = 8 - head.length - tail.length
+    if (fill < 1) return null // `::` must elide at least one group
+    return [...head, ...new Array(fill).fill(0), ...tail]
+  }
+  const all = groups(s)
+  return all && all.length === 8 ? all : null
 }
 
 function v6Blocked(raw: string): boolean {
-  const ip = raw.toLowerCase()
-  if (ip === '::1' || ip === '::') return true
-  // IPv4-mapped, dotted (::ffff:a.b.c.d) or hex (::ffff:7f00:1).
-  const mappedDotted = ip.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/)
-  if (mappedDotted) return v4Blocked(mappedDotted[1])
-  const mappedHex = ip.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/)
-  if (mappedHex) return v4Blocked(hexPairToV4(mappedHex[1], mappedHex[2]))
-  // NAT64 (64:ff9b::…) — treat the whole prefix as blocked.
-  if (ip.startsWith('64:ff9b:')) return true
-  if (/^fe[89ab]/.test(ip)) return true // link-local fe80::/10
-  if (/^f[cd]/.test(ip)) return true // ULA fc00::/7
+  const g = parseV6(raw)
+  if (!g) return true // unparseable → fail safe
+  if (g.every((x) => x === 0)) return true // :: unspecified
+  if (g.slice(0, 7).every((x) => x === 0) && g[7] === 1) return true // ::1 loopback
+  // IPv4-mapped (::ffff:a.b.c.d) — validate the embedded IPv4 regardless of textual form.
+  if (g.slice(0, 5).every((x) => x === 0) && g[5] === 0xffff) {
+    return v4Blocked(`${(g[6] >> 8) & 0xff}.${g[6] & 0xff}.${(g[7] >> 8) & 0xff}.${g[7] & 0xff}`)
+  }
+  if (g[0] === 0x64 && g[1] === 0xff9b) return true // NAT64 64:ff9b::/96
+  if ((g[0] & 0xffc0) === 0xfe80) return true // link-local fe80::/10
+  if ((g[0] & 0xfe00) === 0xfc00) return true // ULA fc00::/7
   return false
 }
 

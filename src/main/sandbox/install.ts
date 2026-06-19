@@ -1,5 +1,5 @@
 import { join, normalize, sep, extname, relative } from 'node:path'
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { isIP } from 'node:net'
 import { lstat, readdir, readFile, writeFile, rm, mkdir, rename, copyFile } from 'node:fs/promises'
 import { sandboxWidgetsDir } from './protocol'
@@ -150,25 +150,51 @@ export async function readRecord(id: string): Promise<InstallRecord | null> {
   }
 }
 
-/** Validate a source folder and produce a plan (writes nothing). */
-export async function planInstall(srcDir: string): Promise<InstallPlan> {
+interface ManifestSpec {
+  id: string
+  name: string
+  description?: string
+  version: string
+  permissions: string[]
+}
+
+/**
+ * Parse + validate a source manifest into the trusted spec (id, name, validated permission
+ * set). This is the SINGLE source of truth for identity + the permission ceiling — both
+ * planInstall (for the consent screen) and commitInstall (after the hash check) derive from
+ * it, so the renderer-supplied plan can never widen what gets written to the record.
+ */
+async function parseManifestSpec(srcDir: string): Promise<ManifestSpec | { error: string }> {
   let manifest: DiskManifest
   try {
     manifest = JSON.parse(await readFile(join(srcDir, 'manifest.json'), 'utf8')) as DiskManifest
   } catch {
-    return fail('No readable manifest.json in that folder')
+    return { error: 'No readable manifest.json in that folder' }
   }
   const id = typeof manifest.id === 'string' ? manifest.id.toLowerCase() : ''
-  if (!ID_RE.test(id)) return fail('manifest.id must be lowercase alphanumeric (a-z0-9._-), no ".."')
-  if (typeof manifest.name !== 'string' || !manifest.name) return fail('manifest.name required')
+  if (!ID_RE.test(id)) return { error: 'manifest.id must be lowercase alphanumeric (a-z0-9._-), no ".."' }
+  if (typeof manifest.name !== 'string' || !manifest.name) return { error: 'manifest.name required' }
   const apiVersion = typeof manifest.apiVersion === 'number' ? manifest.apiVersion : 0
-  if (apiVersion > SUPPORTED_API_VERSION) return fail('This widget needs a newer version of Garret')
+  if (apiVersion > SUPPORTED_API_VERSION) return { error: 'This widget needs a newer version of Garret' }
   const rawPerms = Array.isArray(manifest.permissions) ? manifest.permissions : []
   const permissions: string[] = []
   for (const p of rawPerms) {
-    if (typeof p !== 'string' || !permValid(p)) return fail(`Invalid permission: ${String(p)}`)
+    if (typeof p !== 'string' || !permValid(p)) return { error: `Invalid permission: ${String(p)}` }
     permissions.push(p.startsWith('network:') ? `network:${p.slice(8).toLowerCase()}` : p)
   }
+  return {
+    id,
+    name: manifest.name,
+    description: typeof manifest.description === 'string' ? manifest.description : undefined,
+    version: typeof manifest.version === 'string' ? manifest.version : '0.0.0',
+    permissions
+  }
+}
+
+/** Validate a source folder and produce a plan (writes nothing). */
+export async function planInstall(srcDir: string): Promise<InstallPlan> {
+  const spec = await parseManifestSpec(srcDir)
+  if ('error' in spec) return fail(spec.error)
 
   let sourceHash: string
   try {
@@ -177,19 +203,19 @@ export async function planInstall(srcDir: string): Promise<InstallPlan> {
     return fail(e instanceof Error ? e.message : String(e))
   }
 
-  const prior = await readRecord(id)
+  const prior = await readRecord(spec.id)
   const isUpdate = prior !== null
   const consented = new Set(prior?.consentedPermissions ?? [])
-  const addedPermissions = permissions.filter((p) => !consented.has(p))
+  const addedPermissions = spec.permissions.filter((p) => !consented.has(p))
 
   return {
     ok: true,
-    id,
-    name: manifest.name,
-    description: typeof manifest.description === 'string' ? manifest.description : undefined,
-    version: typeof manifest.version === 'string' ? manifest.version : '0.0.0',
+    id: spec.id,
+    name: spec.name,
+    description: spec.description,
+    version: spec.version,
     source: srcDir,
-    permissions,
+    permissions: spec.permissions,
     isUpdate,
     addedPermissions,
     sourceHash
@@ -207,9 +233,16 @@ export async function commitInstall(plan: InstallPlan): Promise<{ ok: boolean; e
     const hash = await hashFiles(files)
     if (hash !== plan.sourceHash) return { ok: false, error: 'Source changed since consent — aborted' }
 
+    // Re-derive id + permission ceiling from the (now hash-verified) source manifest — never
+    // trust the renderer-supplied plan.id / plan.permissions at the filesystem + enforcement
+    // boundary. Since the hash matched, this manifest is byte-identical to what was consented.
+    const spec = await parseManifestSpec(plan.source)
+    if ('error' in spec) return { ok: false, error: spec.error }
+
     const widgetsDir = sandboxWidgetsDir()
-    const dest = join(widgetsDir, plan.id)
-    const tmp = join(widgetsDir, `.tmp-${plan.id}-${createHash('sha256').update(hash).digest('hex').slice(0, 8)}`)
+    const dest = join(widgetsDir, spec.id)
+    // Unique per-invocation temp dir (random nonce) so concurrent commits can't collide.
+    const tmp = join(widgetsDir, `.tmp-${spec.id}-${randomUUID().slice(0, 8)}`)
     await rm(tmp, { recursive: true, force: true })
     await mkdir(tmp, { recursive: true })
     for (const f of files) {
@@ -217,12 +250,12 @@ export async function commitInstall(plan: InstallPlan): Promise<{ ok: boolean; e
       await mkdir(join(target, '..'), { recursive: true })
       await copyFile(f.abs, target)
     }
-    const prior = await readRecord(plan.id)
+    const prior = await readRecord(spec.id)
     const record: InstallRecord = {
       source: plan.source,
-      version: plan.version,
+      version: spec.version,
       sha256: hash,
-      consentedPermissions: plan.permissions, // replace, never accumulate
+      consentedPermissions: spec.permissions, // replace, never accumulate
       attemptedBlocked: prior?.attemptedBlocked ?? [],
       enabled: prior?.enabled ?? true,
       installedAt: Date.now()
@@ -242,6 +275,7 @@ export async function removeWidget(id: string): Promise<void> {
 }
 
 export async function setEnabled(id: string, enabled: boolean): Promise<void> {
+  if (!ID_RE.test(id)) return // never let an unvalidated id reach a filesystem path
   const rec = await readRecord(id)
   if (!rec) return
   await writeFile(recordPath(id), JSON.stringify({ ...rec, enabled }, null, 2))
@@ -249,10 +283,17 @@ export async function setEnabled(id: string, enabled: boolean): Promise<void> {
 
 /** Merge capabilities a running widget attempted-but-was-denied into its record (disclosure). */
 export async function recordUsage(id: string, attemptedBlocked: string[]): Promise<void> {
-  if (!ID_RE.test(id)) return
-  const rec = await readRecord(id)
-  if (!rec) return
-  const merged = [...new Set([...(rec.attemptedBlocked ?? []), ...attemptedBlocked])]
-  if (merged.length === (rec.attemptedBlocked?.length ?? 0)) return // nothing new
-  await writeFile(recordPath(id), JSON.stringify({ ...rec, attemptedBlocked: merged }, null, 2))
+  if (!ID_RE.test(id) || !Array.isArray(attemptedBlocked)) return
+  // Fire-and-forget from an ipcMain.on sender — must NOT reject (it would become an
+  // unhandled rejection that can crash the main process).
+  try {
+    const rec = await readRecord(id)
+    if (!rec) return
+    const caps = attemptedBlocked.filter((c) => typeof c === 'string')
+    const merged = [...new Set([...(rec.attemptedBlocked ?? []), ...caps])]
+    if (merged.length === (rec.attemptedBlocked?.length ?? 0)) return // nothing new
+    await writeFile(recordPath(id), JSON.stringify({ ...rec, attemptedBlocked: merged }, null, 2))
+  } catch {
+    /* disclosure is best-effort; never crash main over it */
+  }
 }
