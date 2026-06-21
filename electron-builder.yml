@@ -12,6 +12,13 @@ asarUnpack:
   - native/build/**
 # We build the native addon ourselves (build:native); don't let electron-builder rebuild.
 npmRebuild: false
+# Register the .garret widget package so a double-click / "Open With" routes to the app
+# (handled via the main-process 'open-file' event → install consent flow).
+fileAssociations:
+  - ext: garret
+    name: Garret Widget
+    role: Viewer
+    rank: Owner
 mac:
   category: public.app-category.productivity
   icon: build/icon.icns

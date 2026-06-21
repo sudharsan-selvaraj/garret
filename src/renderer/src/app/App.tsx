@@ -11,6 +11,7 @@ import { WidgetCanvas } from '@renderer/canvas/WidgetCanvas'
 import { Toolbar } from '@renderer/app/Toolbar'
 import { SettingsDialog } from '@renderer/app/SettingsDialog'
 import { AddDialog } from '@renderer/app/AddDialog'
+import { GarretOpenFileConsent } from '@renderer/sandbox/GarretOpenFileConsent'
 
 // Register built-in plugins + services once, at module load.
 registerBuiltins()
@@ -75,6 +76,7 @@ export default function App(): JSX.Element {
       </main>
       {dialog === 'settings' && <SettingsDialog />}
       {dialog === 'add' && <AddDialog />}
+      <GarretOpenFileConsent />
     </div>
   )
 }

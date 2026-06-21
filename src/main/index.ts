@@ -107,6 +107,31 @@ function openPreferences(): void {
   win.webContents.send(Channels.uiOpenSettings)
 }
 
+// macOS delivers a `.garret` double-click / "Open With…" via the 'open-file' event, which can
+// fire BEFORE the window exists (cold launch). Queue those; the renderer drains the queue once
+// it has mounted its listener (flushOpenFiles). Runtime opens deliver immediately. Either way
+// we surface the board (setHud) so the consent dialog is visible over other apps.
+const pendingGarretOpens: string[] = []
+function deliverGarretOpen(path: string): void {
+  const wc = win?.webContents
+  if (wc && !wc.isLoading()) {
+    setHud(true)
+    wc.send(Channels.sandboxOpenFile, path)
+  } else {
+    pendingGarretOpens.push(path)
+  }
+}
+app.on('open-file', (e, openedPath) => {
+  e.preventDefault()
+  if (openedPath.toLowerCase().endsWith('.garret')) deliverGarretOpen(openedPath)
+})
+ipcMain.on(Channels.sandboxFlushOpenFiles, (e) => {
+  for (const path of pendingGarretOpens.splice(0)) {
+    setHud(true)
+    e.sender.send(Channels.sandboxOpenFile, path)
+  }
+})
+
 function updateTrayMenu(): void {
   if (!tray) return
   tray.setContextMenu(

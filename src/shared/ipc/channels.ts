@@ -36,6 +36,8 @@ export const Channels = {
   sandboxRemove: 'sandbox:remove',
   sandboxSetEnabled: 'sandbox:set-enabled',
   sandboxRecordUsage: 'sandbox:record-usage',
+  sandboxOpenFile: 'sandbox:open-file',
+  sandboxFlushOpenFiles: 'sandbox:flush-open-files',
   serviceStatus: 'service:status',
   serviceConnect: 'service:connect',
   serviceDisconnect: 'service:disconnect',
@@ -207,6 +209,10 @@ export interface GarretApi {
     setEnabled(id: string, enabled: boolean): Promise<void>
     /** Record capabilities a running widget attempted-but-was-denied (disclosure). */
     recordUsage(id: string, attemptedBlocked: string[]): void
+    /** A `.garret` was opened from Finder (double-click / Open With) — deliver its path. */
+    onOpenFile(cb: (path: string) => void): () => void
+    /** Ask main to drain any `.garret` opens queued before the renderer's listener mounted. */
+    flushOpenFiles(): void
   }
   /** Open a URL in the user's default browser. */
   openExternal(url: string): void

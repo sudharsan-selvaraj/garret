@@ -101,7 +101,13 @@ const api: GarretApi = {
     remove: (id) => ipcRenderer.invoke(Channels.sandboxRemove, id),
     setEnabled: (id, enabled) => ipcRenderer.invoke(Channels.sandboxSetEnabled, id, enabled),
     recordUsage: (id, attemptedBlocked) =>
-      ipcRenderer.send(Channels.sandboxRecordUsage, id, attemptedBlocked)
+      ipcRenderer.send(Channels.sandboxRecordUsage, id, attemptedBlocked),
+    onOpenFile: (cb) => {
+      const listener = (_e: unknown, path: string): void => cb(path)
+      ipcRenderer.on(Channels.sandboxOpenFile, listener)
+      return () => ipcRenderer.removeListener(Channels.sandboxOpenFile, listener)
+    },
+    flushOpenFiles: () => ipcRenderer.send(Channels.sandboxFlushOpenFiles)
   },
   openExternal: (url) => ipcRenderer.send(Channels.openExternal, url),
   openPath: (path) => ipcRenderer.send(Channels.openPath, path),
