@@ -2724,15 +2724,58 @@ button[disabled],
 .add-preview-card--compact {
   max-width: 260px;
 }
-.add-preview-fallback {
+/* Icon-tile fallback for third-party widgets without a preview image. */
+.add-preview-tile {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 8px;
   min-height: 104px;
+  color: var(--text-2);
+  font-size: 12px;
+}
+.add-preview-tile > span {
   color: var(--text-3);
-  font-size: 11px;
+}
+/* Author-supplied preview image (third-party widgets). */
+.add-preview-img-wrap {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+}
+.add-preview-img {
+  width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  border-radius: 11px;
+  display: block;
+}
+/* Section sub-note (e.g. the Installed "unverified" caption). */
+.add-section-note {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--text-3);
+  text-transform: none;
+  letter-spacing: 0;
+}
+/* Per-item "unverified" badge on third-party widgets. */
+.add-item-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 9.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 1px 6px;
+  border-radius: var(--r-pill);
+  color: #ff9f0a;
+  background: color-mix(in srgb, #ff9f0a 16%, transparent);
 }
 
 /* ---- General settings: toggle switch + clear button ---- */

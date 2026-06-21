@@ -162,6 +162,40 @@ export async function verifyIntegrity(id: string, expected: string): Promise<boo
   }
 }
 
+const PREVIEW_MIME: Record<string, string> = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.svg': 'image/svg+xml',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif'
+}
+const PREVIEW_MAX = 512 * 1024
+
+/**
+ * Read an installed widget's manifest `preview` image and return it as a data: URL for the
+ * Add-widget gallery (the host renderer already allows `img-src data:`). Returns null on any
+ * problem — bad id, no/unsafe preview path, non-image, oversized, or unreadable.
+ */
+export async function getPreviewDataUrl(id: string): Promise<string | null> {
+  if (!ID_RE.test(id)) return null
+  try {
+    const base = join(sandboxWidgetsDir(), id)
+    const manifest = JSON.parse(await readFile(join(base, 'manifest.json'), 'utf8'))
+    const rel: unknown = manifest?.preview
+    if (typeof rel !== 'string' || !rel || rel.startsWith('/') || /(^|\/)\.\.(\/|$)/.test(rel)) return null
+    const file = normalize(join(base, rel))
+    if (file !== base && !file.startsWith(base + sep)) return null // containment
+    const mime = PREVIEW_MIME[extname(file).toLowerCase()]
+    if (!mime) return null
+    const st = await lstat(file)
+    if (!st.isFile() || st.size > PREVIEW_MAX) return null
+    return `data:${mime};base64,${(await readFile(file)).toString('base64')}`
+  } catch {
+    return null
+  }
+}
+
 export async function readRecord(id: string): Promise<InstallRecord | null> {
   try {
     return JSON.parse(await readFile(recordPath(id), 'utf8')) as InstallRecord

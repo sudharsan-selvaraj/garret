@@ -7,5 +7,6 @@ OUT=examples/sandbox-selftest/dist
 mkdir -p "$OUT"
 node_modules/.bin/esbuild examples/sandbox-selftest/src/index.tsx \
   --bundle --format=iife --jsx=automatic --outfile="$OUT/bundle.js"
-cp examples/sandbox-selftest/manifest.json examples/sandbox-selftest/index.html "$OUT/"
+cp examples/sandbox-selftest/manifest.json examples/sandbox-selftest/index.html \
+  examples/sandbox-selftest/preview.svg "$OUT/"
 echo "built $OUT — install this folder via Settings → Widgets → Install widget…"

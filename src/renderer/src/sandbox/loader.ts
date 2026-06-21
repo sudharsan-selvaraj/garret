@@ -11,6 +11,13 @@ interface DiskManifest {
   defaultSize?: { w: number; h: number }
   minSize?: { w: number; h: number }
   configSchema?: WidgetManifest['configSchema']
+  preview?: string
+}
+
+/** A safe relative path inside the bundle — no leading slash, no `..` segments. */
+function safePreview(p: unknown): string | undefined {
+  if (typeof p !== 'string' || !p || p.startsWith('/') || /(^|\/)\.\.(\/|$)/.test(p)) return undefined
+  return p
 }
 
 /**
@@ -27,6 +34,8 @@ export function makeSandboxedPlugin(
   consentedPermissions: string[]
 ): AnyWidgetPlugin {
   const apiVersion = m.apiVersion ?? 1
+  // Just flag that a preview exists (the relative path). The gallery fetches the actual image
+  // as a data: URL via window.garret.sandbox.previewDataUrl(id) — main reads + validates it.
   const manifest: WidgetManifest = {
     id: `sandbox:${id}`, // namespaced so it can't collide with built-ins
     name: m.name ?? id,
@@ -34,7 +43,8 @@ export function makeSandboxedPlugin(
     defaultSize: m.defaultSize ?? { w: 4, h: 4 },
     minSize: m.minSize,
     configSchema: m.configSchema ?? {},
-    permissions: consentedPermissions
+    permissions: consentedPermissions,
+    preview: safePreview(m.preview)
   }
   return {
     apiVersion,

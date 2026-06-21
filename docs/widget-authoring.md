@@ -71,6 +71,7 @@ build into a clean `dist/`.
 | `defaultSize` / `minSize` | Placement size in grid units. |
 | `permissions` | Capabilities you need (see §5). Anything not listed is denied. |
 | `configSchema` | Declarative config → auto‑generated settings form + validation (see §6). |
+| `preview` | *Optional.* Relative path to a preview image in your bundle (e.g. `"preview.png"` / `.svg`) shown in the Add‑widget gallery. Must stay inside the bundle; no preview → a clean icon tile. |
 
 > ⚠️ The on‑disk `manifest.json` is **display‑only after install**. The authoritative
 > permission ceiling is the set the user consented to, recorded by the host. Editing the

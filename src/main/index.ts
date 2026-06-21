@@ -206,7 +206,7 @@ app.whenReady().then(() => {
       "default-src 'self'",
       dev ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'" : "script-src 'self'",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https:",
+      "img-src 'self' data: https:", // widget preview images arrive as data: URLs (sandbox.previewDataUrl)
       "font-src 'self' data:",
       dev ? "connect-src 'self' http: https: ws: wss:" : "connect-src 'self' https: wss:",
       "frame-src 'self' garret-widget: https:",

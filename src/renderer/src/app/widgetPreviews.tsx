@@ -1,4 +1,5 @@
-import type { CSSProperties, ReactNode } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
+import { Blocks } from 'lucide-react'
 import type { AnyWidgetPlugin } from '@sdk'
 import { WidgetIcon } from '@renderer/widgets/WidgetIcon'
 
@@ -233,22 +234,47 @@ const PREVIEWS: Record<string, () => JSX.Element> = {
 // Small/object-like widgets stay compact instead of stretching to full width.
 const COMPACT = new Set(['clock', 'weather'])
 
-/** Representative preview of a widget's layout for the Add dialog. */
-export function WidgetPreview({ plugin }: { plugin: AnyWidgetPlugin }): JSX.Element {
-  const id = plugin.manifest.id
-  const Mock = PREVIEWS[id]
-  const cls = `add-preview-card${COMPACT.has(id) ? ' add-preview-card--compact' : ''}`
-  if (Mock) {
-    return (
-      <div className={cls}>
-        <Mock />
-      </div>
-    )
-  }
+/** A clean icon tile — the graceful fallback when there's no mock or preview image. */
+function IconTile({ plugin, cls }: { plugin: AnyWidgetPlugin; cls: string }): JSX.Element {
   return (
-    <div className={`${cls} add-preview-fallback`}>
-      <WidgetIcon icon={plugin.manifest.icon} size={34} />
-      <span>No preview</span>
+    <div className={`${cls} add-preview-tile`}>
+      <WidgetIcon icon={plugin.manifest.icon ?? Blocks} size={36} />
+      <span>{plugin.manifest.name}</span>
     </div>
   )
+}
+
+/** Async-load a sandboxed widget's manifest preview image (as a data: URL) → falls back to a tile. */
+function SandboxPreview({ plugin, cls }: { plugin: AnyWidgetPlugin; cls: string }): JSX.Element {
+  const bareId = plugin.manifest.id.slice('sandbox:'.length)
+  const [src, setSrc] = useState<string | null | undefined>(undefined) // undefined = loading
+  useEffect(() => {
+    let alive = true
+    window.garret.sandbox
+      .previewDataUrl(bareId)
+      .then((d) => alive && setSrc(d))
+      .catch(() => alive && setSrc(null))
+    return () => {
+      alive = false
+    }
+  }, [bareId])
+
+  if (src === undefined) return <div className={cls} /> // loading: blank card
+  if (!src) return <IconTile plugin={plugin} cls={cls} />
+  return (
+    <div className={`${cls} add-preview-img-wrap`}>
+      <img className="add-preview-img" src={src} alt="" />
+    </div>
+  )
+}
+
+/** Representative preview of a widget's layout for the Add dialog. */
+export function WidgetPreview({ plugin }: { plugin: AnyWidgetPlugin }): JSX.Element {
+  const { id, preview } = plugin.manifest
+  const Mock = PREVIEWS[id]
+  const cls = `add-preview-card${COMPACT.has(id) ? ' add-preview-card--compact' : ''}`
+
+  if (Mock) return <div className={cls}><Mock /></div>
+  if (id.startsWith('sandbox:') && preview) return <SandboxPreview plugin={plugin} cls={cls} />
+  return <IconTile plugin={plugin} cls={cls} />
 }

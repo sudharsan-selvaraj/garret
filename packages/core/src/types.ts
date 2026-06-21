@@ -39,6 +39,11 @@ export interface WidgetManifest {
   /** Declarative config — drives the auto-generated settings form + validation. */
   configSchema: ConfigSchema
   /**
+   * Optional relative path to a preview image bundled with the widget (e.g. 'preview.png').
+   * Shown in the Add-widget gallery for third-party widgets. Must stay inside the bundle.
+   */
+  preview?: string
+  /**
    * Capabilities this widget needs, declared up front, e.g. 'service:atlassian',
    * 'network:api.github.com', 'clipboard:read', 'files:read', 'storage'. Surfaced at
    * install (capability disclosure); enforced by the sandbox bridge. Built-ins, which

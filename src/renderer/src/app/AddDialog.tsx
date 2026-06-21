@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Blocks, LayoutGrid, Plus, Search } from 'lucide-react'
+import { Blocks, LayoutGrid, Plus, Search, ShieldAlert } from 'lucide-react'
 import type { AnyWidgetPlugin } from '@sdk'
 import { useServiceStatus } from '@sdk'
 import { registry } from '@renderer/plugins/registry'
@@ -18,6 +18,13 @@ interface Group {
   widgets: AnyWidgetPlugin[]
 }
 
+/** Third-party (installed) widgets are namespaced by the registry: `sandbox:` (a .garret) or
+ *  `ext:` (a dev-tier external). Everything else is a first-party built-in. */
+export function isThirdParty(w: AnyWidgetPlugin): boolean {
+  const id = w.manifest.id
+  return id.startsWith('sandbox:') || id.startsWith('ext:')
+}
+
 function buildGroups(all: AnyWidgetPlugin[], query: string): Group[] {
   const q = query.trim().toLowerCase()
   const matches = (w: AnyWidgetPlugin): boolean =>
@@ -27,11 +34,15 @@ function buildGroups(all: AnyWidgetPlugin[], query: string): Group[] {
 
   const out: Group[] = []
   for (const def of serviceRegistry.list()) {
-    const widgets = all.filter((w) => w.manifest.serviceId === def.id && matches(w))
+    const widgets = all.filter((w) => w.manifest.serviceId === def.id && !isThirdParty(w) && matches(w))
     if (widgets.length) out.push({ id: def.id, name: def.name, icon: def.icon, serviceId: def.id, widgets })
   }
-  const general = all.filter((w) => !w.manifest.serviceId && matches(w))
+  // Built-in miscellaneous (first-party, no service).
+  const general = all.filter((w) => !w.manifest.serviceId && !isThirdParty(w) && matches(w))
   if (general.length) out.push({ id: 'general', name: 'General', widgets: general })
+  // Installed third-party widgets — kept separate from built-ins, always last.
+  const installed = all.filter((w) => isThirdParty(w) && matches(w))
+  if (installed.length) out.push({ id: 'installed', name: 'Installed', icon: Blocks, widgets: installed })
   return out
 }
 
@@ -99,6 +110,8 @@ export function AddDialog(): JSX.Element {
             visible.map((g) =>
               g.serviceId ? (
                 <ServiceSection key={g.id} group={g} onAdd={add} onConnect={connect} />
+              ) : g.id === 'installed' ? (
+                <InstalledSection key={g.id} group={g} onAdd={add} />
               ) : (
                 <GeneralSection key={g.id} group={g} onAdd={add} />
               )
@@ -115,6 +128,22 @@ function GeneralSection({ group, onAdd }: { group: Group; onAdd: (id: string) =>
     <section className="add-section">
       <div className="add-section-head">
         <span>{group.name}</span>
+      </div>
+      {group.widgets.map((w) => (
+        <WidgetItem key={w.manifest.id} plugin={w} locked={false} onAdd={() => onAdd(w.manifest.id)} />
+      ))}
+    </section>
+  )
+}
+
+function InstalledSection({ group, onAdd }: { group: Group; onAdd: (id: string) => void }): JSX.Element {
+  return (
+    <section className="add-section">
+      <div className="add-section-head">
+        <span>{group.name}</span>
+        <span className="add-section-note">
+          <ShieldAlert size={12} strokeWidth={2} /> Sandboxed · unverified authors
+        </span>
       </div>
       {group.widgets.map((w) => (
         <WidgetItem key={w.manifest.id} plugin={w} locked={false} onAdd={() => onAdd(w.manifest.id)} />
@@ -180,6 +209,11 @@ function WidgetItem({
           <div className="add-item-head">
             <WidgetIcon icon={manifest.icon} size={16} />
             <span className="add-item-name">{manifest.name}</span>
+            {isThirdParty(plugin) && (
+              <span className="add-item-badge" title="Third-party · sandboxed · unverified author">
+                <ShieldAlert size={11} strokeWidth={2} /> Unverified
+              </span>
+            )}
           </div>
           {manifest.description && <p className="add-item-desc">{manifest.description}</p>}
         </div>

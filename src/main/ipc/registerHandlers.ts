@@ -22,7 +22,8 @@ import {
   commitInstall,
   removeWidget,
   setEnabled,
-  recordUsage
+  recordUsage,
+  getPreviewDataUrl
 } from '@main/sandbox/install'
 import type { InstallPlan } from '@shared/types/sandbox'
 
@@ -104,6 +105,7 @@ export function registerIpcHandlers(hooks: IpcHooks): void {
   ipcMain.handle(Channels.sandboxInstallCommit, (_e, plan: InstallPlan) => commitInstall(plan))
   ipcMain.handle(Channels.sandboxRemove, (_e, id: string) => removeWidget(id))
   ipcMain.handle(Channels.sandboxSetEnabled, (_e, id: string, on: boolean) => setEnabled(id, on))
+  ipcMain.handle(Channels.sandboxPreviewDataUrl, (_e, id: string) => getPreviewDataUrl(id))
   ipcMain.on(Channels.sandboxRecordUsage, (_e, id: string, caps: string[]) => {
     void recordUsage(id, caps)
   })

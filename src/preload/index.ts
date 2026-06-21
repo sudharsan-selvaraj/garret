@@ -102,6 +102,7 @@ const api: GarretApi = {
     setEnabled: (id, enabled) => ipcRenderer.invoke(Channels.sandboxSetEnabled, id, enabled),
     recordUsage: (id, attemptedBlocked) =>
       ipcRenderer.send(Channels.sandboxRecordUsage, id, attemptedBlocked),
+    previewDataUrl: (id) => ipcRenderer.invoke(Channels.sandboxPreviewDataUrl, id),
     onOpenFile: (cb) => {
       const listener = (_e: unknown, path: string): void => cb(path)
       ipcRenderer.on(Channels.sandboxOpenFile, listener)
