@@ -2715,8 +2715,7 @@ button[disabled],
   background: rgba(10, 132, 255, 0.16);
 }
 .add-preview-card {
-  background: rgba(34, 34, 36, 0.55);
-  border: 0.5px solid var(--hairline);
+  background: rgba(255, 255, 255, 0.03);
   border-radius: 12px;
   padding: 12px 14px;
   min-height: 96px;
@@ -2738,17 +2737,22 @@ button[disabled],
 .add-preview-tile > span {
   color: var(--text-3);
 }
-/* Author-supplied preview image (third-party widgets). */
+/* Author-supplied preview image (third-party widgets) — fills the card edge-to-edge at its
+ * natural aspect and is clipped to the rounded corners, so the image IS the preview (no
+ * surrounding card bg, no letterbox, no double-frame). Works for any image the author ships. */
 .add-preview-img-wrap {
   padding: 0;
+  min-height: 0;
+  background: none;
   overflow: hidden;
-  display: flex;
+  line-height: 0;
 }
 .add-preview-img {
   width: 100%;
-  max-height: 220px;
-  object-fit: contain;
-  border-radius: 11px;
+  height: auto;
+  max-height: 240px; /* safety cap for very tall images (then crops from the top) */
+  object-fit: cover;
+  object-position: top;
   display: block;
 }
 /* Section sub-note (e.g. the Installed "unverified" caption). */

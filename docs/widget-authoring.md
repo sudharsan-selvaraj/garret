@@ -71,7 +71,7 @@ build into a clean `dist/`.
 | `defaultSize` / `minSize` | Placement size in grid units. |
 | `permissions` | Capabilities you need (see §5). Anything not listed is denied. |
 | `configSchema` | Declarative config → auto‑generated settings form + validation (see §6). |
-| `preview` | *Optional.* Relative path to a preview image in your bundle (e.g. `"preview.png"` / `.svg`) shown in the Add‑widget gallery. Must stay inside the bundle; no preview → a clean icon tile. |
+| `preview` | *Optional.* Relative path to a preview image in your bundle (e.g. `"preview.png"` / `.svg`) shown in the Add‑widget gallery. It fills the card full‑width at its natural aspect, clipped to rounded corners — so use a **wide-ish image (≈2:1)** with a full‑bleed background (don't add your own rounded corners). Must stay inside the bundle; ≤ 512 KB; no preview → a clean icon tile. |
 
 > ⚠️ The on‑disk `manifest.json` is **display‑only after install**. The authoritative
 > permission ceiling is the set the user consented to, recorded by the host. Editing the
