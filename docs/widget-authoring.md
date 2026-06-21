@@ -236,7 +236,7 @@ Your document is served under a strict Content‑Security‑Policy. The practica
 |---|---|
 | `script-src 'self'` | Only `bundle.js` from your folder. No inline `<script>`, no `eval`, no CDN. Bundle everything. |
 | `connect-src 'none'` | The document's own `fetch` / `XMLHttpRequest` / `WebSocket` are blocked. **All network goes through `sdk.fetch`** (host‑mediated and permission‑gated). |
-| `img-src 'none'` | No `<img>` and no CSS `background-image` (including `data:` URIs). Use **inline SVG markup** instead. |
+| `img-src 'self'` | `<img>` and CSS `background-image` may load images **bundled in your own package** (`.png/.jpg/.svg/...`). Remote image URLs and `data:` URIs are blocked — ship images in your `dist/`. |
 | `style-src 'unsafe-inline'` | Inline `style={…}` and `<style>` blocks are fine — style freely. |
 | `font-src 'none'` | No custom web fonts; use the system font stack (`-apple-system, …`). |
 

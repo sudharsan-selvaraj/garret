@@ -15,10 +15,15 @@ export const SANDBOX_SCHEME = 'garret-widget'
  * The widget realm's Content-Security-Policy. `script-src 'self'` loads only the
  * same-origin bundle (no eval, no remote scripts); `connect-src 'none'` means the
  * widget cannot reach the network on its own — all I/O must go through the host bridge,
- * where declared permissions are enforced. Everything else is locked to 'none'.
+ * where declared permissions are enforced.
+ *
+ * `img-src 'self'` lets a widget render raster images it ships in its OWN bundle (served by
+ * this protocol handler) — there's no provenance/exfil risk: a remote `<img>` is forbidden,
+ * `data:` is deliberately NOT allowed (covert-channel surface), and `connect-src 'none'`
+ * still blocks every outbound request. Everything else stays locked to 'none'.
  */
 export const WIDGET_CSP =
-  "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src 'none'; " +
+  "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self'; " +
   "media-src 'none'; font-src 'none'; connect-src 'none'; frame-src 'none'; " +
   "child-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'; " +
   "form-action 'none'; frame-ancestors 'none'"
@@ -40,7 +45,13 @@ const MIME: Record<string, string> = {
   '.css': 'text/css',
   '.json': 'application/json',
   '.map': 'application/json',
-  '.txt': 'text/plain'
+  '.txt': 'text/plain',
+  // Bundled images (img-src 'self') — correct types matter because we send nosniff.
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.svg': 'image/svg+xml',
+  '.woff2': 'font/woff2'
 }
 
 function notFound(): Response {
