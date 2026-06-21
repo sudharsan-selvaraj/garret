@@ -57,11 +57,30 @@ export function ExtensionsManager(): JSX.Element {
     setPlan(p)
   }
 
+  const startFileInstall = async (): Promise<void> => {
+    setError(null)
+    const file = await window.garret.pickGarretFile()
+    if (!file) return
+    const p = await window.garret.sandbox.installFromFile(file)
+    if (!p.ok) {
+      setError(p.error ?? 'Not a valid .garret file')
+      return
+    }
+    setPlan(p)
+  }
+
+  // Discard a pending plan, cleaning up the .garret staging temp dir if it was staged.
+  const closePlan = (p: InstallPlan | null): void => {
+    if (p?.staged) window.garret.sandbox.installCleanup(p.source)
+    setPlan(null)
+  }
+
   const confirmInstall = async (): Promise<void> => {
     if (!plan) return
     setBusy(true)
     const res = await window.garret.sandbox.commitInstall(plan)
     setBusy(false)
+    if (plan.staged) window.garret.sandbox.installCleanup(plan.source)
     if (!res.ok) {
       setError(res.error ?? 'Install failed')
       setPlan(null)
@@ -122,9 +141,14 @@ export function ExtensionsManager(): JSX.Element {
           )
         })}
       </div>
-      <button className="ext-install" onClick={() => void startInstall()}>
-        <Blocks size={14} strokeWidth={1.75} /> Install widget…
-      </button>
+      <div className="ext-install-row">
+        <button className="ext-install" onClick={() => void startFileInstall()}>
+          <Blocks size={14} strokeWidth={1.75} /> Install .garret file…
+        </button>
+        <button className="ext-install ext-install--ghost" onClick={() => void startInstall()}>
+          <FolderOpen size={14} strokeWidth={1.75} /> From folder…
+        </button>
+      </div>
       {error && <p className="ext-error">{error}</p>}
       <p className="settings-note">
         Third-party widgets run sandboxed and isolated — they only get the access you approve
@@ -136,7 +160,7 @@ export function ExtensionsManager(): JSX.Element {
           plan={plan}
           busy={busy}
           onConfirm={() => void confirmInstall()}
-          onCancel={() => setPlan(null)}
+          onCancel={() => closePlan(plan)}
         />
       )}
     </>

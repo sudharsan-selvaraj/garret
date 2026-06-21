@@ -18,6 +18,7 @@
     "build:native": "cd native && node-gyp rebuild --target=31.7.7 --arch=arm64 --dist-url=https://electronjs.org/headers --devdir=../.electron-gyp",
     "build:icon": "bash scripts/make-icon.sh",
     "build:selftest": "bash scripts/build-selftest.sh",
+    "pack:selftest": "npm run build:selftest && bash scripts/garret-pack.sh examples/sandbox-selftest/dist examples/sandbox-selftest/sandbox-selftest.garret",
     "test:unpack": "node scripts/test-unpack.mjs",
     "pack:dir": "npm run build:native && npm run build && electron-builder --dir",
     "pack:mac": "npm run build:native && npm run build && electron-builder --mac --publish never"

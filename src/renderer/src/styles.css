@@ -3014,11 +3014,16 @@ button[disabled],
   color: var(--danger);
   background: var(--surface-hover);
 }
+.ext-install-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
 .ext-install {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-top: 10px;
   padding: 6px 12px;
   border: 0.5px solid var(--hairline);
   background: var(--surface-input);
@@ -3028,6 +3033,11 @@ button[disabled],
 }
 .ext-install:hover {
   background: var(--surface-hover);
+}
+/* Secondary (folder) install — quieter than the primary .garret action. */
+.ext-install--ghost {
+  background: transparent;
+  color: var(--text-2);
 }
 .ext-error {
   margin-top: 8px;

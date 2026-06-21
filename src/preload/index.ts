@@ -93,6 +93,10 @@ const api: GarretApi = {
     prepare: (partition) => ipcRenderer.invoke(Channels.sandboxPrepare, partition),
     list: () => ipcRenderer.invoke(Channels.sandboxList),
     planInstall: (srcDir) => ipcRenderer.invoke(Channels.sandboxInstallPlan, srcDir),
+    installFromFile: (p) => ipcRenderer.invoke(Channels.sandboxInstallFromFile, p),
+    installCleanup: (source) => {
+      void ipcRenderer.invoke(Channels.sandboxInstallCleanup, source)
+    },
     commitInstall: (plan) => ipcRenderer.invoke(Channels.sandboxInstallCommit, plan),
     remove: (id) => ipcRenderer.invoke(Channels.sandboxRemove, id),
     setEnabled: (id, enabled) => ipcRenderer.invoke(Channels.sandboxSetEnabled, id, enabled),
@@ -103,6 +107,7 @@ const api: GarretApi = {
   openPath: (path) => ipcRenderer.send(Channels.openPath, path),
   openInEditor: (path, editor) => ipcRenderer.send(Channels.openInEditor, path, editor),
   pickDirectory: () => ipcRenderer.invoke(Channels.pickDirectory),
+  pickGarretFile: () => ipcRenderer.invoke(Channels.pickGarretFile),
   store: {
     get: (key) => ipcRenderer.invoke(Channels.storeGet, key),
     set: (key, value) => ipcRenderer.invoke(Channels.storeSet, key, value)

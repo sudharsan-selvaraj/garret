@@ -1,9 +1,11 @@
 import { join, normalize, sep, extname, relative } from 'node:path'
+import { tmpdir } from 'node:os'
 import { createHash, randomUUID } from 'node:crypto'
 import { isIP } from 'node:net'
 import { lstat, readdir, readFile, writeFile, rm, mkdir, rename, copyFile } from 'node:fs/promises'
 import { sandboxWidgetsDir } from './protocol'
 import { isBlockedIp } from './net'
+import { unpackZip } from './unpack'
 import type { InstallPlan } from '@shared/types/sandbox'
 
 /**
@@ -44,6 +46,7 @@ export interface InstallRecord {
 }
 
 interface DiskManifest {
+  kind?: unknown
   id?: unknown
   name?: unknown
   description?: unknown
@@ -171,6 +174,8 @@ async function parseManifestSpec(srcDir: string): Promise<ManifestSpec | { error
   } catch {
     return { error: 'No readable manifest.json in that folder' }
   }
+  // `kind` is the umbrella-format discriminator (default 'widget'). Packs aren't built yet.
+  if (manifest.kind === 'pack') return { error: 'Widget packs are not supported yet.' }
   const id = typeof manifest.id === 'string' ? manifest.id.toLowerCase() : ''
   if (!ID_RE.test(id)) return { error: 'manifest.id must be lowercase alphanumeric (a-z0-9._-), no ".."' }
   if (typeof manifest.name !== 'string' || !manifest.name) return { error: 'manifest.name required' }
@@ -267,6 +272,42 @@ export async function commitInstall(plan: InstallPlan): Promise<{ ok: boolean; e
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) }
   }
+}
+
+// Temp dirs we extracted a `.garret` into, awaiting consent. Only these may be cleaned up
+// (so the cleanup IPC can never be coaxed into deleting an arbitrary path).
+const stagingDirs = new Set<string>()
+
+/**
+ * Plan an install from a `.garret` file: extract it (slip-safe) into a host-owned temp dir,
+ * then run the normal folder `planInstall` against that dir. The temp dir persists through the
+ * consent step (its path is the returned plan's `source`); the caller MUST call
+ * {@link cleanupStaging} on confirm/cancel. `staged: true` marks it for that cleanup.
+ */
+export async function planInstallFromFile(garretPath: string): Promise<InstallPlan> {
+  const dir = join(tmpdir(), `garret-install-${randomUUID()}`)
+  try {
+    await mkdir(dir, { recursive: true })
+    stagingDirs.add(dir)
+    await unpackZip(garretPath, dir)
+  } catch (e) {
+    await cleanupStaging(dir)
+    return fail(e instanceof Error ? e.message : 'Could not open .garret file')
+  }
+  const plan = await planInstall(dir)
+  if (!plan.ok) {
+    await cleanupStaging(dir)
+    return plan
+  }
+  plan.staged = true
+  return plan
+}
+
+/** Remove a `.garret` staging dir — only ever one we created (never an arbitrary path). */
+export async function cleanupStaging(dir: string): Promise<void> {
+  if (!stagingDirs.has(dir)) return
+  stagingDirs.delete(dir)
+  await rm(dir, { recursive: true, force: true }).catch(() => {})
 }
 
 export async function removeWidget(id: string): Promise<void> {

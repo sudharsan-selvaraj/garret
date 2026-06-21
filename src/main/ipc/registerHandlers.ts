@@ -17,6 +17,8 @@ import {
 } from '@main/sandbox/session'
 import {
   planInstall,
+  planInstallFromFile,
+  cleanupStaging,
   commitInstall,
   removeWidget,
   setEnabled,
@@ -97,6 +99,8 @@ export function registerIpcHandlers(hooks: IpcHooks): void {
   })
   ipcMain.handle(Channels.sandboxList, () => listSandboxedWidgets())
   ipcMain.handle(Channels.sandboxInstallPlan, (_e, srcDir: string) => planInstall(srcDir))
+  ipcMain.handle(Channels.sandboxInstallFromFile, (_e, p: string) => planInstallFromFile(p))
+  ipcMain.handle(Channels.sandboxInstallCleanup, (_e, dir: string) => cleanupStaging(dir))
   ipcMain.handle(Channels.sandboxInstallCommit, (_e, plan: InstallPlan) => commitInstall(plan))
   ipcMain.handle(Channels.sandboxRemove, (_e, id: string) => removeWidget(id))
   ipcMain.handle(Channels.sandboxSetEnabled, (_e, id: string, on: boolean) => setEnabled(id, on))
@@ -228,6 +232,18 @@ export function registerIpcHandlers(hooks: IpcHooks): void {
   ipcMain.handle(Channels.pickDirectory, async (e) => {
     const win = BrowserWindow.fromWebContents(e.sender)
     const opts = { properties: ['openDirectory' as const] }
+    const res = win
+      ? await dialog.showOpenDialog(win, opts)
+      : await dialog.showOpenDialog(opts)
+    return res.canceled ? null : (res.filePaths[0] ?? null)
+  })
+
+  ipcMain.handle(Channels.pickGarretFile, async (e) => {
+    const win = BrowserWindow.fromWebContents(e.sender)
+    const opts = {
+      properties: ['openFile' as const],
+      filters: [{ name: 'Garret widget', extensions: ['garret'] }]
+    }
     const res = win
       ? await dialog.showOpenDialog(win, opts)
       : await dialog.showOpenDialog(opts)

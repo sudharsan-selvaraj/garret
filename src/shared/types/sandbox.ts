@@ -31,4 +31,6 @@ export interface InstallPlan {
   addedPermissions: string[]
   /** Source-tree integrity hash at plan time (re-checked at commit). */
   sourceHash: string
+  /** True when `source` is a host-owned temp dir (from a `.garret` file) to clean up after. */
+  staged?: boolean
 }

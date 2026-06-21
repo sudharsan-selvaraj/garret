@@ -17,3 +17,6 @@ examples/**/dist
 
 # transient esbuild bundle from scripts/test-unpack.mjs
 ._unpack_test_bundle.mjs
+
+# packaged example widget (regenerate via npm run pack:selftest)
+examples/**/*.garret

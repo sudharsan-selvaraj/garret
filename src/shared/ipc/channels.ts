@@ -30,6 +30,8 @@ export const Channels = {
   sandboxPrepare: 'sandbox:prepare',
   sandboxList: 'sandbox:list',
   sandboxInstallPlan: 'sandbox:install-plan',
+  sandboxInstallFromFile: 'sandbox:install-from-file',
+  sandboxInstallCleanup: 'sandbox:install-cleanup',
   sandboxInstallCommit: 'sandbox:install-commit',
   sandboxRemove: 'sandbox:remove',
   sandboxSetEnabled: 'sandbox:set-enabled',
@@ -42,6 +44,7 @@ export const Channels = {
   openPath: 'shell:open-path',
   openInEditor: 'shell:open-in-editor',
   pickDirectory: 'dialog:pick-directory',
+  pickGarretFile: 'dialog:pick-garret',
   layoutsAllWidgets: 'layouts:all-widgets',
   pollSubscribe: 'poll:subscribe',
   pollUnsubscribe: 'poll:unsubscribe',
@@ -192,6 +195,10 @@ export interface GarretApi {
     list(): Promise<InstalledWidget[]>
     /** Validate a source folder + produce a consent plan (writes nothing). */
     planInstall(srcDir: string): Promise<InstallPlan>
+    /** Extract a `.garret` file to a temp dir + produce a consent plan (staged). */
+    installFromFile(garretPath: string): Promise<InstallPlan>
+    /** Remove a `.garret` staging temp dir after confirm/cancel (no-op for folder installs). */
+    installCleanup(source: string): void
     /** Commit a plan the user confirmed (safe copy + install record). */
     commitInstall(plan: InstallPlan): Promise<{ ok: boolean; error?: string }>
     /** Uninstall a widget (deletes its dir + record). */
@@ -209,6 +216,8 @@ export interface GarretApi {
   openInEditor(path: string, editor: string): void
   /** Native folder picker; resolves to the chosen path or null if cancelled. */
   pickDirectory(): Promise<string | null>
+  /** Native file picker filtered to `.garret`; resolves to the path or null if cancelled. */
+  pickGarretFile(): Promise<string | null>
   /** Namespaced key/value store for per-widget state (tokens, cursors, cache). */
   store: {
     get<T = unknown>(key: string): Promise<T | undefined>

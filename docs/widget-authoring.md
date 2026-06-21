@@ -288,6 +288,22 @@ echo "built dist/ — install it via Settings → Widgets → Install widget…"
 forbids remote/inline scripts, so **everything must be in `bundle.js`**. Don't ship source or
 extra files in `dist/` — the installer's allowlist will reject the folder.
 
+### Package as a `.garret` (one shareable file)
+
+A `.garret` is just a **zip of your `dist/` contents** (with `manifest.json` at the archive
+root) — one file someone can install instead of a folder. Any zip tool works; zip the
+*contents*, not the parent folder, and leave out dotfiles:
+
+```bash
+cd dist && zip -r -X ../my-widget.garret . -x '.*' -x '*/.*'
+```
+
+The host re-applies every install guard to the archive — slip-safe extraction (no `../`,
+absolute, or symlink entries), the extension allowlist, and the 20 MB / 200-file caps — so a
+`.garret` is exactly as trusted as a folder install (self-trust + the sandbox), not more.
+Optionally add `"kind": "widget"` to your manifest; it's the default, and the slot where
+multi-widget *packs* will live later.
+
 ---
 
 ## 8. Test without a host
@@ -313,8 +329,9 @@ The mock also exposes `emitPoll(update)` and `emitWatch(watchId)` to simulate li
 
 ## 9. Install it
 
-1. Build your `dist/` (§7).
-2. In Garret: **Settings → Widgets → Install widget…**, pick the `dist/` folder.
+1. Build your `dist/` (§7), and optionally package it as a `.garret`.
+2. In Garret: **Settings → Widgets**, then either **Install .garret file…** (pick your
+   `.garret`) or **From folder…** (pick the `dist/` folder).
 3. Review the consent screen — it lists exactly the capabilities you declared, flags an
    unverified author, and confirms the widget runs sandboxed. Confirm to install.
 4. Add it to a board like any built‑in widget.
