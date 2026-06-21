@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { SlidersHorizontal } from 'lucide-react'
 import type { Preferences } from '@shared/types/preferences'
 import { HotkeyRecorder } from '@renderer/app/HotkeyRecorder'
-import { ExtensionsManager } from '@renderer/sandbox/ExtensionsManager'
 
 const MAX_ITEM_OPTIONS = [25, 50, 100, 200, 500]
 
@@ -148,8 +147,6 @@ export function GeneralSettings(): JSX.Element {
           </p>
         </>
       )}
-
-      <ExtensionsManager />
     </div>
   )
 }

@@ -135,6 +135,23 @@ function recordPath(id: string): string {
   return join(sandboxWidgetsDir(), id, '.garret-install.json')
 }
 
+// All in-place record mutations are serialized through this chain so concurrent
+// read-modify-writes (e.g. a widget reporting several blocked capabilities at once) can't
+// interleave and corrupt the file, and writes are atomic (temp + rename) so a crash mid-write
+// leaves the previous valid record intact.
+let recordWriteChain: Promise<unknown> = Promise.resolve()
+function queueRecordWrite(fn: () => Promise<void>): Promise<void> {
+  const next = recordWriteChain.then(fn, fn)
+  recordWriteChain = next.catch(() => undefined)
+  return next
+}
+async function writeRecordAtomic(id: string, rec: InstallRecord): Promise<void> {
+  const path = recordPath(id)
+  const tmp = `${path}.${randomUUID().slice(0, 8)}.tmp`
+  await writeFile(tmp, JSON.stringify(rec, null, 2))
+  await rename(tmp, path)
+}
+
 /** Re-hash the installed files and compare to the recorded sha256 (tamper/corruption check). */
 export async function verifyIntegrity(id: string, expected: string): Promise<boolean> {
   if (!ID_RE.test(id) || !expected) return false
@@ -317,24 +334,27 @@ export async function removeWidget(id: string): Promise<void> {
 
 export async function setEnabled(id: string, enabled: boolean): Promise<void> {
   if (!ID_RE.test(id)) return // never let an unvalidated id reach a filesystem path
-  const rec = await readRecord(id)
-  if (!rec) return
-  await writeFile(recordPath(id), JSON.stringify({ ...rec, enabled }, null, 2))
+  await queueRecordWrite(async () => {
+    const rec = await readRecord(id)
+    if (rec) await writeRecordAtomic(id, { ...rec, enabled })
+  })
 }
 
 /** Merge capabilities a running widget attempted-but-was-denied into its record (disclosure). */
 export async function recordUsage(id: string, attemptedBlocked: string[]): Promise<void> {
   if (!ID_RE.test(id) || !Array.isArray(attemptedBlocked)) return
-  // Fire-and-forget from an ipcMain.on sender — must NOT reject (it would become an
-  // unhandled rejection that can crash the main process).
-  try {
-    const rec = await readRecord(id)
-    if (!rec) return
-    const caps = attemptedBlocked.filter((c) => typeof c === 'string')
-    const merged = [...new Set([...(rec.attemptedBlocked ?? []), ...caps])]
-    if (merged.length === (rec.attemptedBlocked?.length ?? 0)) return // nothing new
-    await writeFile(recordPath(id), JSON.stringify({ ...rec, attemptedBlocked: merged }, null, 2))
-  } catch {
-    /* disclosure is best-effort; never crash main over it */
-  }
+  // Serialized + atomic (queueRecordWrite); fire-and-forget from an ipcMain.on sender, so it
+  // must never reject (an unhandled rejection could crash main) — disclosure is best-effort.
+  await queueRecordWrite(async () => {
+    try {
+      const rec = await readRecord(id)
+      if (!rec) return
+      const caps = attemptedBlocked.filter((c) => typeof c === 'string')
+      const merged = [...new Set([...(rec.attemptedBlocked ?? []), ...caps])]
+      if (merged.length === (rec.attemptedBlocked?.length ?? 0)) return // nothing new
+      await writeRecordAtomic(id, { ...rec, attemptedBlocked: merged })
+    } catch {
+      /* never crash main over disclosure */
+    }
+  })
 }

@@ -19,9 +19,9 @@ export function describePermission(p: string): string {
   return p
 }
 
-/** Icon for a declared permission (consent screen rows). */
+/** Icon for a declared permission (consent + details rows). */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function permIcon(p: string): ComponentType<any> {
+export function permIcon(p: string): ComponentType<any> {
   if (p.startsWith('service:')) return KeyRound
   if (p.startsWith('network:')) return Globe
   if (p === 'files:read') return FolderOpen

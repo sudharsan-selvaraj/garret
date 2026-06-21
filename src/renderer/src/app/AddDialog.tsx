@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { LayoutGrid, Plus, Search } from 'lucide-react'
+import { Blocks, LayoutGrid, Plus, Search } from 'lucide-react'
 import type { AnyWidgetPlugin } from '@sdk'
 import { useServiceStatus } from '@sdk'
 import { registry } from '@renderer/plugins/registry'
@@ -83,6 +83,11 @@ export function AddDialog(): JSX.Element {
               <span className="add-nav-name">{g.name}</span>
             </button>
           ))}
+          <div className="add-nav-spacer" />
+          <button className="add-nav-item add-nav-manage" onClick={() => openSettings('widgets')}>
+            <Blocks size={16} strokeWidth={1.75} />
+            <span className="add-nav-name">Manage widgets…</span>
+          </button>
         </div>
 
         <div className="add-gallery">
