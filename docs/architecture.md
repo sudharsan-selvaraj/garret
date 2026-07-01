@@ -215,6 +215,62 @@ occluded painting, chatty streams.
 
 ---
 
+## 7. Cross-platform (future) — macOS-only today
+
+Garret is **macOS-only** right now (native `mac_window.mm`, `safeStorage`, Homebrew-only binary
+hints). An external audit mapped what changes per-OS; captured here as the roadmap, not a
+commitment. The core divergence is **the desktop layer** (Pillar 1) — every OS needs a different
+trick, and one (Wayland/GNOME) has no clean path yet.
+
+| Feature | macOS | Windows | Linux X11 | Linux Wayland |
+|---|---|---|---|---|
+| Ambient desktop layer | ✅ native (addon) | 🟡 WorkerW re-parent | 🟡 `_NET_WM_WINDOW_TYPE_DESKTOP` | ❌ compositor-specific (`wlr-layer-shell` only) |
+| HUD (above all) | ✅ screen-saver lvl | ✅ `setAlwaysOnTop` | ✅ `_NET_WM_STATE_ABOVE` | 🟡 `wlr-layer-shell` |
+| Overlay on full-screen | ✅ `visibleOnFullScreen` | ❌ full-screen owns display | 🟡 compositor-dep | 🟡 layer-shell only |
+| Secrets | ✅ `safeStorage` | ✅ `safeStorage`/DPAPI | 🟡 libsecret (needs daemon) | 🟡 same |
+| Native host process | ✅ | ✅ | ✅ | ✅ |
+| Binary resolve hints | ✅ Homebrew | 🟡 Scoop/Choco/WinGet | ✅ apt/dnf | ✅ same |
+
+**Design implication (adopt when we go cross-platform):** a single `GarretPlatform` interface
+(`window.sinkToDesktop/raiseToHUD` + `supportsDesktopLayer`/`supportsFullscreenOverlay` feature
+flags, `secrets`, `binary.resolve` with a per-OS probe+hint table, `autostart`, `tray`) with one
+impl per OS — so cross-platform is *one new implementation*, not scattered `process.platform`
+checks. `resolveBinary` must carry a **per-OS install-hint table** (the `brew install …` hint is
+wrong everywhere else). Suggested order: **macOS (now) → Windows (WorkerW) → Linux X11 → Wayland
+(post-1.0)**.
+
+---
+
+## Audit adjudication (July 2026)
+
+An external architecture/SDK audit (27 findings) was reviewed against the code. Nothing dismissed
+blindly — verdict + grounding for each:
+
+| Finding | Verdict | Grounding |
+|---|---|---|
+| ARCH-01 renderer isolation (`<webview>`→`WebContentsView`) | **Valid** = open Pillar 3 | We do use `<webview>`. But its CSP-bypass critique doesn't apply: enforcement is already **session-level per-partition** (`sandbox/session.ts`), not attribute-CSP. `WebContentsView` still the modern path. |
+| ARCH-02 define IPC wire / first-class `stream_*` frames | **Valid** — already §2 | Structured clone + per-instance ids already true; adopt `stream_*` frames before the SDK. |
+| ARCH-03 enforce capabilities in main | **Valid, already done** | `session.ts` (main) `onBeforeRequest`/permission-deny + Phase-3 **HMAC-signed consent, re-consent on change**. Fully satisfied. |
+| ARCH-04 `fork` vs `spawn` | **Partial** | We use `utilityProcess.fork` (Electron-native, defensibly better than `child_process.fork`). ready-timeout/stderr/crash-surface done; **env-scrub + graceful-shutdown are the §4 gaps.** |
+| ARCH-05 window level + Mission Control | **Mostly already done** | `mac_window.mm` already sets `CanJoinAllSpaces\|Stationary\|IgnoresCycle` + non-activating panel + `visibleOnFullScreen`. Residual nuance: HUD uses **screen-saver** level (above Notification/Control Center) — test `floating` (§1). |
+| ARCH-06 tier-inference contradiction | **Valid — adopt** | Real doc contradiction. Resolution below (require both). |
+| SDK-01 `@garret/sdk` scoped package | Adopt | matches §14 Q1. |
+| SDK-02 sibling calls via **function declarations** | Adopt (supersedes rev-2 `methods` arg) | hoisted fn decls cross-reference safely — simpler, removes SDK surface. |
+| SDK-03 `ctx.spawn` array-only + `spawnShell` opt-in | Adopt | string form is a shell-injection surface even in a trusted ext. |
+| SDK-04 `useConfig` → `patchCfg` (merge) + `setCfg` (replace) | Adopt | current single-key `setCfg` on a multi-key type is ambiguous. |
+| SDK-05 `useStream` React hook | Adopt | removes the manual `useEffect`+cancel leak. |
+| SDK-06 `g.instanceStorage` (per-placement) | Adopt | key-level merge doesn't stop **same-key cross-instance clobber**; per-instance namespace does. |
+| SDK-07 typed `g.service<T>()` | Adopt | generic response type now; typed clients (`@garret/sdk/services`) later. |
+| SDK-08 doc fixes | Valid — confirmed | gotchas table **skips P8** (P1–P7,P9,P10); config x-ref says **§07 but is §08**; `garret/ui`/`defineManifest`/`g.window` need examples. |
+| Q1–Q8 open questions | Resolved | Q1 `@garret/sdk` · Q2 `garret.manifest.json` · Q3 require-both · Q4 React+`/ui` only · Q5 keep `Stream<C,R>` (default `void`) · Q6 mini-schema + `defineConfig()` · Q7 compat shim (sunset 6mo) · Q8 no web-tier host. |
+| OS-01 desktop layer cross-platform | Valid — future | §7 above. |
+| OS-02 secrets cross-platform | Partial | already on `safeStorage` (cross-platform); residual = **Linux no-daemon → `UNAVAILABLE`**, not a crash. |
+| OS-03 `resolveBinary` per-OS probe+hints | Valid — future | not built yet; design cross-platform from the start (§7). |
+| OS-04 native addon per-platform builds | Valid — future | matches the deferred `.node` gate. |
+| OS-05 `GarretPlatform` abstraction | Valid — adopt when cross-platform | §7. |
+
+---
+
 ## Decisions to lock before building the SDK
 
 1. **Renderer primitive (Pillar 3)** — `<webview>` (stay) vs `WebContentsView` (migrate now). *Highest
@@ -223,6 +279,13 @@ occluded painting, chatty streams.
    backpressure** (recommended) vs document-and-defer.
 3. **Host shutdown contract (Pillar 4)** — commit `SIGTERM → onDispose → 3s → SIGKILL` + env scrub as
    core behavior (recommended).
+4. **Tier inference (ARCH-06) — RESOLVED: require BOTH.** The `host` entry is the *runtime* signal
+   (spawn a child?) and explicit system capabilities are the *consent* signal (what to tell the
+   user). A full-access tier requires **both** a `host` entry **and** ≥1 system capability
+   (`process`/`fs`/`native`/`network:*`); reject at install otherwise (`host` with no system cap →
+   "requires a capability"; a system cap with no `host` → "requires a host entry"). This is the only
+   model where the consent screen is accurate.
 
 Pillars 1 and 5 are settled. 2 and 4 are "tighten-and-implement." 6 has its core throttle built
-(needs the SDK `active` signal + a real occlusion source). 3 is the genuine fork.
+(needs the SDK `active` signal + a real occlusion source). 3 is the genuine fork. Cross-platform
+(§7) is future. Tier inference (#4) is resolved.
