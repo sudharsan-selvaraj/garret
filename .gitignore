@@ -20,4 +20,3 @@ examples/**/dist
 
 # packaged example widget (regenerate via npm run pack:selftest)
 examples/**/*.garret
-._devices_test_bundle.mjs
