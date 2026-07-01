@@ -202,10 +202,14 @@ async function currentHash(id: string): Promise<string | null> {
 
 // ---- manifest parsing -------------------------------------------------------------------------
 
-/** Validate a manifest-relative path is contained under `base` (no absolute, no `..`). */
+/** Validate a manifest-relative path is contained under `base` (no absolute, no `..`). Returns a
+ *  path with NO trailing separator — `manifest.ui: "ui/"` would otherwise yield `.../ui/`, and a
+ *  later `startsWith(dir + sep)` containment check (see protocol.ts) would compare against a
+ *  double-separator prefix and wrongly 404 every asset. */
 function containedPath(base: string, rel: unknown): string | null {
   if (typeof rel !== 'string' || !rel || rel.startsWith('/') || /(^|\/)\.\.(\/|$)/.test(rel)) return null
-  const p = normalize(join(base, rel))
+  let p = normalize(join(base, rel))
+  while (p.length > 1 && p.endsWith(sep)) p = p.slice(0, -1)
   return p === base || p.startsWith(base + sep) ? p : null
 }
 

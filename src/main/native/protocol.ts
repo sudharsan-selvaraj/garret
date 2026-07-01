@@ -33,21 +33,48 @@ const MIME: Record<string, string> = {
   '.woff2': 'font/woff2'
 }
 
-// id → the extension's UI directory (set by the lane at registration).
+// id → the extension's UI directory. Populated by the lane (syncUiDirs) AND lazily on a cache miss
+// via the resolver below — the lane's registration is async/fire-and-forget, so a webview for an
+// already-placed native widget can request its UI before registration finishes (that race served a
+// 404 that never retried). The resolver closes that hole; the map is just a cache in front of it.
 const uiDirs = new Map<string, string>()
+/** Resolve an enabled+valid extension's UI dir from disk (set by the lane). */
+let resolver: ((id: string) => Promise<string | null>) | null = null
+
 export function setNativeUiDir(id: string, dir: string): void {
   uiDirs.set(id, dir)
 }
+/** Replace the whole cache (so disabling/removing an extension stops serving its UI). */
+export function resetNativeUiDirs(entries: Array<{ id: string; dir: string }>): void {
+  uiDirs.clear()
+  for (const e of entries) uiDirs.set(e.id, e.dir)
+}
+export function setNativeUiResolver(fn: (id: string) => Promise<string | null>): void {
+  resolver = fn
+}
 
 function notFound(): Response {
-  return new Response('not found', { status: 404, headers: { 'Content-Security-Policy': NATIVE_CSP } })
+  return new Response('not found', {
+    status: 404,
+    headers: { 'Content-Security-Policy': NATIVE_CSP, 'Cache-Control': 'no-store' }
+  })
 }
 
 async function serveNativeRequest(request: Request): Promise<Response> {
   const url = new URL(request.url)
   const id = url.hostname
-  const base = uiDirs.get(id)
-  if (!SAFE_ID.test(id) || !base) return notFound()
+  if (!SAFE_ID.test(id)) return notFound()
+  let base = uiDirs.get(id)
+  if (!base && resolver) {
+    // Cache miss (e.g. boot race, or first request before syncUiDirs). Resolve from disk once and
+    // cache it. The resolver only returns enabled+authentic+untampered extensions.
+    const resolved = await resolver(id)
+    if (resolved) {
+      uiDirs.set(id, resolved)
+      base = resolved
+    }
+  }
+  if (!base) return notFound()
   const rel = decodeURIComponent(url.pathname) === '/' ? '/index.html' : decodeURIComponent(url.pathname)
   const resolved = normalize(join(base, rel))
   if (resolved !== base && !resolved.startsWith(base + sep)) return notFound() // containment

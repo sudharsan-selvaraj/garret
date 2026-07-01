@@ -5,7 +5,11 @@ import { Channels } from '@shared/ipc/channels'
 import type { NativeExtensionInfo } from '@shared/ipc/channels'
 import type { NativeInstallPlan } from '@shared/types/native'
 import { ExtensionHost, launchExtension, killExtension } from '@main/native/extensionHost'
-import { registerNativeProtocol, setNativeUiDir } from '@main/native/protocol'
+import {
+  registerNativeProtocol,
+  resetNativeUiDirs,
+  setNativeUiResolver
+} from '@main/native/protocol'
 import {
   planInstall,
   planInstallFromFile,
@@ -69,9 +73,9 @@ async function registry(): Promise<NativeExtension[]> {
   return [...installed, ...devFixtures().filter((f) => !ids.has(f.id))]
 }
 
-/** Register every currently-loadable extension's UI dir so garret-native://<id>/ can serve it. */
+/** Rebuild the UI-dir cache from the currently-loadable set (so disable/remove stop serving). */
 async function syncUiDirs(): Promise<void> {
-  for (const ext of await registry()) setNativeUiDir(ext.id, ext.uiDir)
+  resetNativeUiDirs((await registry()).map((ext) => ({ id: ext.id, dir: ext.uiDir })))
 }
 
 /** file:// URL of the UI-bridge preload injected into native-extension webviews. */
@@ -93,6 +97,9 @@ function stop(wcId: number): void {
 export function registerNativeHandlers(): void {
   registerNativeProtocol(session.defaultSession.protocol)
   registerNativeProtocol(session.fromPartition(NATIVE_PARTITION).protocol)
+  // Lazy fallback: if a UI asset is requested before syncUiDirs runs (boot race), resolve the
+  // enabled+valid extension's UI dir from disk on demand. `registry()` gates enabled/authentic.
+  setNativeUiResolver(async (id) => (await registry()).find((e) => e.id === id)?.uiDir ?? null)
   void syncUiDirs()
 
   // --- board loader / host lane ---------------------------------------------------------------

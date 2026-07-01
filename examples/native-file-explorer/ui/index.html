@@ -1,0 +1,121 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font: 12.5px -apple-system, sans-serif;
+        color: #e6e6ea;
+        background: #1c1c1e;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        border-bottom: 0.5px solid rgba(255, 255, 255, 0.1);
+      }
+      header button {
+        background: rgba(255, 255, 255, 0.08);
+        color: inherit;
+        border: none;
+        border-radius: 6px;
+        padding: 4px 8px;
+        cursor: pointer;
+      }
+      #path { color: rgba(235, 235, 245, 0.6); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      main { flex: 1; display: flex; min-height: 0; }
+      #list { flex: 1; overflow: auto; }
+      #preview {
+        flex: 1;
+        overflow: auto;
+        border-left: 0.5px solid rgba(255, 255, 255, 0.1);
+        padding: 10px;
+        white-space: pre-wrap;
+        font: 11px ui-monospace, monospace;
+        color: rgba(235, 235, 245, 0.75);
+      }
+      .row { display: flex; gap: 8px; padding: 5px 10px; cursor: default; align-items: center; }
+      .row:hover { background: rgba(255, 255, 255, 0.06); }
+      .row .ic { width: 16px; text-align: center; }
+      .row .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .row .sz { color: rgba(235, 235, 245, 0.4); font-variant-numeric: tabular-nums; }
+      .dir { color: #7cb0ff; cursor: pointer; }
+      .err { color: #ff453a; padding: 10px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <button id="up">↑ Up</button>
+      <span id="path">Loading…</span>
+    </header>
+    <main>
+      <div id="list"></div>
+      <div id="preview">Select a text file to preview.</div>
+    </main>
+
+    <script>
+      // The ONLY Garret API the UI touches:
+      //   garret.request(method, args) -> Promise<value>   (calls your Node method)
+      //   garret.onEvent((channel, payload) => …)          (receives your Node events)
+      const garret = window.garret && window.garret.native
+      const $list = document.getElementById('list')
+      const $preview = document.getElementById('preview')
+      const $path = document.getElementById('path')
+      let current = null
+      let parent = null
+
+      const fmt = (n) => (n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(0) + ' KB' : (n / 1048576).toFixed(1) + ' MB')
+
+      async function open(dir) {
+        try {
+          const res = await garret.request('list', { dir })
+          current = res.dir
+          parent = res.parent
+          $path.textContent = res.dir
+          $list.innerHTML = ''
+          for (const it of res.items) {
+            const row = document.createElement('div')
+            row.className = 'row'
+            row.innerHTML =
+              `<span class="ic">${it.isDir ? '📁' : '📄'}</span>` +
+              `<span class="nm ${it.isDir ? 'dir' : ''}">${it.name}</span>` +
+              `<span class="sz">${it.isDir ? '' : fmt(it.size)}</span>`
+            row.querySelector('.nm').onclick = () => (it.isDir ? open(it.path) : preview(it.path))
+            $list.appendChild(row)
+          }
+          garret.request('watch', { dir: res.dir }) // live-refresh this folder
+        } catch (e) {
+          $list.innerHTML = `<div class="err">${e.message || e}</div>`
+        }
+      }
+
+      async function preview(p) {
+        $preview.textContent = 'Reading…'
+        try {
+          const r = await garret.request('read', { path: p })
+          $preview.textContent = r.tooBig ? `(${fmt(r.size)} — too big to preview)` : r.binary ? '(binary file)' : r.text
+        } catch (e) {
+          $preview.textContent = String(e.message || e)
+        }
+      }
+
+      document.getElementById('up').onclick = () => parent && parent !== current && open(parent)
+
+      if (!garret) {
+        $list.innerHTML = '<div class="err">no native bridge — not running in Garret</div>'
+      } else {
+        garret.onEvent((channel, payload) => {
+          if (channel === 'changed' && payload.dir === current) open(current) // fs watcher fired
+        })
+        garret.request('home').then((h) => open(h.path))
+      }
+    </script>
+  </body>
+</html>

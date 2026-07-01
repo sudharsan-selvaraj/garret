@@ -1,0 +1,61 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      body { margin: 0; font: 12.5px -apple-system, sans-serif; color: #e6e6ea; background: #1c1c1e; height: 100vh; display: flex; flex-direction: column; }
+      form { display: flex; gap: 6px; padding: 8px; border-bottom: 0.5px solid rgba(255,255,255,0.1); }
+      input { flex: 1; background: rgba(255,255,255,0.08); border: none; border-radius: 6px; padding: 6px 9px; color: inherit; font: 12px ui-monospace, monospace; }
+      button { background: #0a84ff; color: #fff; border: none; border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+      button.kill { background: #ff453a; }
+      #out { flex: 1; margin: 0; padding: 10px; overflow: auto; white-space: pre-wrap; font: 11px ui-monospace, monospace; }
+      .err { color: #ff8a80; }
+    </style>
+  </head>
+  <body>
+    <form id="f">
+      <input id="cmd" value="ping -c 3 127.0.0.1" spellcheck="false" />
+      <button type="submit">Run</button>
+      <button type="button" class="kill" id="kill">Kill</button>
+    </form>
+    <pre id="out"></pre>
+
+    <script>
+      const g = window.garret && window.garret.native
+      const $out = document.getElementById('out')
+      const $cmd = document.getElementById('cmd')
+      let activeRun = null // the UI must remember which runId is "current" and ignore the rest
+
+      // ONE global event stream for the whole extension — we filter by channel AND by runId ourselves.
+      g &&
+        g.onEvent((channel, p) => {
+          if (channel === 'output' && p.runId === activeRun) {
+            const span = document.createElement('span')
+            if (p.stream === 'stderr') span.className = 'err'
+            span.textContent = p.chunk
+            $out.appendChild(span)
+            $out.scrollTop = $out.scrollHeight
+          } else if (channel === 'exit' && p.runId === activeRun) {
+            $out.appendChild(document.createTextNode(p.error ? `\n[error: ${p.error}]\n` : `\n[exited ${p.code}]\n`))
+            activeRun = null
+          }
+        })
+
+      document.getElementById('f').onsubmit = async (e) => {
+        e.preventDefault()
+        $out.textContent = ''
+        try {
+          const { runId } = await g.request('start', { cmd: $cmd.value })
+          activeRun = runId // correlate every future event against this by hand
+        } catch (err) {
+          $out.innerHTML = `<span class="err">${err.message || err}</span>`
+        }
+      }
+      document.getElementById('kill').onclick = () => activeRun && g.request('kill', { runId: activeRun })
+
+      if (!g) $out.innerHTML = '<span class="err">no native bridge — not running in Garret</span>'
+    </script>
+  </body>
+</html>
