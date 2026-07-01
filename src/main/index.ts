@@ -186,6 +186,15 @@ app.whenReady().then(() => {
       if (!fromSandbox && /^https?:\/\//i.test(url)) void shell.openExternal(url)
       return { action: 'deny' }
     })
+    // DEV: auto-open DevTools for native-extension UI webviews so their console/errors are
+    // inspectable (the guest has its own devtools, separate from the board window).
+    if (!app.isPackaged) {
+      contents.on('dom-ready', () => {
+        if (contents.getURL().startsWith('garret-native:') && !contents.isDevToolsOpened()) {
+          contents.openDevTools({ mode: 'detach' })
+        }
+      })
+    }
   })
 
   // Serve garret-widget:// on the default session. SandboxWidget (step 5) also registers

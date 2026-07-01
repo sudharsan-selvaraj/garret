@@ -65,16 +65,22 @@ crash-before-`ready` hung every request forever with no timeout. Fixed in `exten
 stdio with an `[ext:<id>]` prefix; reject `ready` on early exit + a startup grace timeout). The SDK
 inherits this; authors get real error output instead of a spinner.
 
-### P10 — Inline UI scripts run in the global scope → silent window-global collisions
-The UI is a plain HTML page, so its `<script>` runs in the page's **global** scope. A top-level
-`let parent = null` (natural for a file browser) collides with the non-configurable global
-`window.parent` and throws a `SyntaxError` at *evaluation* — aborting the **entire script before
-line 1**, so the UI renders its static HTML ("Loading…") and does nothing, with no error visible in
-the widget. Same trap for `top`, `self`, `name`, `length`, `closed`, `location`. Cost us a full
-debug session (file-explorer "not working"). `new Function(src)` doesn't catch it (function scope,
-not global). **SDK:** a bundled, module-scoped UI (`ui/App.tsx` → esbuild/vite) has its own scope
-and never touches the global object — this class of bug just can't happen. A strong argument for
-the build-step SDK over hand-written inline HTML.
+### P10 — Inline UI scripts run in the global scope → silent redeclaration of injected/window globals
+The UI is a plain HTML page, so its `<script>` runs in the page's **global** scope. The confirmed
+instance (a full debug session): file-explorer did `const garret = window.garret && window.garret.native`
+— but the preload exposes a **non-configurable global `garret`** via `contextBridge`, so a top-level
+`const garret` *redeclares* it → `Uncaught SyntaxError: Identifier 'garret' has already been declared`
+at evaluation → the **entire script aborts before line 1** → the widget shows its static HTML
+("Loading…") and does nothing, no error surfaced in the widget itself. The other three examples
+named their local `g`, so only this one broke; and `new Function(src)`/a plain browser miss it
+(function scope; no injected global). The same trap applies to `window.parent`/`top`/`self`/`name`.
+**SDK:** a bundled, module-scoped UI (`ui/App.tsx` → esbuild/vite) has its own scope, imports the
+client explicitly (`const gx = useHost()`), and never redeclares a global — this class of bug can't
+happen. The strongest concrete argument for the build-step SDK over hand-written inline HTML.
+
+Tooling gap this exposed: native webview errors were only visible after we added **dev
+auto-open-DevTools for `garret-native://` webviews** (`src/main/index.ts`). Extension authors need
+that from day one — the SDK/scaffold should make the UI's console trivially inspectable.
 
 ### P8 — Manual arg-guarding + naive parsing
 Every method opens with `({ x } = {})` and validates by hand; command-runner splits the command on
