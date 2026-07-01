@@ -1,7 +1,7 @@
 import { app, BrowserWindow, globalShortcut, ipcMain, Menu, session, shell, Tray } from 'electron'
 import { Channels } from '@shared/ipc/channels'
 import { registerIpcHandlers } from '@main/ipc/registerHandlers'
-import { initScheduler } from '@main/poll/scheduler'
+import { initScheduler, setBoardActive } from '@main/poll/scheduler'
 import { persistence } from '@main/persistence/store'
 import { createTrayIcon } from '@main/tray/icon'
 import { initClipboard } from '@main/clipboard/manager'
@@ -21,6 +21,7 @@ import {
 } from '@main/windows/createWindow'
 import { registerSandboxScheme, registerSandboxProtocol } from '@main/sandbox/protocol'
 import { registerNativeHandlers } from '@main/native/lane'
+import { registerWcvSpike } from '@main/spike/wcvSpike'
 
 // Declare the sandbox widget scheme BEFORE app `ready` (Electron requirement) so it has a
 // real, secure origin for the strict CSP that isolates third-party widgets.
@@ -57,6 +58,9 @@ function setHud(active: boolean): void {
     pinToDesktopLevel(win)
   }
   win.webContents.send(Channels.hudState, active)
+  // Power: HUD up = the board is the user's focus → poll at full rate + refresh; dismissed = it's
+  // ambient (usually behind apps) → the scheduler stretches intervals. See docs/architecture.md §6.
+  setBoardActive(active)
   updateTrayMenu()
 }
 
@@ -233,8 +237,18 @@ app.whenReady().then(() => {
   initScheduler()
 
   registerNativeHandlers() // native-extension lane (renderer ↔ main ↔ raw-Node host)
+  registerWcvSpike() // dev-only WebContentsView geometry spike (GARRET_WCV_SPIKE=1)
 
   win = createWindow(WINDOW_MODE)
+
+  // Power: the desktop board starts ambient (usually behind apps), so begin in the throttled state
+  // — the first poll for each widget still runs immediately on subscribe; only the repeat cadence is
+  // stretched until the HUD is raised. Focus/blur are a bonus signal (may not fire on the panel).
+  if (WINDOW_MODE === 'desktop') {
+    setBoardActive(false)
+    win.on('focus', () => setBoardActive(true))
+    win.on('blur', () => setBoardActive(false))
+  }
 
   // Clipboard manager: history capture + the (hidden) picker panel.
   createClipboardPicker()

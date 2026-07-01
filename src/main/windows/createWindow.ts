@@ -64,6 +64,10 @@ export function createWindow(mode: WindowMode): BrowserWindow {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      // Let Chromium throttle timers/rAF when the window is actually occluded (covered by apps).
+      // This is the OS-driven half of the power story; the poll scheduler's HUD-gated interval
+      // stretch (setBoardActive) is the main-process half Chromium can't see. See architecture.md §6.
+      backgroundThrottling: true,
       // Required for embedding third-party sites that block iframes (Calendar/Jira).
       webviewTag: true,
       // Surface the window mode + role to the renderer (read in preload from argv).

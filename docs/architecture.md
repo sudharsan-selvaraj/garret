@@ -18,6 +18,7 @@ the decisions still open before the `garret` SDK (docs/garret-sdk-guide.html) fr
 | 3 | Renderer isolation | ⚠️ **Open decision** | on `<webview>`; evaluate `WebContentsView` now |
 | 4 | Native host lifecycle | 🟡 **Core done; 2 gaps** | graceful-shutdown ladder + env scrub unbuilt |
 | 5 | Capability enforcement | ✅ **Solved** | main-enforced, signed consent, re-consent on change |
+| 6 | Power / visibility (cross-cutting) | 🟡 **Throttle built; occlusion signal pending** | HUD-gated poll stretch + `backgroundThrottling`; the real battery risk, not the render primitive |
 
 ---
 
@@ -176,6 +177,44 @@ logged. Otherwise this pillar is complete.
 
 ---
 
+## 6. Power / visibility — 🟡 throttle built; occlusion signal pending (cross-cutting)
+
+**What it is.** Garret is an **always-on desktop layer**; macOS treats it as "visible" even when it's
+sunk behind your apps, so the usual OS throttling may not kick in. That — not the render primitive —
+is the real battery risk (and the historical drain). Confirmed by measurement: with the board +
+widgets + the WebContentsView spike idle, **CPU sampled at 0.0%** across all Electron processes.
+The primitive choice (Pillar 3) is **power-neutral** — `<webview>` and `WebContentsView` are the same
+process/compositor model, and the spike's per-frame `setBounds` only fires *during* drag/scroll
+(zero at rest). Battery is driven by **what widgets do while hidden**: polling, `rAF`/CSS animation,
+occluded painting, chatty streams.
+
+**What we built (this pass):**
+- **HUD-gated poll throttle** (`src/main/poll/scheduler.ts`): `setBoardActive(active)` stretches every
+  job's interval by `IDLE_MULTIPLIER` (×4) when the board is ambient, and snaps back to full rate +
+  refreshes stale jobs when the HUD is raised. Not a hard pause — ambient widgets still tick, slower.
+  First poll per widget still runs immediately on subscribe, so launch/summon is fresh.
+- Wired to activity in `src/main/index.ts`: `setHud(active)` → `setBoardActive(active)`; desktop board
+  **starts throttled**; `win` focus/blur as a bonus signal.
+- **`backgroundThrottling: true`** made explicit (`src/main/windows/createWindow.ts`) — Chromium
+  throttles renderer timers/`rAF` when the window is genuinely occluded (the OS-driven half; the
+  scheduler stretch is the main-process half Chromium can't see).
+- Already present: full **pause on system sleep** (`powerMonitor`), per-job backoff, jitter/stagger.
+
+**Gaps / open:**
+- **True occlusion signal.** HUD-state + focus/blur is a *heuristic* proxy for "hidden." macOS
+  exposes no cheap "am I covered" API; Chromium's occlusion (via `NSWindowOcclusionState`) may be
+  unreliable for a desktop-level `CanJoinAllSpaces` window. If we can surface a real occlusion state,
+  it replaces the proxy and lets us throttle precisely (only when actually covered).
+- **SDK `active` signal (build with the SDK).** Expose board activity to widget UIs
+  (`useGarret().active` + `onActiveChange`) so widgets pause `rAF`/animations and the SDK's polling
+  helpers back off — the renderer half of the same throttle. Not yet plumbed to widget webviews.
+- **Verify under load.** The honest stress test: a polling + animating widget, board covered, measured
+  with `powermetrics`/Activity Monitor Energy — to confirm the throttle holds where `ps` can't see.
+
+**Tunable:** `IDLE_MULTIPLIER` in `scheduler.ts`. Higher = more battery saved, staler ambient.
+
+---
+
 ## Decisions to lock before building the SDK
 
 1. **Renderer primitive (Pillar 3)** — `<webview>` (stay) vs `WebContentsView` (migrate now). *Highest
@@ -185,4 +224,5 @@ logged. Otherwise this pillar is complete.
 3. **Host shutdown contract (Pillar 4)** — commit `SIGTERM → onDispose → 3s → SIGKILL` + env scrub as
    core behavior (recommended).
 
-Pillars 1 and 5 are settled. 2 and 4 are "tighten-and-implement." 3 is the genuine fork.
+Pillars 1 and 5 are settled. 2 and 4 are "tighten-and-implement." 6 has its core throttle built
+(needs the SDK `active` signal + a real occlusion source). 3 is the genuine fork.

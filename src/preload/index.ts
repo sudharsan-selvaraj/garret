@@ -123,6 +123,13 @@ const api: GarretApi = {
     setEnabled: (id, on) => ipcRenderer.invoke(Channels.nativeExtSetEnabled, id, on),
     remove: (id) => ipcRenderer.invoke(Channels.nativeExtRemove, id)
   },
+  wcvSpike: {
+    enabled: () => ipcRenderer.invoke(Channels.wcvSpikeEnabled),
+    create: (id) => ipcRenderer.invoke(Channels.wcvSpikeCreate, id),
+    setBounds: (id, rect) => ipcRenderer.invoke(Channels.wcvSpikeBounds, id, rect),
+    setVisible: (id, visible) => ipcRenderer.invoke(Channels.wcvSpikeVisible, id, visible),
+    destroy: (id) => ipcRenderer.invoke(Channels.wcvSpikeDestroy, id)
+  },
   openExternal: (url) => ipcRenderer.send(Channels.openExternal, url),
   openPath: (path) => ipcRenderer.send(Channels.openPath, path),
   openInEditor: (path, editor) => ipcRenderer.send(Channels.openInEditor, path, editor),

@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Rnd } from 'react-rnd'
 import { useBoardStore } from '@renderer/canvas/useBoardStore'
 import { WidgetHost } from '@renderer/widgets/WidgetHost'
+import { WcvSpikeTile } from '@renderer/spike/WcvSpikeTile'
 
 // Extra space beyond the furthest widget so the canvas stays scrollable and you
 // have room to drag widgets into new territory (the container grows on drop).
@@ -15,6 +16,12 @@ export function WidgetCanvas(): JSX.Element {
   // While dragging/resizing, disable pointer events on webviews so the gesture
   // isn't swallowed by a <webview> (a separate web contents).
   const [interacting, setInteracting] = useState(false)
+
+  // DEV throwaway: WebContentsView geometry spike (gated by GARRET_WCV_SPIKE=1 in main).
+  const [spike, setSpike] = useState(false)
+  useEffect(() => {
+    void window.garret.wcvSpike?.enabled().then(setSpike)
+  }, [])
 
   // Size the canvas to span all widgets so the container can scroll to reach
   // anything past the screen edge; CSS floors it at the viewport (so it only
@@ -31,7 +38,7 @@ export function WidgetCanvas(): JSX.Element {
     return { width: width + pad, height: height + pad }
   }, [widgets, interacting])
 
-  if (widgets.length === 0) {
+  if (widgets.length === 0 && !spike) {
     return (
       <div className="canvas-empty">
         <p>No widgets yet.</p>
@@ -76,6 +83,7 @@ export function WidgetCanvas(): JSX.Element {
           <WidgetHost widget={w} />
         </Rnd>
       ))}
+      {spike && <WcvSpikeTile />}
     </div>
   )
 }

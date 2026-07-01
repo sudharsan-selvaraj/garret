@@ -61,6 +61,12 @@ export const Channels = {
   nativeExtListInstalled: 'native-ext:list-installed',
   nativeExtSetEnabled: 'native-ext:set-enabled',
   nativeExtRemove: 'native-ext:remove',
+  // --- WebContentsView geometry spike (dev-only, throwaway) ---
+  wcvSpikeEnabled: 'wcv-spike:enabled',
+  wcvSpikeCreate: 'wcv-spike:create',
+  wcvSpikeBounds: 'wcv-spike:bounds',
+  wcvSpikeVisible: 'wcv-spike:visible',
+  wcvSpikeDestroy: 'wcv-spike:destroy',
   serviceStatus: 'service:status',
   serviceConnect: 'service:connect',
   serviceDisconnect: 'service:disconnect',
@@ -261,6 +267,14 @@ export interface GarretApi {
     setEnabled(id: string, on: boolean): Promise<{ ok: boolean; error?: string }>
     /** Uninstall (removes files + record). */
     remove(id: string): Promise<void>
+  }
+  /** DEV-ONLY throwaway: WebContentsView geometry spike (gated by GARRET_WCV_SPIKE=1). */
+  wcvSpike: {
+    enabled(): Promise<boolean>
+    create(id: string): Promise<void>
+    setBounds(id: string, rect: { x: number; y: number; width: number; height: number }): Promise<void>
+    setVisible(id: string, visible: boolean): Promise<void>
+    destroy(id: string): Promise<void>
   }
   /** Open a URL in the user's default browser. */
   openExternal(url: string): void

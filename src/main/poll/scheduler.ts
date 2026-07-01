@@ -45,6 +45,34 @@ const serviceDisabled = new Map<string, string>() // serviceId → auth error
 const servicePausedUntil = new Map<string, number>() // serviceId → epoch ms (429)
 let paused = false // system asleep
 
+// Power/visibility throttle (docs/architecture.md §6). The board is an always-on desktop layer,
+// so when it isn't the HUD (front-and-centre) it's usually sunk behind apps — no reason to poll
+// eagerly. We STRETCH intervals by this factor when idle (not a hard pause: ambient widgets still
+// tick, just slower), and snap back to full rate + refresh stale jobs the moment the HUD is raised.
+const IDLE_MULTIPLIER = 4
+let idleMultiplier = 1 // 1 = board active (HUD up), IDLE_MULTIPLIER = board idle/ambient
+function effectiveInterval(job: Job): number {
+  return job.intervalMs * idleMultiplier
+}
+
+/**
+ * Called when the board's activity changes (HUD raised = active; sunk to ambient = idle). Active →
+ * poll at full declared rate and immediately refresh anything now stale; idle → stretch intervals.
+ */
+export function setBoardActive(active: boolean): void {
+  const next = active ? 1 : IDLE_MULTIPLIER
+  if (next === idleMultiplier) return
+  idleMultiplier = next
+  if (active) {
+    runAllStale() // snap fresh on summon
+  } else {
+    // Re-arm timers at the stretched cadence (don't leave a full-rate timer pending).
+    for (const job of jobs.values()) {
+      if (job.timer && !job.inFlight) ensureScheduled(job, true)
+    }
+  }
+}
+
 /* ---------------- public API (called from IPC) ---------------- */
 
 export function subscribe(
@@ -224,8 +252,8 @@ function scheduleAt(job: Job, delay: number): void {
   schedule(job, delay)
 }
 
-function ensureScheduled(job: Job): void {
-  if (!job.timer && !job.inFlight) schedule(job, job.intervalMs)
+function ensureScheduled(job: Job, force = false): void {
+  if ((force || !job.timer) && !job.inFlight) schedule(job, effectiveInterval(job))
 }
 
 function runAllStale(): void {
@@ -267,7 +295,7 @@ async function runJob(job: Job): Promise<void> {
         job.lastResult = data
       }
       runWatches(job)
-      schedule(job, job.intervalMs)
+      schedule(job, effectiveInterval(job))
     } catch (err) {
       if (!jobs.has(job.key)) return
       const c = classify(err)
