@@ -1,9 +1,6 @@
 import { utilityProcess, type UtilityProcess } from 'electron'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { mkdtemp, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
 
 /**
  * Native-extension execution lane (raw Node).
@@ -134,47 +131,4 @@ export function getExtension(id: string): ExtensionHost | undefined {
 export function killExtension(id: string): void {
   hosts.get(id)?.kill()
   hosts.delete(id)
-}
-
-// ---- Phase-1 self-test (fork a fixture widget entry + round-trip) ----------
-// A representative "widget Node entry": raw Node, speaks the bridge, exposes an `info` method.
-const FIXTURE = `
-process.parentPort.on('message', (e) => {
-  const msg = e.data
-  if (!msg || msg.t !== 'req') return
-  try {
-    let value
-    if (msg.method === 'info') {
-      const os = require('os')
-      let whoami = ''
-      try { whoami = require('child_process').execSync('whoami').toString().trim() } catch (_) {}
-      value = {
-        node: process.version,
-        hostname: os.hostname(),
-        whoami,
-        pathHasHomebrew: String(process.env.PATH || '').includes('homebrew'),
-        requireWorks: typeof require === 'function'
-      }
-    } else {
-      throw new Error('unknown method: ' + msg.method)
-    }
-    process.parentPort.postMessage({ t: 'res', id: msg.id, ok: true, value })
-  } catch (err) {
-    process.parentPort.postMessage({ t: 'res', id: msg.id, ok: false, error: String(err && err.message || err) })
-  }
-})
-process.parentPort.postMessage({ t: 'ready' })
-`
-
-/** Fork a fixture extension entry through the real host + bridge and return its `info`. */
-export async function selfTestExtensionHost(): Promise<Record<string, unknown>> {
-  const dir = await mkdtemp(join(tmpdir(), 'garret-ext-'))
-  const entry = join(dir, 'entry.cjs')
-  await writeFile(entry, FIXTURE)
-  const host = await launchExtension('__selftest__', entry)
-  try {
-    return await host.request<Record<string, unknown>>('info')
-  } finally {
-    killExtension('__selftest__')
-  }
 }

@@ -1,6 +1,7 @@
 import { join, normalize, sep } from 'node:path'
 import { readFile } from 'node:fs/promises'
 import { app, protocol, type Protocol, type Session } from 'electron'
+import { nativeSchemePrivilege } from '@main/native/protocol'
 
 /**
  * Custom scheme that serves sandboxed third-party widget bundles. Each widget gets a
@@ -98,11 +99,14 @@ export async function serveSandboxRequest(request: Request): Promise<Response> {
  * context (so `crypto.randomUUID` etc. work in the widget realm).
  */
 export function registerSandboxScheme(): void {
+  // registerSchemesAsPrivileged may only be called once, so register the native-extension
+  // scheme here too (both are privileged custom schemes serving widget/extension UIs).
   protocol.registerSchemesAsPrivileged([
     {
       scheme: SANDBOX_SCHEME,
       privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: false }
-    }
+    },
+    nativeSchemePrivilege
   ])
 }
 

@@ -110,6 +110,12 @@ const api: GarretApi = {
     },
     flushOpenFiles: () => ipcRenderer.send(Channels.sandboxFlushOpenFiles)
   },
+  nativeExt: {
+    list: () => ipcRenderer.invoke(Channels.nativeExtList),
+    start: (extensionId, webContentsId) =>
+      ipcRenderer.invoke(Channels.nativeExtStart, extensionId, webContentsId),
+    stop: (webContentsId) => ipcRenderer.send(Channels.nativeExtStop, webContentsId)
+  },
   openExternal: (url) => ipcRenderer.send(Channels.openExternal, url),
   openPath: (path) => ipcRenderer.send(Channels.openPath, path),
   openInEditor: (path, editor) => ipcRenderer.send(Channels.openInEditor, path, editor),

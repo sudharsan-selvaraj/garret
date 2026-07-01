@@ -7,6 +7,15 @@ import type { ClipItem } from '../types/clipboard'
 import type { InstallPlan, InstalledWidget } from '../types/sandbox'
 import type { WatchOptions } from 'garret-core'
 
+/** A native extension as the renderer needs it to render + place it. */
+export interface NativeExtensionInfo {
+  id: string
+  name: string
+  /** file:// URL of the extension's UI entry (index.html). */
+  uiUrl: string
+  defaultSize?: { w: number; h: number }
+}
+
 /**
  * The single source of truth for the main ↔ renderer contract.
  * Channel names live here; main registers handlers for them, preload wraps them.
@@ -39,6 +48,11 @@ export const Channels = {
   sandboxPreviewDataUrl: 'sandbox:preview-data-url',
   sandboxOpenFile: 'sandbox:open-file',
   sandboxFlushOpenFiles: 'sandbox:flush-open-files',
+  nativeExtList: 'native-ext:list',
+  nativeExtStart: 'native-ext:start',
+  nativeExtStop: 'native-ext:stop',
+  nativeExtRequest: 'native-ext:request',
+  nativeExtEvent: 'native-ext:event',
   serviceStatus: 'service:status',
   serviceConnect: 'service:connect',
   serviceDisconnect: 'service:disconnect',
@@ -216,6 +230,15 @@ export interface GarretApi {
     onOpenFile(cb: (path: string) => void): () => void
     /** Ask main to drain any `.garret` opens queued before the renderer's listener mounted. */
     flushOpenFiles(): void
+  }
+  /** Native extensions (full-access, trusted, raw-Node host). See docs/native-extensions-design.md. */
+  nativeExt: {
+    /** Installed native extensions + the shared UI-bridge preload URL. */
+    list(): Promise<{ preloadUrl: string; extensions: NativeExtensionInfo[] }>
+    /** Launch the raw-Node host for a placed instance, bound to its UI webview's webContents id. */
+    start(extensionId: string, webContentsId: number): Promise<{ ok: boolean; error?: string }>
+    /** Tear down the host for a UI webview (on unmount). */
+    stop(webContentsId: number): void
   }
   /** Open a URL in the user's default browser. */
   openExternal(url: string): void

@@ -20,7 +20,7 @@ import {
   type WindowMode
 } from '@main/windows/createWindow'
 import { registerSandboxScheme, registerSandboxProtocol } from '@main/sandbox/protocol'
-import { selfTestExtensionHost } from '@main/native/extensionHost'
+import { registerNativeHandlers } from '@main/native/lane'
 
 // Declare the sandbox widget scheme BEFORE app `ready` (Electron requirement) so it has a
 // real, secure origin for the strict CSP that isolates third-party widgets.
@@ -210,7 +210,7 @@ app.whenReady().then(() => {
       "img-src 'self' data: https:", // widget preview images arrive as data: URLs (sandbox.previewDataUrl)
       "font-src 'self' data:",
       dev ? "connect-src 'self' http: https: ws: wss:" : "connect-src 'self' https: wss:",
-      "frame-src 'self' garret-widget: https:",
+      "frame-src 'self' garret-widget: garret-native: https:",
       "object-src 'none'",
       "base-uri 'none'"
     ].join('; ')
@@ -223,11 +223,7 @@ app.whenReady().then(() => {
   }
   initScheduler()
 
-  // TEMP Phase-1 self-test: fork a fixture extension entry through the real host + bridge.
-  // Remove once the UI lane (Phase 2) exercises the host for real.
-  selfTestExtensionHost()
-    .then((r) => console.log('[native-ext P1]', JSON.stringify(r)))
-    .catch((e) => console.error('[native-ext P1] failed:', e))
+  registerNativeHandlers() // native-extension lane (renderer ↔ main ↔ raw-Node host)
 
   win = createWindow(WINDOW_MODE)
 
