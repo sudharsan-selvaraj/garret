@@ -20,6 +20,7 @@ import {
   type WindowMode
 } from '@main/windows/createWindow'
 import { registerSandboxScheme, registerSandboxProtocol } from '@main/sandbox/protocol'
+import { proveRawNodeHost } from '@main/native/extensionHost'
 
 // Declare the sandbox widget scheme BEFORE app `ready` (Electron requirement) so it has a
 // real, secure origin for the strict CSP that isolates third-party widgets.
@@ -221,6 +222,13 @@ app.whenReady().then(() => {
     })
   }
   initScheduler()
+
+  // TEMP go/no-go proof: raw-Node utilityProcess host (native-extensions lane). Remove once
+  // the real lane lands.
+  proveRawNodeHost()
+    .then((r) => console.log('[native-ext PROOF]', JSON.stringify(r)))
+    .catch((e) => console.error('[native-ext PROOF] failed:', e))
+
   win = createWindow(WINDOW_MODE)
 
   // Clipboard manager: history capture + the (hidden) picker panel.
