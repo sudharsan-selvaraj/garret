@@ -1,8 +1,68 @@
-# `garret-ext` SDK — design (rev 1)
+# `garret-ext` SDK — design (rev 2)
 
-A wrapper that fixes the 8 pain points in `docs/native-ext-dx-review.md`. Decisions locked with the
-user: **callback-handle streaming**, **full P1–P8 scope**. Two runtime worlds stay two worlds (the
-UI still can't `import fs`) — the SDK makes crossing the bridge typed, streamable, boilerplate-free.
+A wrapper that fixes the pain points in `docs/native-ext-dx-review.md` (P1–P10). Decisions locked
+with the user: **callback-handle streaming**, **full scope**. Two runtime worlds stay two worlds
+(the UI still can't `import fs`) — the SDK makes crossing the bridge typed, streamable, boilerplate-free.
+
+## rev 2 — critic deltas (adversarial security + API review, folded in)
+
+Verdict was **build-with-BLOCKERS-fixed** (architecture sound, does not weaken Phase-3 guarantees).
+These override the rev-1 details below:
+
+**BLOCKERS**
+- **B1 — stream marker must resolve synchronously, before `fn` runs.** `extensionHost.request()`
+  has a 15 s timeout; if a stream method awaits anything before returning `{__gxStream:id}` the
+  call can time out and kill the run pre-first-chunk. `ctx.stream(fn)` returns the marker
+  **immediately** (host replies `{t:'res', ok, value:{__gxStream:id}}` synchronously) and schedules
+  `fn(out, signal)` on the next tick — `fn` never blocks the marker. Document this ordering.
+- **B2 — bound the pre-attach chunk buffer.** The client buffers `__gx_stream` events that arrive
+  before `.onData` attaches; unbounded, an un-consumed firehose grows renderer memory forever. Cap
+  the per-stream buffer (drop-oldest, set an `overflow` flag surfaced on first `.onData`), and
+  **auto-cancel a stream with no handler attached within a microtask**.
+- **B3 — pin the GCM construction.** `ctx.secrets` stores **per value** `{v:1, nonce, tag, ct}`
+  with `nonce = randomBytes(12)` generated **per `set`** (never derived/counter/reused — GCM nonce
+  reuse is catastrophic). Verify tag on `get`; on failure throw `INTERNAL`. The key
+  (`GARRET_EXT_SECRET_KEY`) is **static for the install** — no rotation; a safeStorage/Keychain
+  reset orphans all ciphertext → `get` **fails closed** (throws `UNAVAILABLE`), never crashes.
+
+**SHOULD-FIX (folded)**
+- **`ctx.spawn` scrubs `GARRET_EXT_*` from the child env by default** (opt-in to re-add). Otherwise
+  the vault key leaks into every `adb`/`scrcpy`/shell the extension spawns — programs the author
+  didn't write. Keep env injection to the host; strip at the spawn boundary.
+- **`ctx.storage` does key-level merge, not last-write-wins.** Before temp+rename, re-read the
+  namespace file under the in-process write lock and merge only the changed key → concurrent
+  instances no longer clobber each other's *unrelated* keys (same-key cross-process is still racy;
+  documented). Kills the P6 data-loss footgun without a DB.
+- **Orphan GC.** On startup, remove `ext-data/*` whose `<id>` has no install record. In
+  `removeExtension`, delete the **data dir + secret before** the code dir, so a crash mid-uninstall
+  leaves a harmless orphan code dir (re-GC'd), never an orphan decryptable secret.
+- **`StreamCall` is NOT thenable.** Overloading `await` on a stream is a footgun (awaiting an
+  endless `logcat` hangs; `Promise.resolve(call)` fires `.then` early, forcing the buffer race).
+  Mode is chosen from the **static `Api` type** (`Stream<C,R>` → `StreamCall`, else `Promise<R>`),
+  never the runtime response. `StreamCall` exposes `.onData/.onEnd/.onError/.cancel` and, for
+  *bounded* streams, `.result()` (a promise resolving on end). Plain methods stay awaitable.
+- **Backpressure v1 = coalesce-only, honestly scoped.** `out.push` microtask-coalesces host→parent,
+  but can't see the slow main→renderer→`.onData` hops. Ship that + document that firehoses
+  (`adb logcat`) must be **filtered host-side** (e.g. `grep` in the spawn). Credit-based flow
+  control (renderer→host acks) is deferred, not pretended.
+- **P9 committed, not "encouraged".** The factory receives the resolved method table so a method can
+  call a sibling: `defineHost((ctx, methods) => ({ restart: async () => { await methods.stop(); … } }))`.
+  Don't rely on toolkit-style guidance to prevent the `stop is not defined` class.
+- **Payload contract = structured-clone-only.** `utilityProcess.postMessage` uses structured clone:
+  `Date`/`Map`/`TypedArray`/`ArrayBuffer` survive; **functions, live handles, class prototypes do
+  not**. Document it. Binary (`adb pull`) travels as `Uint8Array`/`ArrayBuffer` (no base64 bloat).
+- **Scaffold vite config bakes in the CSP-safe build:** `build.modulePreload.polyfill = false`
+  (the polyfill uses `fetch` → blocked by `connect-src 'none'`), **no WASM** in the UI
+  (`script-src` lacks `wasm-unsafe-eval`), same-origin hashed assets only. Otherwise authors get
+  blank-screen-no-error — the exact P10 failure the SDK exists to kill.
+
+**NITs:** drop `GARRET_EXT_ID` (main injects `GARRET_EXT_DATA_DIR` directly; SDK never derives the
+path); `defineHost` rejects an `Api` method named `__gx_cancel` and the demux ignores a user
+`emit('__gx_stream')`; `resolveBinary` probes **both** `/opt/homebrew/bin` and `/usr/local/bin`;
+`defineHost` sends `ready` **only after** the factory resolves (a throw hits piped stderr + the 10 s
+`readyTimer` surfaces it).
+
+---
 
 ## 1. Package shape
 
