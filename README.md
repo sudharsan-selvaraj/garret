@@ -75,15 +75,24 @@ git tag v1.0.0
 git push origin v1.0.0   # → .github/workflows/release.yml builds Garret-1.0.0-arm64.dmg
 ```
 
-The build is **unsigned**, so on first launch macOS Gatekeeper will block it. Either
-**right-click the app → Open**, or clear the quarantine flag:
+The build is **unsigned**, so macOS Gatekeeper blocks it on first launch. On the machine that
+built it, **right-click the app → Open** (or `xattr -dr com.apple.quarantine
+/Applications/Garret.app`) is enough.
+
+**On another Mac** (downloaded/AirDropped), Apple Silicon shows *"Garret is damaged and can't
+be opened — move it to the Bin."* It's **not** damaged — arm64 refuses to run unsigned code, and
+the download quarantine flag triggers the scariest message. Move Garret to **Applications**,
+then in **Terminal**:
 
 ```bash
-xattr -dr com.apple.quarantine /Applications/Garret.app
+xattr -dr com.apple.quarantine /Applications/Garret.app   # clear the download quarantine
+codesign --force --deep --sign - /Applications/Garret.app # ad-hoc sign so arm64 will run it
 ```
 
-(Code-signing + notarization — which remove this step — are on the backlog, gated on an
-Apple Developer ID.)
+Then double-click. (On Intel Macs the first line alone usually suffices.)
+
+The permanent fix — so recipients just double-click with no warnings or Terminal — is
+**code-signing + notarization** with an Apple Developer ID ($99/yr); it's on the backlog.
 
 To build locally instead, run `npm run pack:mac` (DMG + zip) or `npm run pack:dir`
 (unpacked `.app`); output lands in `dist/`.
