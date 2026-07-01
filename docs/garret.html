@@ -100,6 +100,7 @@
         <a href="#decisions">Locked decisions</a>
         <a href="#crossplatform">Cross-platform (future)</a>
         <a href="#adjudication">Audit adjudication</a>
+        <a href="#presdk">Pre-SDK resolutions</a>
       </nav>
 
       <main>
@@ -333,7 +334,7 @@ export default defineHost&lt;Api, Events&gt;((ctx) =&gt; {
             <tr><td><code>g.fetch</code></td><td><code>(url, init?) =&gt; Promise&lt;Response&gt;</code></td><td><code>network:&lt;host&gt;</code></td></tr>
             <tr><td><code>g.service&lt;T&gt;(id)</code></td><td><code>=&gt; { connected, query&lt;R&gt;(req):Promise&lt;R&gt;, token? }</code> — typed clients later</td><td><code>service:&lt;id&gt;</code></td></tr>
             <tr><td><code>g.notify</code>/<code>openExternal</code>/<code>clipboard</code></td><td>the matching call</td><td>respective cap</td></tr>
-            <tr><td><code>g.window</code> <span style="color:var(--amber)">(deferred)</span></td><td><code>openPanel(opts)</code> — <b>not yet implemented; throws <code>GarretError('UNAVAILABLE')</code></b></td><td><code>window</code></td></tr>
+            <tr><td><code>g.window</code> <span style="color:var(--amber)">(roadmap)</span></td><td><code>openPanel(opts)</code> — floating panels; <b>not shipped</b></td><td><b>not a declarable capability yet — <code>"window"</code> is rejected at install</b></td></tr>
             <tr><td><code>g.inGarret</code></td><td><code>boolean</code> — false in a plain browser (dev)</td><td>—</td></tr>
           </table>
           <div class="call info"><span class="t">Enforced in main, never the renderer</span>
@@ -565,6 +566,25 @@ return &lt;ul&gt;{devices.map(d =&gt;
             <tr><td>OS-02 secrets cross-platform</td><td>Partial</td><td>already on <code>safeStorage</code> (cross-platform); residual = Linux no-daemon → <code>UNAVAILABLE</code>, not a crash.</td></tr>
             <tr><td>OS-01 / OS-03 / OS-04 / OS-05</td><td>Valid — future</td><td>desktop-layer per-OS · <code>resolveBinary</code> per-OS · native-addon per-platform builds · <code>GarretPlatform</code> abstraction — see Cross-platform above.</td></tr>
           </table>
+        </section>
+
+        <section id="presdk">
+          <h2><span class="n">·</span>Pre-SDK resolutions</h2>
+          <p>Ten contracts a review flagged as must-resolve before SDK code. Decision + grounding for each — <b>blocking</b> (SDK surface depends on it), <b>author-facing</b> (must exist before external authors), or <b>defer-OK</b> (decided now, built later).</p>
+          <table>
+            <tr><th>#</th><th>Item</th><th>Decision</th></tr>
+            <tr><td>1 <span style="color:var(--red)">blk</span></td><td>Action palettes have no SDK surface</td><td>Ambient &amp; HUD are the <b>same board widget</b> (HUD = board raised). Only <b>palette</b> is distinct — today first-party windows (clipboard). <b>v1 = board widgets only; third-party palettes deferred.</b> When added: <code>"surface":"palette"</code>, <b>user owns the shortcut</b> (manifest suggests), compact fixed size, ephemeral lifecycle (<code>onDispose</code> = uninstall only; summon/dismiss via <code>active</code>).</td></tr>
+            <tr><td>2 <span style="color:var(--red)">blk</span></td><td>Pillar 3 primitive still open</td><td><b>Stay on <code>&lt;webview&gt;</code> for v1</b> (isolation already main-enforced; DOM layout worth keeping; geometry-sync cost is real). <b>Unblocker:</b> the SDK lifecycle (<code>onMount</code>/<code>onResize</code>/<code>onVisibilityChange</code>) is defined <b>primitive-agnostically</b> behind a <code>WidgetSurface</code> — so a later <code>WebContentsView</code> swap is internal, not an SDK break. Revisit if webview is hard-deprecated.</td></tr>
+            <tr><td>3 <span style="color:var(--red)">blk</span></td><td>Widget crash isolation contract</td><td><b>Built:</b> <code>WidgetErrorBoundary</code> isolates React throws per-widget (Retry). <b>Gap:</b> webview <em>guest</em> crashes blank silently → add <code>render-process-gone</code>/<code>did-fail-load</code> handlers → same crashed state. <b>Contract:</b> Garret catches your UI's render errors + a crashed webview; you handle your own async/promise rejections.</td></tr>
+            <tr><td>4 <span style="color:var(--red)">blk</span></td><td><code>g.active</code> is a polling contract</td><td>Define + build the UI side: <code>useGarret().active</code> + <code>useActive()</code> + <code>onActiveChange</code> (<code>true</code>=HUD/focused). Polling/<code>rAF</code>/animation <b>should pause when <code>!active</code></b>; SDK polling helpers do it automatically. Main already throttles host-side (§6); this plumbs the renderer half.</td></tr>
+            <tr><td>5 <span style="color:var(--amber)">auth</span></td><td><code>.garret</code> format + signing never defined</td><td><b>ZIP</b> (slip-safe), root <code>garret.manifest.json</code> + <code>ui/</code> (+ <code>host/</code>). <b>Not author-signed</b> — sideload/trust. The <b>local install record</b> is HMAC-signed (per-app <code>safeStorage</code> key) committing to <code>sha256(all files)+id+version+enabled</code> → stops local tampering (forged <code>enabled</code>, swapped files), <b>not</b> author auth. Docs must not imply <code>.garret</code> is trusted.</td></tr>
+            <tr><td>6 <span style="color:var(--amber)">auth</span></td><td>Updates completely absent</td><td>v1 = <b>manual re-install</b> (no registry). Any code/capability change on update <b>resets to disabled + re-consents before it runs</b>. <code>storage</code>/<code>secrets</code> preserved (separate data dir); author migrates via an <code>onUpgrade(fromVersion)</code> hook. Install is atomic → mid-install crash keeps the old version; no auto-rollback post-install.</td></tr>
+            <tr><td>7 <span style="color:var(--amber)">auth</span></td><td>Dev loop undefined</td><td><code>@garret/create-ext</code> + <code>garret dev</code>: watch-build UI (vite) + host (esbuild); <b>UI hot-reload independent of host re-fork</b>; host stderr in the widget DevTools console + terminal (prefixed); <code>garret dev --inspect-host</code> for a debugger.</td></tr>
+            <tr><td>8 <span style="color:var(--accent)">defer</span></td><td>Multi-monitor model (macOS)</td><td><b>Single board on the primary display</b> for v1 (follows Spaces). Lock the layout contract to single-display grid coords; a per-display board is additive later.</td></tr>
+            <tr><td>9 <span style="color:var(--amber)">auth</span></td><td><code>g.service</code> connection UX</td><td><b>Built:</b> first-party connectors (Google/Jira/GitHub) + OAuth (loopback+PKCE, token encrypted) + Settings connect/revoke. A widget's <code>service:x</code> reads <code>connected</code>/<code>query()</code> <b>brokered by main — never sees the token</b>. v1 exposes existing connectors; new ones are first-party.</td></tr>
+            <tr><td>10 <span style="color:var(--accent)">fix</span></td><td><code>window</code> declarable but dead</td><td>Manifest validator <b>rejects any capability not in the implemented set</b> — <code>"window"</code> is rejected at install, not silently accepted. Removed from the advertised list until it ships.</td></tr>
+          </table>
+          <div class="call good"><span class="t">Net</span> Blocking 1–4 decided (palette scoped out · webview + surface abstraction · crash contract · <code>g.active</code>). Author-facing 5–7,9 defined against existing code. 8,10 decided. Full detail + file references in <code>docs/architecture.md</code> § Pre-SDK resolutions.</div>
         </section>
 
         <footer>

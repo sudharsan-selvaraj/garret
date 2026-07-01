@@ -291,3 +291,108 @@ blindly — verdict + grounding for each:
 Pillars 1 and 5 are settled. 2 and 4 are "tighten-and-implement." 6 has its core throttle built
 (needs the SDK `active` signal + a real occlusion source). 3 is the genuine fork. Cross-platform
 (§7) is future. Tier inference (#4) is resolved.
+
+---
+
+## Pre-SDK resolutions (contract review)
+
+A second review flagged 10 contracts that must be settled before SDK code. Decision + grounding for
+each. **Blocking** = the SDK surface depends on it; **Author-facing** = must exist before external
+authors touch it; **Defer-OK** = decided now, can be built later.
+
+### 1. Action palettes — SDK scope *(blocking)*
+Of the three product modes, **Ambient and HUD are the same board widget** (HUD is the board *raised*;
+a widget never declares which — it's a global mode). Only **Palette** is a distinct surface: today
+those are **first-party separate `BrowserWindow`s** (`clipboardPicker.ts` — global-shortcut summon,
+blur-dismiss). **Decision: v1 SDK ships board widgets only; third-party palettes are deferred.** When
+added, a palette declares `"surface": "palette"` (default `"board"`); the **user owns the shortcut**
+(the manifest may *suggest* one, rebindable in Settings); palette size is a compact fixed contract,
+not the board grid; and its lifecycle is ephemeral — **`ctx.onDispose` fires on uninstall/host-kill
+only**, while summon/dismiss surface through the `active` signal (§4) / an `onShow`/`onHide`. Rationale:
+palettes need window-level + global-shortcut + focus semantics that board widgets don't have; a half
+version now would distort the authoring model. The board contract ships first; palette is purely
+additive.
+
+### 2. Pillar 3 renderer primitive — DECISION: stay on `<webview>` for v1, behind a surface abstraction *(blocking — resolved)*
+The spike measured the `WebContentsView` geometry-sync cost as M–L (happy path small; cost in scroll
++ DPI/multi-monitor). Weighed against a **marginal** isolation gain (our boundary is already
+main-enforced: per-partition session + CSP + `contextIsolation` + `sandbox`), the DOM-element layout
+of `<webview>` is worth keeping for v1. **The key move that unblocks the SDK: the SDK's widget
+lifecycle (`onMount`/`onResize`/`onVisibilityChange`) is defined _primitive-agnostically_ — a
+`WidgetSurface` abstraction (already effectively `NativeWidget`/`SandboxWidget`) is the only thing
+that touches the primitive.** So the render contract the SDK freezes is the abstraction, not
+`<webview>`; a later `WebContentsView` migration becomes an internal change, not an SDK break. This
+neutralizes "hardest to change." **Revisit trigger:** Electron hard-deprecates `webviewTag`, or we
+need materially better crash-isolation/perf than webview gives.
+
+### 3. Widget crash isolation — contract *(blocking; mostly built)*
+**Built:** `WidgetErrorBoundary` wraps every widget in `WidgetHost` — a React throw shows a
+per-widget "failed to render" + Retry, isolated; other widgets are unaffected. **Gap:** a webview
+*guest* process crash (`render-process-gone`) or `did-fail-load` currently blanks that webview
+silently. **Plan:** add `render-process-gone`/`unresponsive`/`did-fail-load` handlers per widget
+webview → same widget-level crashed state + Retry (reloads the guest). **SDK contract to document:**
+"Garret catches (a) React render errors in your UI and (b) a crashed/unresponsive webview — both
+become an isolated widget-level crashed state with Retry. You do NOT need a top-level boundary; you
+DO handle your own async/promise rejections."
+
+### 4. `g.active` — the polling contract *(blocking)*
+Host-side throttle exists (`setBoardActive`, §6). Define the **UI-side** contract and build the pipe:
+`useGarret().active: boolean` + `useActive()` hook + `onActiveChange`. Semantics: `true` when the
+board is HUD/focused, `false` when ambient/idle. **Contract:** "polling / `rAF` / animation SHOULD
+pause or throttle when `!active`. The SDK's polling helpers (`useHostQuery`, `useStream` with a
+`pollMs`) do this for you; if you hand-roll `setInterval`/`rAF`, gate it on `active`." Plumbing: main
+broadcasts board-active to each widget webview; preload exposes it; SDK wraps. v1 SDK deliverable.
+
+### 5. `.garret` file format + signing model — DEFINE *(author-facing; grounded in code)*
+**Format:** a **ZIP** (`unpack.ts` via `yauzl`, slip-safe). Layout: `garret.manifest.json` at root +
+`ui/` (+ `host/` for native) + assets. **Install validation:** slip-safe extraction (reject `..` /
+absolute / symlink / backslash names), manifest parse + tier check (§decision 4), containment on the
+`node`/`ui` paths, native rejects `.node`, size/file caps. **Signing (state this plainly):** the
+`.garret` is **NOT author-signed** — Garret is sideload/trust (no curated store; author signing would
+be signed-malware theater, per the native design). Integrity is a **local** mechanism: on install
+Garret writes a record (`.garret-ext.json`) **HMAC-signed with a per-app key in `safeStorage`**,
+committing to `sha256(all files) + id + version + enabled`. That stops **local tampering** (forging
+`enabled:true`, swapping files) — it is **not** author authentication. Docs must not imply `.garret`
+files are trusted/signed.
+
+### 6. Extension updates — DEFINE *(author-facing)*
+- **Discovery:** v1 is **manual re-install** (drop a newer `.garret`) — sideload, no registry. Registry/auto-update is post-1.0.
+- **Consent on update:** installing over an existing id detects the prior record; **any code change (sha delta) or added capability resets `enabled:false` and re-consents BEFORE the new code runs** (already how native `commitInstall` behaves). The update lands *disabled*; it only runs after re-consent.
+- **Data:** `storage`/`secrets` live in a separate per-extension data dir, **untouched by re-install** (preserved). Schema migration is the **author's** job — expose the prior version to the host via a one-time **`onUpgrade(fromVersion)`** hook (define it).
+- **Rollback:** install is **atomic** (temp + rename), so a crash *mid-install* leaves the old version intact. No auto-rollback on *post-install* crash — the crash surfaces (§3) and the user disables / re-installs the prior `.garret`. v1-acceptable.
+
+### 7. Dev loop — DEFINE *(author-facing; partly exists)*
+**Have:** electron-vite HMR (renderer), host = `utilityProcess` with stderr piped `[ext:<id>]`, dev
+auto-DevTools for `garret-native://` webviews. **Target for authors (`@garret/create-ext` + `garret
+dev`):** watch-build UI (vite) + host (esbuild) → a dev Garret loads `dist/`. **UI-only hot-reload**
+reloads the widget webview without restarting the host; **host-only reload** re-forks just that
+extension's host (UI stays, reconnects) — the two are independent. **Logs:** host stderr surfaced in
+the widget's DevTools console *and* the terminal, prefixed. **Debugger:** `garret dev --inspect-host`
+forks the host with `--inspect` for chrome://inspect / VS Code attach. v1 SDK deliverable.
+
+### 8. Multi-monitor (macOS) — DECISION: single board on the primary display for v1 *(defer-OK)*
+Today the board uses `screen.getPrimaryDisplay().bounds` — **one board, primary display**,
+`visibleOnAllWorkspaces` so it follows Spaces; grid coords are relative to that display. **Lock the
+layout contract to single-primary-display grid coords** so the placement API doesn't change later —
+a per-display board is then purely additive (each display = another instance of the same grid).
+Multi-monitor is a known v1 limitation (aligns with the Windows one-board-per-monitor note in §7).
+
+### 9. `g.service` connection model — DEFINE *(author-facing; built)*
+**Grounded:** services are **first-party connectors** (Google/Jira/GitHub) with OAuth
+(`googleOAuth.ts`, loopback+PKCE, refresh token encrypted in `safeStorage`) + `serviceConnect/
+Disconnect/Status` IPC + a Settings UI. **Model:** Garret ships the connectors; the **user** connects
+an account in Settings; a widget declaring `service:github` gets `g.service('github').connected` +
+`.query()` **brokered by main — the widget never sees the token**; revoke = Settings → disconnect.
+So the SDK surface has a real backing today (`getService(id).status/query`). v1: expose existing
+connectors to widgets; new connectors are first-party additions. Author-provided OAuth apps = future.
+
+### 10. `window` capability inconsistency — FIX: reject at install *(cleanup)*
+`window`/`g.window` is deferred/unimplemented but was still declarable — a trap. **Decision: the
+manifest validator rejects any capability not in the *implemented* set**, so `"capabilities":
+["window"]` is rejected at install with "not yet implemented," not silently accepted. Remove `window`
+from the advertised capability list until it ships (keep it in the roadmap). Document the implemented
+set explicitly.
+
+**Net:** blocking items 1–4 are decided (palette scoped out; webview + surface abstraction; crash
+contract; `g.active`). Author-facing 5–7 and 9 are defined (grounded in existing code). 8 and 10 are
+decided. Nothing here should surprise an SDK author after the fact.
