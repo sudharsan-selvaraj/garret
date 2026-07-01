@@ -21,7 +21,8 @@
     "pack:selftest": "npm run build:selftest && bash scripts/garret-pack.sh examples/sandbox-selftest/dist examples/sandbox-selftest/sandbox-selftest.garret",
     "test:unpack": "node scripts/test-unpack.mjs",
     "pack:dir": "npm run build:native && npm run build && electron-builder --dir",
-    "pack:mac": "npm run build:native && npm run build && electron-builder --mac --publish never"
+    "pack:mac": "npm run build:native && npm run build && electron-builder --mac --publish never",
+    "test:devices": "node scripts/test-devices.mjs"
   },
   "dependencies": {
     "electron-store": "^8.2.0",
