@@ -65,6 +65,17 @@ crash-before-`ready` hung every request forever with no timeout. Fixed in `exten
 stdio with an `[ext:<id>]` prefix; reject `ready` on early exit + a startup grace timeout). The SDK
 inherits this; authors get real error output instead of a spinner.
 
+### P10 — Inline UI scripts run in the global scope → silent window-global collisions
+The UI is a plain HTML page, so its `<script>` runs in the page's **global** scope. A top-level
+`let parent = null` (natural for a file browser) collides with the non-configurable global
+`window.parent` and throws a `SyntaxError` at *evaluation* — aborting the **entire script before
+line 1**, so the UI renders its static HTML ("Loading…") and does nothing, with no error visible in
+the widget. Same trap for `top`, `self`, `name`, `length`, `closed`, `location`. Cost us a full
+debug session (file-explorer "not working"). `new Function(src)` doesn't catch it (function scope,
+not global). **SDK:** a bundled, module-scoped UI (`ui/App.tsx` → esbuild/vite) has its own scope
+and never touches the global object — this class of bug just can't happen. A strong argument for
+the build-step SDK over hand-written inline HTML.
+
 ### P8 — Manual arg-guarding + naive parsing
 Every method opens with `({ x } = {})` and validates by hand; command-runner splits the command on
 whitespace (breaks quotes/globs). Papercuts, but universal.

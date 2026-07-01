@@ -69,7 +69,11 @@
       const $preview = document.getElementById('preview')
       const $path = document.getElementById('path')
       let current = null
-      let parent = null
+      // NB: NOT `parent` — a top-level `let parent` collides with the non-configurable global
+      // window.parent and throws a SyntaxError at script evaluation (aborting the whole inline
+      // script silently). Same trap for `top`/`self`/`name`. Bundled module-scope UIs (the SDK)
+      // sidestep this entirely.
+      let parentDir = null
 
       const fmt = (n) => (n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(0) + ' KB' : (n / 1048576).toFixed(1) + ' MB')
 
@@ -77,7 +81,7 @@
         try {
           const res = await garret.request('list', { dir })
           current = res.dir
-          parent = res.parent
+          parentDir = res.parent
           $path.textContent = res.dir
           $list.innerHTML = ''
           for (const it of res.items) {
@@ -106,7 +110,7 @@
         }
       }
 
-      document.getElementById('up').onclick = () => parent && parent !== current && open(parent)
+      document.getElementById('up').onclick = () => parentDir && parentDir !== current && open(parentDir)
 
       if (!garret) {
         $list.innerHTML = '<div class="err">no native bridge — not running in Garret</div>'
