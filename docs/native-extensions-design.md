@@ -4,6 +4,34 @@ Status: **design, critic-hardened (2 rounds: security/trust + impl-realism).** R
 the MVP (§10). Rev 1's trust story was theater and its execution model leaned on false
 economies ("reuse the bridge", "reuse the window work"); rev 2 fixes both and re-scopes.
 
+## rev 3 delta — Garret is a pure container (raw Node)
+
+Decision refinement: **Garret bakes in NO domain logic** — no `adb`/`scrcpy`, no `garret.devices`
+capability. A native extension gets **raw Node** (`require('child_process')`, `fs`, native
+modules) and brings *all* its own logic; Garret only provides the runtime. This overrides parts
+of rev 2 below:
+- **§3 execution model:** not "relaxed webview + main-IPC `garret.process`". Instead the native
+  widget runs with **raw Node** — either a `nodeIntegration: true, sandbox: false` `<webview>`
+  lane (simplest; verify it's still allowed in Electron 31) or a **Node host process**
+  (`utilityProcess`) + a UI webview bridged (robust; needed anyway if nodeIntegration is locked
+  down). Garret's only container service here: inject the **resolved login-shell PATH** into the
+  widget's env (§5) so its `spawn('adb')` works.
+- **§4 capability surface:** raw Node + a *thin* container SDK for convenience only — `storage`,
+  `window` (later), and the resolved PATH. **Drop `garret.devices`/`garret.process`** as Garret
+  APIs; the widget uses Node directly.
+- **§8 device control is a WIDGET, not a Garret capability** — it lives in its **own repo**, uses
+  raw Node to run adb/scrcpy, and Garret has zero device code. (The `capability.ts` built earlier
+  was reverted for exactly this reason.)
+- **§9 native modules** still the open gate for USB/terminal widgets (they'd `require` a `.node`);
+  the device widget dodges it (adb/scrcpy are external binaries spawned via `child_process`).
+- **Security (§1):** raw Node = the widget can do anything in-process; the §2 Seatbelt profile on
+  the widget's Node context becomes *more* important, and nodeIntegration-in-webview means the
+  widget shares the renderer — a compromised widget could reach the board. A **Node host process
+  under Seatbelt** is the safer raw-Node shape; weigh it against nodeIntegration simplicity.
+- **Build order (§10):** step 1 becomes a **nodeIntegration-vs-host-process go/no-go spike**
+  (does Electron 31 still allow a raw-Node webview? how isolated?), then the raw-Node lane, then
+  the device widget (separate repo).
+
 ## 0. Decision
 
 Third-party **native extensions** run with **full system access** (spawn processes, fs, USB,
