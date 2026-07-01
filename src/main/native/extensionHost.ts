@@ -41,6 +41,8 @@ export class ExtensionHost {
   private readonly listeners = new Set<EventCb>()
   private seq = 0
   private ready: Promise<void>
+  private markReady: () => void = () => undefined
+  private failReady: (e: Error) => void = () => undefined
   private killed = false
 
   constructor(
@@ -50,15 +52,33 @@ export class ExtensionHost {
   ) {
     this.child = utilityProcess.fork(entryFile, [], {
       serviceName: `garret-ext:${id}`,
-      env: { ...process.env, PATH: userPath }
+      env: { ...process.env, PATH: userPath },
+      // Pipe the host's stdio so its console + uncaught errors are visible (otherwise a host that
+      // throws at startup fails silently and every request hangs on `ready`).
+      stdio: ['ignore', 'pipe', 'pipe']
     })
-    let onReady: () => void = () => undefined
-    this.ready = new Promise((r) => (onReady = r))
+    this.ready = new Promise((resolve, reject) => {
+      this.markReady = resolve
+      this.failReady = reject
+    })
+    // A never-settled `ready` used to hang every request forever; reject it if the host never
+    // announces readiness (crash-at-startup) within a grace window.
+    const readyTimer = setTimeout(
+      () => this.failReady(new Error(`extension "${id}" never became ready (crashed at startup?)`)),
+      10_000
+    )
+    void this.ready.catch(() => undefined).finally(() => clearTimeout(readyTimer))
+
+    const log = (buf: Buffer): void => {
+      process.stderr.write(`[ext:${id}] ${buf}`)
+    }
+    this.child.stdout?.on('data', log)
+    this.child.stderr?.on('data', log)
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.child.on('message', (msg: any) => {
       if (!msg || typeof msg !== 'object') return
-      if (msg.t === 'ready') return onReady()
+      if (msg.t === 'ready') return this.markReady()
       if (msg.t === 'res') {
         const p = this.pending.get(msg.id)
         if (!p) return
@@ -68,30 +88,34 @@ export class ExtensionHost {
       }
       if (msg.t === 'event') this.listeners.forEach((cb) => cb(String(msg.channel), msg.payload))
     })
-    this.child.on('exit', () => this.dispose(new Error(`extension "${id}" exited`)))
+    this.child.on('exit', (code) => this.dispose(new Error(`extension "${id}" exited (code ${code})`)))
   }
 
   /** Call a method the extension exposes; resolves with its result. */
   async request<T = unknown>(method: string, args: unknown = null, timeoutMs = 15_000): Promise<T> {
-    await this.ready
-    if (this.killed) throw new Error(`extension "${this.id}" is not running`)
     const id = String(++this.seq)
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id)
         reject(new Error(`extension "${this.id}" method "${method}" timed out`))
       }, timeoutMs)
-      this.pending.set(id, {
-        resolve: (v) => {
+      const settle = {
+        resolve: (v: unknown) => {
           clearTimeout(timer)
           resolve(v as T)
         },
-        reject: (e) => {
+        reject: (e: Error) => {
           clearTimeout(timer)
           reject(e)
         }
-      })
-      this.child.postMessage({ t: 'req', id, method, args })
+      }
+      // Wait for readiness, but never forever: `ready` rejects if the host died/never started, and
+      // the timer above is the final backstop.
+      this.ready.then(() => {
+        if (this.killed) return settle.reject(new Error(`extension "${this.id}" is not running`))
+        this.pending.set(id, settle)
+        this.child.postMessage({ t: 'req', id, method, args })
+      }, settle.reject)
     })
   }
 
@@ -104,6 +128,7 @@ export class ExtensionHost {
   private dispose(err: Error): void {
     if (this.killed) return
     this.killed = true
+    this.failReady(err) // unblock any request still waiting on readiness (host died mid-startup)
     for (const p of this.pending.values()) p.reject(err)
     this.pending.clear()
     this.listeners.clear()

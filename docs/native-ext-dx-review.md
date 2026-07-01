@@ -51,6 +51,20 @@ vault. The platform gives raw Node but no "here's your namespaced, atomic, per-e
 from "crashed," and there's no "install adb: `brew install …`" affordance. PATH is injected, but
 finding/validating a binary and giving good UX is left to each author.
 
+### P9 — Sibling methods can't call each other *(silent footgun — cost us a real bug)*
+Methods live as properties of a `methods` object, so calling a sibling as a bare identifier
+(`stop()` from inside `start()`) throws `ReferenceError: stop is not defined` — caught by the
+bridge, returned as an error the UI usually doesn't surface, so the feature just silently doesn't
+work. This actually bit system-monitor (`stop is not defined` → the poll never started → "stats
+starting…" forever). Authors must extract standalone helpers or write `methods.stop()`. **SDK:**
+`defineHost` should give each method access to the others (e.g. via a bound `this`/`ctx.methods`),
+or the toolkit-first style (`ctx.spawn` etc.) sidesteps most cross-calls.
+
+Also confirmed: **host errors were invisible** — the utilityProcess's stderr wasn't piped and a
+crash-before-`ready` hung every request forever with no timeout. Fixed in `extensionHost.ts` (pipe
+stdio with an `[ext:<id>]` prefix; reject `ready` on early exit + a startup grace timeout). The SDK
+inherits this; authors get real error output instead of a spinner.
+
 ### P8 — Manual arg-guarding + naive parsing
 Every method opens with `({ x } = {})` and validates by hand; command-runner splits the command on
 whitespace (breaks quotes/globs). Papercuts, but universal.

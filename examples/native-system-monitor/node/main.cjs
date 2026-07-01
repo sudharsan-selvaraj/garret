@@ -8,11 +8,18 @@ const os = require('os')
 const { exec } = require('child_process')
 
 let timer = null
+function stopTimer() {
+  if (timer) {
+    clearInterval(timer)
+    timer = null
+  }
+}
 
 const methods = {
   /** Begin polling. The UI must remember to call stop() — nothing does it automatically. */
   start({ intervalMs = 2000 } = {}) {
-    stop() // guard against double-start leaking a timer (easy to forget)
+    stopTimer() // NOTE: had to extract a standalone fn — a bare `stop()` here is a ReferenceError,
+    // because `stop` is a sibling METHOD (methods.stop), not in scope. Real footgun (SDK pain P9).
     const tick = () => {
       send({
         t: 'event',
@@ -32,10 +39,7 @@ const methods = {
   },
 
   stop() {
-    if (timer) {
-      clearInterval(timer)
-      timer = null
-    }
+    stopTimer()
     return { stopped: true }
   },
 
