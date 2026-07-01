@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Blocks, SlidersHorizontal } from 'lucide-react'
+import { Blocks, Boxes, SlidersHorizontal } from 'lucide-react'
 import { services, useServiceStatus, type ServiceDefinition } from '@sdk'
 import { serviceRegistry } from '@renderer/services/serviceRegistry'
 import { useUiStore } from '@renderer/app/useUiStore'
@@ -7,9 +7,11 @@ import { WidgetIcon } from '@renderer/widgets/WidgetIcon'
 import { Dialog } from '@renderer/app/Dialog'
 import { GeneralSettings } from '@renderer/app/GeneralSettings'
 import { ManageWidgets } from '@renderer/sandbox/ManageWidgets'
+import { ManageExtensions } from '@renderer/native/ManageExtensions'
 
 const GENERAL = 'general'
 const WIDGETS = 'widgets'
+const EXTENSIONS = 'extensions'
 
 export function SettingsDialog(): JSX.Element {
   const close = useUiStore((s) => s.close)
@@ -39,6 +41,15 @@ export function SettingsDialog(): JSX.Element {
               <span className="svc-nav-name">Widgets</span>
             </button>
           </li>
+          <li>
+            <button
+              className={`svc-nav${selected === EXTENSIONS ? ' active' : ''}`}
+              onClick={() => setSelected(EXTENSIONS)}
+            >
+              <Boxes size={16} strokeWidth={1.75} />
+              <span className="svc-nav-name">Extensions</span>
+            </button>
+          </li>
           <li className="settings-nav-sep" />
           {defs.map((d) => (
             <li key={d.id}>
@@ -58,6 +69,8 @@ export function SettingsDialog(): JSX.Element {
             <GeneralSettings />
           ) : selected === WIDGETS ? (
             <ManageWidgets />
+          ) : selected === EXTENSIONS ? (
+            <ManageExtensions />
           ) : (
             <ServiceDetail def={defs.find((d) => d.id === selected) as ServiceDefinition} />
           )}

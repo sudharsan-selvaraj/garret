@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Blocks, LayoutGrid, Plus, Search, ShieldAlert } from 'lucide-react'
+import { Blocks, Boxes, LayoutGrid, Plus, Search, ShieldAlert } from 'lucide-react'
 import type { AnyWidgetPlugin } from '@sdk'
 import { useServiceStatus } from '@sdk'
 import { registry } from '@renderer/plugins/registry'
@@ -25,6 +25,11 @@ export function isThirdParty(w: AnyWidgetPlugin): boolean {
   return id.startsWith('sandbox:') || id.startsWith('ext:')
 }
 
+/** Native extensions (`native:`) are full-access — their own tier, not lumped with sandboxed. */
+export function isNativeExtension(w: AnyWidgetPlugin): boolean {
+  return w.manifest.id.startsWith('native:')
+}
+
 function buildGroups(all: AnyWidgetPlugin[], query: string): Group[] {
   const q = query.trim().toLowerCase()
   const matches = (w: AnyWidgetPlugin): boolean =>
@@ -37,12 +42,18 @@ function buildGroups(all: AnyWidgetPlugin[], query: string): Group[] {
     const widgets = all.filter((w) => w.manifest.serviceId === def.id && !isThirdParty(w) && matches(w))
     if (widgets.length) out.push({ id: def.id, name: def.name, icon: def.icon, serviceId: def.id, widgets })
   }
-  // Built-in miscellaneous (first-party, no service).
-  const general = all.filter((w) => !w.manifest.serviceId && !isThirdParty(w) && matches(w))
+  // Built-in miscellaneous (first-party, no service). Native extensions have no serviceId either,
+  // so exclude them explicitly — they get their own full-access group below.
+  const general = all.filter(
+    (w) => !w.manifest.serviceId && !isThirdParty(w) && !isNativeExtension(w) && matches(w)
+  )
   if (general.length) out.push({ id: 'general', name: 'General', widgets: general })
-  // Installed third-party widgets — kept separate from built-ins, always last.
+  // Installed sandboxed / dev-external widgets — kept separate from built-ins.
   const installed = all.filter((w) => isThirdParty(w) && matches(w))
   if (installed.length) out.push({ id: 'installed', name: 'Installed', icon: Blocks, widgets: installed })
+  // Native extensions — full access, their own clearly-labeled tier, always last.
+  const native = all.filter((w) => isNativeExtension(w) && matches(w))
+  if (native.length) out.push({ id: 'native', name: 'Extensions — full access', icon: Boxes, widgets: native })
   return out
 }
 
@@ -209,10 +220,19 @@ function WidgetItem({
           <div className="add-item-head">
             <WidgetIcon icon={manifest.icon} size={16} />
             <span className="add-item-name">{manifest.name}</span>
-            {isThirdParty(plugin) && (
-              <span className="add-item-badge" title="Third-party · sandboxed · unverified author">
-                <ShieldAlert size={11} strokeWidth={2} /> Unverified
+            {isNativeExtension(plugin) ? (
+              <span
+                className="add-item-badge add-item-badge--danger"
+                title="Native extension · full system access · no sandbox"
+              >
+                <ShieldAlert size={11} strokeWidth={2} /> Full access
               </span>
+            ) : (
+              isThirdParty(plugin) && (
+                <span className="add-item-badge" title="Third-party · sandboxed · unverified author">
+                  <ShieldAlert size={11} strokeWidth={2} /> Unverified
+                </span>
+              )
             )}
           </div>
           {manifest.description && <p className="add-item-desc">{manifest.description}</p>}

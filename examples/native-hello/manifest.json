@@ -1,0 +1,13 @@
+{
+  "kind": "extension",
+  "id": "hello",
+  "name": "Hello (native)",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "description": "A minimal native extension: its raw-Node host reports host info and ticks every 5s.",
+  "node": "node/main.cjs",
+  "ui": "ui/",
+  "binaries": [],
+  "network": [],
+  "defaultSize": { "w": 4, "h": 4 }
+}

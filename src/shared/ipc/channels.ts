@@ -5,6 +5,7 @@ import type { PollUpdate, WatchSpec } from '../types/poll'
 import type { Preferences } from '../types/preferences'
 import type { ClipItem } from '../types/clipboard'
 import type { InstallPlan, InstalledWidget } from '../types/sandbox'
+import type { NativeInstallPlan, InstalledExtension } from '../types/native'
 import type { WatchOptions } from 'garret-core'
 
 /** A native extension as the renderer needs it to render + place it. */
@@ -53,6 +54,13 @@ export const Channels = {
   nativeExtStop: 'native-ext:stop',
   nativeExtRequest: 'native-ext:request',
   nativeExtEvent: 'native-ext:event',
+  nativeExtInstallPlan: 'native-ext:install-plan',
+  nativeExtInstallFromFile: 'native-ext:install-from-file',
+  nativeExtInstallCleanup: 'native-ext:install-cleanup',
+  nativeExtInstallCommit: 'native-ext:install-commit',
+  nativeExtListInstalled: 'native-ext:list-installed',
+  nativeExtSetEnabled: 'native-ext:set-enabled',
+  nativeExtRemove: 'native-ext:remove',
   serviceStatus: 'service:status',
   serviceConnect: 'service:connect',
   serviceDisconnect: 'service:disconnect',
@@ -239,6 +247,20 @@ export interface GarretApi {
     start(extensionId: string, webContentsId: number): Promise<{ ok: boolean; error?: string }>
     /** Tear down the host for a UI webview (on unmount). */
     stop(webContentsId: number): void
+    /** Validate a source folder for install (writes nothing); returns the plan for consent. */
+    planInstall(srcDir: string): Promise<NativeInstallPlan>
+    /** Validate + stage a `.garret` extension file; returns the plan (staged temp in `source`). */
+    planInstallFromFile(garretPath: string): Promise<NativeInstallPlan>
+    /** Discard a staged `.garret` temp dir (on cancel). */
+    cleanupInstall(dir: string): Promise<void>
+    /** Commit a confirmed install. Installs DISABLED — the user enables it separately. */
+    commitInstall(plan: NativeInstallPlan): Promise<{ ok: boolean; error?: string }>
+    /** All installed native extensions (for the manager), with tamper/integrity flags. */
+    listInstalled(): Promise<InstalledExtension[]>
+    /** Enable/disable. Renderer MUST show the full-access consent before enabling. */
+    setEnabled(id: string, on: boolean): Promise<{ ok: boolean; error?: string }>
+    /** Uninstall (removes files + record). */
+    remove(id: string): Promise<void>
   }
   /** Open a URL in the user's default browser. */
   openExternal(url: string): void

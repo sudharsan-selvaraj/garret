@@ -114,7 +114,14 @@ const api: GarretApi = {
     list: () => ipcRenderer.invoke(Channels.nativeExtList),
     start: (extensionId, webContentsId) =>
       ipcRenderer.invoke(Channels.nativeExtStart, extensionId, webContentsId),
-    stop: (webContentsId) => ipcRenderer.send(Channels.nativeExtStop, webContentsId)
+    stop: (webContentsId) => ipcRenderer.send(Channels.nativeExtStop, webContentsId),
+    planInstall: (srcDir) => ipcRenderer.invoke(Channels.nativeExtInstallPlan, srcDir),
+    planInstallFromFile: (p) => ipcRenderer.invoke(Channels.nativeExtInstallFromFile, p),
+    cleanupInstall: (dir) => ipcRenderer.invoke(Channels.nativeExtInstallCleanup, dir),
+    commitInstall: (plan) => ipcRenderer.invoke(Channels.nativeExtInstallCommit, plan),
+    listInstalled: () => ipcRenderer.invoke(Channels.nativeExtListInstalled),
+    setEnabled: (id, on) => ipcRenderer.invoke(Channels.nativeExtSetEnabled, id, on),
+    remove: (id) => ipcRenderer.invoke(Channels.nativeExtRemove, id)
   },
   openExternal: (url) => ipcRenderer.send(Channels.openExternal, url),
   openPath: (path) => ipcRenderer.send(Channels.openPath, path),

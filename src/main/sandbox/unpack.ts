@@ -18,9 +18,18 @@ import yauzl from 'yauzl'
  * Layered path defense: yauzl validates entry filenames by default (rejecting `..`, absolute,
  * and backslash names with its own error), so it's the FIRST line; the `unsafeName` + explicit
  * containment checks below are the backstop in case that ever changes.
+ *
+ * The extraction POLICY (caps + which files are allowed) is a parameter so the native-extension
+ * tier can reuse this exact slip-safe streaming with its own, looser rules (native code is
+ * larger and isn't limited to web assets). The default is the sandbox policy — unchanged.
  */
-const MAX_BYTES = 20 * 1024 * 1024
-const MAX_FILES = 200
+export interface UnpackPolicy {
+  maxBytes: number
+  maxFiles: number
+  /** Return true to admit a file with this lowercased extension + full entry name. */
+  allow: (ext: string, name: string) => boolean
+}
+
 const ALLOWED_EXT = new Set([
   '.html',
   '.js',
@@ -34,6 +43,25 @@ const ALLOWED_EXT = new Set([
   '.svg',
   '.woff2'
 ])
+
+/** Sandbox tier: web assets only, 20 MB / 200 files. */
+export const SANDBOX_POLICY: UnpackPolicy = {
+  maxBytes: 20 * 1024 * 1024,
+  maxFiles: 200,
+  allow: (ext) => ALLOWED_EXT.has(ext)
+}
+
+/**
+ * Native tier: full-access extensions ship arbitrary JS/assets + a raw-Node host, so allow
+ * everything EXCEPT compiled native addons (`.node` — rejected for ABI/packaging reasons, see
+ * native-extensions-design §9; it is NOT a security boundary — an enabled extension has full
+ * access anyway). Symlinks are still rejected below. Caps are looser but bounded (100 MB / 4000).
+ */
+export const NATIVE_POLICY: UnpackPolicy = {
+  maxBytes: 100 * 1024 * 1024,
+  maxFiles: 4000,
+  allow: (ext) => ext !== '.node'
+}
 const S_IFMT = 0xf000
 const S_IFLNK = 0xa000
 
@@ -52,7 +80,12 @@ function unsafeName(name: string): boolean {
   )
 }
 
-export async function unpackZip(zipPath: string, destDir: string): Promise<void> {
+export async function unpackZip(
+  zipPath: string,
+  destDir: string,
+  policy: UnpackPolicy = SANDBOX_POLICY
+): Promise<void> {
+  const { maxBytes, maxFiles, allow } = policy
   const root = normalize(destDir)
   await new Promise<void>((resolve, reject) => {
     yauzl.open(zipPath, { lazyEntries: true, autoClose: true }, (err, zip) => {
@@ -99,8 +132,8 @@ export async function unpackZip(zipPath: string, destDir: string): Promise<void>
         }
 
         const ext = extOf(name)
-        if (!ALLOWED_EXT.has(ext)) return fail(new Error(`garret: file type not allowed: ${name}`))
-        if (++files > MAX_FILES) return fail(new Error('garret: archive has too many files (>200)'))
+        if (!allow(ext, name)) return fail(new Error(`garret: file type not allowed: ${name}`))
+        if (++files > maxFiles) return fail(new Error(`garret: archive has too many files (>${maxFiles})`))
 
         zip.openReadStream(entry, (streamErr, stream) => {
           if (streamErr || !stream) return fail(streamErr ?? new Error('garret: read failed'))
@@ -108,7 +141,7 @@ export async function unpackZip(zipPath: string, destDir: string): Promise<void>
           const meter = new Transform({
             transform(chunk: Buffer, _enc, cb): void {
               bytes += chunk.length
-              if (bytes > MAX_BYTES) return cb(new Error('garret: archive exceeds 20MB'))
+              if (bytes > maxBytes) return cb(new Error('garret: archive exceeds size limit'))
               cb(null, chunk)
             }
           })
