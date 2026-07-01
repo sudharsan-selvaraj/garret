@@ -473,6 +473,45 @@ return &lt;ul&gt;{devices.map(d =&gt;
             <tr><td>5</td><td>Capability enforcement</td><td>✅ solved — main-enforced (<code>session.onBeforeRequest</code>, permission deny), HMAC-signed consent, re-consent on change</td></tr>
             <tr><td>6</td><td>Power / visibility</td><td>🟡 HUD-gated poll throttle + <code>backgroundThrottling</code> built; SDK <code>active</code> signal + a true occlusion source pending</td></tr>
           </table>
+
+          <h3>1 · Window level model — ✅ solved (harder than it looks)</h3>
+          <p>One <code>BrowserWindow</code> in two states: <b>Ambient</b> (desktop level, below apps, above wallpaper, click-through) and <b>HUD</b> (above everything incl. full-screen Spaces, focusable). Pure <code>setAlwaysOnTop(true,'desktop')</code> was <b>not enough</b> — it didn't survive full-screen Spaces and showed a Mission Control tile. We use a native addon (<code>native/mac_window.mm</code> → <code>garret_mac.node</code>, wrapped by <code>macWindow.ts</code>):</p>
+          <ul>
+            <li><code>pinToDesktop</code> → <code>window.level = kCGDesktopIconWindowLevel+offset</code>, <code>collectionBehavior = CanJoinAllSpaces | Stationary | IgnoresCycle</code>.</li>
+            <li><code>raiseToHud</code> → <code>kCGScreenSaverWindowLevel</code> + <code>CanJoinAllSpaces | FullScreenAuxiliary | Stationary</code>.</li>
+            <li><code>makePanel</code> → a <b>non-activating <code>NSPanel</code></b> — the one window kind macOS floats over another app's full-screen Space without activating / Space-switching.</li>
+            <li><code>createWindow.ts</code>: <code>setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })</code> — the critical flag. Ambient click-through: <code>setIgnoreMouseEvents(true, { forward: true })</code>; window transparent.</li>
+          </ul>
+          <div class="call warn"><span class="t">Subtle trap: level authority</span> Electron's <code>setAlwaysOnTop</code> and the native <code>window.level</code> must <b>agree</b> or they fight. Fix: the addon is the single authority, and the desktop re-pin on <code>show</code> is guarded while HUD is up (<code>index.ts setHud</code>). Keep geometry <b>stable across the level switch</b> — the dim/rise feel is CSS, not a resize. <b>Residual nuance (ARCH-05):</b> HUD sits at screen-saver level (above Notification/Control Center) — test <code>floating</code> if that ever looks wrong.</div>
+
+          <h3>2 · IPC bridge protocol — 🟡 envelope done, streaming wire not frozen</h3>
+          <p>Two hops: <code>UI (renderer) ⇄ main ⇄ native host (utilityProcess)</code>; web widgets do only the left hop. The SDK is a thin wrapper over this wire, so it must be right <em>before</em> SDK code. Right on the fundamentals today (<code>extensionHost.ts</code>): <code>{t:'req'} → {t:'res'}</code> + <code>{t:'event'}</code>; <b>structured clone</b> (never manual JSON — <code>Uint8Array</code>/<code>Date</code>/<code>Map</code> survive); <b>per-instance correlation</b> (one host per placement, own <code>seq</code>); <b>synchronous stream registration</b>.</p>
+          <p><b>Open (adopt before SDK):</b> first-class <code>stream_*</code> wire frames instead of layering over the event channel, and <b>bridge-level backpressure</b> (don't push 10k <code>adb logcat</code> chunks). Target envelope:</p>
+          <pre><code class="language-ts">{ t:'req', id, method, args }   { t:'res', id, result }   { t:'err', id, code, message, hint? }
+{ t:'stream_start', id, method, args }   { t:'chunk', id, data }   { t:'stream_end', id, result }
+{ t:'stream_err', id, code, message }    { t:'cancel', id }        { t:'event', channel, payload }
+// ids namespaced ${instanceId}:${ulid()}</code></pre>
+
+          <h3>3 · Renderer isolation — ⚠️ the one open foundational decision</h3>
+          <p>Each widget UI needs its own isolated renderer (process, session, CSP); the Electron primitive here is the <b>hardest thing to change later</b>. We're all-in on <code>&lt;webview&gt;</code> (<code>NativeWidget.tsx</code>, <code>SandboxWidget.tsx</code>). Isolation is strong for the web tier — <code>sandbox/session.ts</code> uses a per-widget partition with <code>setPermissionRequestHandler(deny-all)</code> + <code>onBeforeRequest</code> cancelling non-<code>garret-widget:</code> requests, all in <b>main</b>. (Native shares one <code>persist:garret-native</code> partition — fine, it's full-access/trusted.)</p>
+          <table>
+            <tr><th></th><th><code>&lt;webview&gt;</code> (current)</th><th><code>WebContentsView</code> (proposed)</th></tr>
+            <tr><td>Isolation</td><td>Good (own process/session/CSP)</td><td>Best; officially supported</td></tr>
+            <tr><td>Board integration</td><td><b>A DOM element</b> — position/drag/z-order/scroll free from the grid</td><td><b>Manual geometry</b> — hand-sync bounds every frame</td></tr>
+            <tr><td>Electron direction</td><td>Discouraged, historically buggy</td><td>The future</td></tr>
+          </table>
+          <div class="call warn"><span class="t">DECISION OPEN</span> Stay on <code>&lt;webview&gt;</code> (keep layout simplicity, accept the tradeoff) <b>or</b> migrate to <code>WebContentsView</code> now (better isolation, take on geometry-sync). The security gap is smaller than it looks (enforcement is main-side regardless); the real cost is geometry management for a movable grid. A spike measured that cost: happy path small, cost concentrates in scroll + DPI/multi-monitor. Decide before the SDK freezes the render contract.</div>
+
+          <h3>4 · Native host lifecycle — 🟡 core done, two gaps</h3>
+          <p>Target: <code>fork → host {t:'ready'} → 10s ready-timeout → steady state → remove/disable → SIGTERM → ctx.onDispose → 3s → SIGKILL</code>. Built (<code>extensionHost.ts</code>): <code>utilityProcess.fork</code> (Electron-native, correct over <code>child_process.fork</code>), ready + 10s timeout, stderr/stdout piped &amp; <code>[ext:&lt;id&gt;]</code>-prefixed, crash surfaces as error (no silent restart), one host per placement.</p>
+          <div class="call warn"><span class="t">Gaps (build in SDK step-4)</span> <b>Graceful shutdown ladder</b> — today <code>kill()</code> is an immediate <code>child.kill()</code>; need <code>SIGTERM → onDispose → 3s → SIGKILL</code>. <b>Env scrub</b> — delete <code>GARRET_*</code> before spawn and from <code>ctx.spawn</code> children (matters once the SDK injects a secret-key env var).</div>
+
+          <h3>5 · Capability enforcement — ✅ solved (already the intended model)</h3>
+          <p><code>declared in manifest → verified at install → enforced in main</code>, never the renderer. <code>sandbox/net.ts</code> (SSRF/private-IP/allowlist) + session <code>onBeforeRequest</code> + permission-deny. The <b>install record is the authoritative ceiling</b> — host-written, HMAC-signed, never the user-writable manifest. <b>Consent is a signed record; any capability/code change re-triggers it</b> (native: sha delta → <code>enabled:false</code> + re-consent; sandbox: added-permissions re-prompt). Full-access hosts get unrestricted <code>ctx.fetch</code> — the consented bargain. Remaining: scrub <code>GARRET_*</code> (Pillar 4).</p>
+
+          <h3>6 · Power / visibility — 🟡 throttle built; occlusion signal pending</h3>
+          <p>Garret is an <b>always-on desktop layer</b>; macOS treats it as "visible" even when covered, so OS throttling may not kick in — the real battery risk, not the render primitive (measured <b>0.0% CPU at rest</b>; the primitive is power-neutral). Built: a <b>HUD-gated poll throttle</b> (<code>scheduler.ts setBoardActive</code> stretches every job's interval ×4 when ambient, snaps to full rate + refresh on HUD; first poll still immediate); wired via <code>setHud → setBoardActive</code> + focus/blur; <code>backgroundThrottling: true</code> explicit; full pause on system sleep.</p>
+          <div class="call warn"><span class="t">Gaps</span> A <b>true occlusion signal</b> (HUD/focus is a heuristic proxy). The <b>SDK <code>active</code> signal</b> (<code>useGarret().active</code>) so widget UIs pause <code>rAF</code>/animations — build with the SDK. Verify under load with <code>powermetrics</code>. Tunable: <code>IDLE_MULTIPLIER</code>.</div>
         </section>
 
         <section id="decisions">
@@ -505,13 +544,27 @@ return &lt;ul&gt;{devices.map(d =&gt;
 
         <section id="adjudication">
           <h2><span class="n">·</span>Audit adjudication</h2>
-          <p>An external 27-finding audit was reviewed against the code. Nothing dismissed blindly:</p>
-          <ul>
-            <li><b>Already satisfied by the code</b> (auditor saw only the docs): ARCH-03 capabilities-in-main (session enforcement + signed consent); ARCH-05 Mission Control flags (<code>Stationary|IgnoresCycle|CanJoinAllSpaces</code> already set); OS-02 cross-platform secrets (already on <code>safeStorage</code>).</li>
-            <li><b>Valid — folded into this doc + the SDK spec:</b> ARCH-06 tier-require-both · SDK-01 <code>@garret/sdk</code> · SDK-02 function-declaration sibling calls · SDK-03 array-only <code>spawn</code> + <code>spawnShell</code> · SDK-04 <code>patchCfg</code>/<code>setCfg</code> · SDK-05 <code>useStream</code> · SDK-06 <code>g.instanceStorage</code> · SDK-07 typed <code>g.service&lt;T&gt;</code> · SDK-08 doc fixes (P8 restored, config §-ref, <code>defineManifest</code>/<code>g.window</code>/<code>/ui</code> shown) · Q1–Q8.</li>
-            <li><b>Valid direction, already tracked:</b> ARCH-01 <code>WebContentsView</code> (= Pillar 3 open fork; our enforcement is already session-level, not attribute-CSP); ARCH-02 <code>stream_*</code> wire (= Pillar 2); ARCH-04 transport (we use the Electron-native <code>utilityProcess.fork</code>; env-scrub + shutdown ladder are the tracked gaps).</li>
-            <li><b>Valid future (macOS-only today):</b> OS-01 desktop-layer per-OS · OS-03 <code>resolveBinary</code> per-OS · OS-04 native-addon per-platform builds · OS-05 <code>GarretPlatform</code> abstraction.</li>
-          </ul>
+          <p>An external 27-finding audit was reviewed against the code. Nothing dismissed blindly — verdict + grounding for each:</p>
+          <table>
+            <tr><th>Finding</th><th>Verdict</th><th>Grounding</th></tr>
+            <tr><td>ARCH-01 renderer isolation</td><td><b>Valid</b> = open Pillar 3</td><td>We do use <code>&lt;webview&gt;</code>. But its CSP-bypass critique doesn't apply — enforcement is already <b>session-level per-partition</b> (<code>sandbox/session.ts</code>), not attribute-CSP. <code>WebContentsView</code> still the modern path.</td></tr>
+            <tr><td>ARCH-02 IPC wire / <code>stream_*</code> frames</td><td><b>Valid</b> — already §2</td><td>Structured clone + per-instance ids already true; adopt <code>stream_*</code> frames before the SDK.</td></tr>
+            <tr><td>ARCH-03 enforce caps in main</td><td><b>Valid, already done</b></td><td><code>session.ts</code> (main) <code>onBeforeRequest</code>/permission-deny + Phase-3 HMAC-signed consent, re-consent on change. Fully satisfied.</td></tr>
+            <tr><td>ARCH-04 <code>fork</code> vs <code>spawn</code></td><td><b>Partial</b></td><td>We use <code>utilityProcess.fork</code> (Electron-native, defensibly better). ready-timeout/stderr/crash-surface done; <b>env-scrub + graceful-shutdown are the §4 gaps</b>.</td></tr>
+            <tr><td>ARCH-05 window level + Mission Control</td><td><b>Mostly done</b></td><td><code>mac_window.mm</code> already sets <code>CanJoinAllSpaces|Stationary|IgnoresCycle</code> + non-activating panel + <code>visibleOnFullScreen</code>. Residual: HUD at screen-saver level — test <code>floating</code>.</td></tr>
+            <tr><td>ARCH-06 tier-inference contradiction</td><td><b>Valid — adopted</b></td><td>Real doc contradiction; resolved as require-both (Q3 / decision #3).</td></tr>
+            <tr><td>SDK-01 <code>@garret/sdk</code></td><td>Adopt</td><td>scoped package, matches Q1.</td></tr>
+            <tr><td>SDK-02 function-declaration sibling calls</td><td>Adopt (supersedes <code>methods</code> arg)</td><td>hoisted fn decls cross-reference safely — simpler, removes SDK surface.</td></tr>
+            <tr><td>SDK-03 array-only <code>spawn</code> + <code>spawnShell</code></td><td>Adopt</td><td>string form is a shell-injection surface even in a trusted ext.</td></tr>
+            <tr><td>SDK-04 <code>patchCfg</code>/<code>setCfg</code></td><td>Adopt</td><td>single-key <code>setCfg</code> on a multi-key type is ambiguous.</td></tr>
+            <tr><td>SDK-05 <code>useStream</code></td><td>Adopt</td><td>removes the manual <code>useEffect</code>+cancel leak.</td></tr>
+            <tr><td>SDK-06 <code>g.instanceStorage</code></td><td>Adopt</td><td>key-level merge doesn't stop same-key cross-instance clobber; per-instance namespace does.</td></tr>
+            <tr><td>SDK-07 typed <code>g.service&lt;T&gt;</code></td><td>Adopt</td><td>generic response now; typed clients later.</td></tr>
+            <tr><td>SDK-08 doc fixes</td><td>Valid — confirmed</td><td>gotchas table <b>skipped P8</b> (fixed); config x-ref said <b>§07 but is §08</b> (fixed); <code>defineManifest</code>/<code>g.window</code>/<code>/ui</code> now shown.</td></tr>
+            <tr><td>Q1–Q8 open questions</td><td>Resolved</td><td>see Locked decisions above.</td></tr>
+            <tr><td>OS-02 secrets cross-platform</td><td>Partial</td><td>already on <code>safeStorage</code> (cross-platform); residual = Linux no-daemon → <code>UNAVAILABLE</code>, not a crash.</td></tr>
+            <tr><td>OS-01 / OS-03 / OS-04 / OS-05</td><td>Valid — future</td><td>desktop-layer per-OS · <code>resolveBinary</code> per-OS · native-addon per-platform builds · <code>GarretPlatform</code> abstraction — see Cross-platform above.</td></tr>
+          </table>
         </section>
 
         <footer>

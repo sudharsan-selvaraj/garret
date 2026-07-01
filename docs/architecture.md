@@ -3,11 +3,13 @@
 The foundations everything else sits on, ordered by **how expensive they are to change later**.
 The top ones will break the SDK, the security model, and the UX if they're wrong early. This doc is
 the authoritative status of each: what it is, what we've actually built (with file references), and
-the decisions still open before the `garret` SDK (docs/garret-sdk-guide.html) freezes the contracts.
+the decisions still open before the `garret` SDK (`docs/garret.html`) freezes the contracts.
 
-> Companion docs: `docs/native-ext-sdk-design.md` (SDK design, rev 2, critic-hardened),
+> Companion docs: `docs/garret.html` (unified product + SDK authoring guide + this architecture,
+> rendered), `docs/native-ext-sdk-design.md` (SDK design, rev 2, critic-hardened),
 > `docs/native-phase3-design.md` (install/consent), `docs/native-ext-dx-review.md` (P1–P10),
-> `docs/sandbox-design.md` (web tier), `docs/garret-sdk-guide.html` (authoring), `docs/garret-overview.html` (product).
+> `docs/sandbox-design.md` (web tier). This markdown file is the authoritative engineering reference;
+> `garret.html` mirrors its content for reading.
 
 ## Scorecard
 
