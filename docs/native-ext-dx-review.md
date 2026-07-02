@@ -1,5 +1,13 @@
 # Native extension DX review — pain points from 4 raw extensions
 
+> **⚠️ Historical.** These pain points (from four raw extensions built against the bare bridge) fed
+> directly into `@garretapp/sdk`, which is what shipped. The two former widget tiers were since
+> unified into ONE extension path — `@garretapp/sdk` (package `packages/sdk`), main-side
+> `src/main/ext/*`, renderer-side `src/renderer/src/ext/*`, preload `src/preload/extBridge.ts`, the
+> single **`garret://`** scheme, renderer prefix `gx:` — and the `examples/native-*` referenced below
+> were removed. See `docs/architecture.md` (reconciliation banner + old→new file-path map) and
+> `docs/garret.html` for the current model.
+
 We built four extensions against the bare bridge to find real friction before designing an SDK:
 
 | Extension | Exercises | Files |

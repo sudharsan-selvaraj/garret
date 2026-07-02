@@ -1,5 +1,13 @@
 # Garret Widget Marketplace — design (rev 2)
 
+> **⚠️ Predates the tier unification.** This design was written against the old two-tier model
+> (sandboxed web tier + native tier). Those tiers are now unified into one extension path —
+> **`@garretapp/sdk`**, the single `garret://` scheme, `.garret` packages, tier derived from
+> declared capabilities (see [`architecture.md`](./architecture.md)). The marketplace direction
+> (npm-backed + signed allowlist, slip-safe extractor, anti-rollback) still stands, but re-read the
+> per-tier specifics against the unified install/capability model (`src/main/ext/install.ts` +
+> `broker.ts`) before implementing.
+
 Status: **design, pre-implementation.** Two critic rounds applied:
 - Round 1 — three-lens panel (windowing · security · distribution): set the direction
   (npm-backed + signed allowlist; Item 4 deferred).

@@ -1,5 +1,14 @@
 # Phase 4 — Install lifecycle + consent (design, rev 2)
 
+> **⚠️ Historical / superseded.** This describes install/consent for the old **third-party
+> (sandboxed) widget** tier. The lifecycle (disclosure consent, enable/disable/remove/update, sha256
+> integrity) carried forward into the unified installer (`src/main/ext/install.ts`), but the tier
+> framing is historical: the two former widget tiers were unified into ONE extension path —
+> `@garretapp/sdk` (package `packages/sdk`), main-side `src/main/ext/*`, renderer-side
+> `src/renderer/src/ext/*`, preload `src/preload/extBridge.ts`, the single **`garret://`** scheme,
+> renderer prefix `gx:`. Tier is now **derived** from declared capabilities. See
+> `docs/architecture.md` (reconciliation banner + old→new file-path map) and `docs/garret.html`.
+
 Open the distribution channel: **install** a third-party (sandboxed) widget, **see what it
 asks for** before approving (disclosure-only consent), **manage** it (enable/disable/remove/
 update), with an **integrity** baseline and honest **provenance** disclosure. Phase 3 made

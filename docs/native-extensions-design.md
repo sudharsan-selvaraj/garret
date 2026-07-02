@@ -1,5 +1,14 @@
 # Garret Native Extensions — design (rev 2)
 
+> **⚠️ Historical / superseded.** This describes the old **full-access native tier**
+> (`garret-native://`, raw-Node host) that has been demolished. The two former widget tiers were
+> unified into ONE extension path: `@garretapp/sdk` (package `packages/sdk`), main-side
+> `src/main/ext/*`, renderer-side `src/renderer/src/ext/*`, preload `src/preload/extBridge.ts`, the
+> single **`garret://`** scheme, renderer prefix `gx:`. The full-access model survives, but tier (web
+> vs full-access) is now an internal property **derived** from declared capabilities — not an
+> authoring fork. See `docs/architecture.md` (reconciliation banner + old→new file-path map) and
+> `docs/garret.html` for the current model.
+
 Status: **design, critic-hardened (2 rounds: security/trust + impl-realism).** Ready to build
 the MVP (§10). Rev 1's trust story was theater and its execution model leaned on false
 economies ("reuse the bridge", "reuse the window work"); rev 2 fixes both and re-scopes.

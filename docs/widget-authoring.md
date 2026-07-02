@@ -1,5 +1,17 @@
 # Building a Garret widget
 
+> **⚠️ Historical / superseded.** This guide targets the **old sandbox tier** — `garret-widget-sdk`
+> + `runWidget` from `garret-widget-sdk/sandbox`, the `garret-widget://` runtime, and a
+> `manifest.json` with `permissions`. That tier was **demolished** and unified into one extension
+> path: **`@garretapp/sdk`** (`defineHost` / `useHost` / `ctx.stream`, `garret.manifest.json` with
+> `capabilities`, the single `garret://` scheme, one `WidgetSurface`). Tier (web vs full-access) is
+> now derived from declared capabilities, not chosen by the author.
+>
+> **Authoring a widget today:** see the SDK authoring guide in **[`garret.html`](./garret.html)** and
+> the working example **[`examples/sdk/command-runner`](../examples/sdk/command-runner)**. Architecture
+> + the old→new file-path map: **[`architecture.md`](./architecture.md)**. The sections below are kept
+> only as a record of the old model.
+
 A third‑party Garret widget is a small web bundle that runs **sandboxed** — in an isolated,
 out‑of‑process `<webview>` on a private origin, with no Node, no remote scripts, and no
 access to anything you didn't declare. You write a React component; the host injects an

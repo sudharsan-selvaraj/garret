@@ -1,5 +1,12 @@
 # External Widget Contract
 
+> **⚠️ Partially superseded.** The **trusted-local / dev tier** described here (self-authored
+> widgets in `external-widgets/`, registry prefix `ext:`, sharing the `garret-widget-sdk` plugin
+> shape with the first-party built-ins) is **still current**. But the anticipated **third-party
+> "sandboxed" tier** was replaced by the unified **`@garretapp/sdk`** extension path (one authoring
+> model, `garret://` scheme, tier derived from capabilities) — see [`architecture.md`](./architecture.md)
+> and [`garret.html`](./garret.html). Read the "move into the sandbox" framing below as historical.
+
 The durable contract for community/external widgets in Garret. The goal: **first-party
 (native) and third-party (sandboxed) widgets share the same logic** — only the React
 instance and the transport differ per realm, so nothing is duplicated and today's

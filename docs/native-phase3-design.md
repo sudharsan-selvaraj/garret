@@ -1,5 +1,14 @@
 # Native Extensions — Phase 3: loading, install & consent (design, rev 2)
 
+> **⚠️ Historical / superseded.** This describes install/consent for the old **native tier**. The
+> install/consent + HMAC-signed-record model carried forward into the unified installer
+> (`src/main/ext/install.ts`), but the two-tier framing here is historical: the two former widget
+> tiers were unified into ONE extension path — `@garretapp/sdk` (package `packages/sdk`), main-side
+> `src/main/ext/*`, renderer-side `src/renderer/src/ext/*`, preload `src/preload/extBridge.ts`, the
+> single **`garret://`** scheme, renderer prefix `gx:`. Tier is now **derived** from declared
+> capabilities. See `docs/architecture.md` (reconciliation banner + old→new file-path map) and
+> `docs/garret.html`.
+
 ## rev 2 — critic deltas (adversarial security pass, folded in)
 
 The critic's verdict was **build-with-BLOCKERS-fixed**; the three blockers invalidated the core

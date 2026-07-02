@@ -461,6 +461,9 @@ return &lt;ul&gt;{devices.map(d =&gt;
           <div class="lbl">Part 3 Â· Core architecture</div>
           <h1>Architecture &amp; decisions</h1>
           <p class="sub">The foundations the SDK sits on, ordered by cost-to-change. Full detail + file references live in <code>docs/architecture.md</code>; this is the summary + the resolved decisions.</p>
+          <blockquote style="border-left:3px solid #888;padding:8px 12px;margin:12px 0;background:rgba(128,128,128,.08)">
+            <b>Status (reconciled July 2026).</b> Every "open decision" below is now <b>resolved and built</b>, and the two former widget tiers are unified into one path — <code>@garretapp/sdk</code>, main-side <code>src/main/ext/*</code>, renderer <code>src/renderer/src/ext/*</code>, the single <code>garret://</code> scheme, one <code>WidgetSurface</code>. Where the prose below still names <code>NativeWidget</code>/<code>SandboxWidget</code>, <code>sandbox/session.ts</code>, or <code>garret-widget:</code>/<code>garret-native:</code>, read it as the pre-unification record — see the reconciliation banner + old→new file-path map at the top of <code>docs/architecture.md</code>.
+          </blockquote>
         </div>
 
         <section>

@@ -1,5 +1,13 @@
 # `garret-ext` SDK — design (rev 2)
 
+> **⚠️ Historical / design basis.** This is the **design basis for `@garretapp/sdk`** — most of it
+> shipped (typed bridge, callback-handle streaming, `defineHost`/`useHost`/`ctx.stream`). What
+> changed since: the two-tier assumptions here were **unified** into one authoring path, tier is now
+> **derived** from declared capabilities, the package is `@garretapp/sdk` (package `packages/sdk`,
+> subpaths `/host` `/ui` `/react`), and the wire uses first-class `stream_*` frames. See
+> `docs/architecture.md` (reconciliation banner + old→new file-path map) and `docs/garret.html` for
+> the shipped contract.
+
 A wrapper that fixes the pain points in `docs/native-ext-dx-review.md` (P1–P10). Decisions locked
 with the user: **callback-handle streaming**, **full scope**. Two runtime worlds stay two worlds
 (the UI still can't `import fs`) — the SDK makes crossing the bridge typed, streamable, boilerplate-free.

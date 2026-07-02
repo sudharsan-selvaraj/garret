@@ -3,12 +3,37 @@
 The foundations everything else sits on, ordered by **how expensive they are to change later**.
 The top ones will break the SDK, the security model, and the UX if they're wrong early. This doc is
 the authoritative status of each: what it is, what we've actually built (with file references), and
-the decisions still open before the `garret` SDK (`docs/garret.html`) freezes the contracts.
+the reasoning that led to the frozen `@garretapp/sdk` contract.
+
+> **⚠️ Status (reconciled July 2026 — read first).** The SDK is built and **the two former widget
+> tiers are unified into one extension path**: `@garretapp/sdk` (package `packages/sdk`), main-side
+> `src/main/ext/*` (lane, broker, host, install, protocol, unpack), renderer-side
+> `src/renderer/src/ext/*` (loader, `WidgetSurface`, managers), preload `src/preload/extBridge.ts`,
+> the single **`garret://`** scheme, and the renderer plugin prefix `gx:`. The old "web/sandbox" tier
+> (`src/main/sandbox/*`, `src/renderer/src/sandbox/*`, `garret-widget://`) and "native" tier
+> (`src/main/native/*` extension files, `src/renderer/src/native/*`, `garret-native://`) were
+> **demolished**. Tier (web vs full-access) is now an internal property **derived** from declared
+> capabilities, never an authoring fork. Old→new file-path map:
+>
+> | Below this line refers to… | Now lives at |
+> |---|---|
+> | `src/main/native/extensionHost.ts` (host) | `src/main/ext/host.ts` |
+> | `src/main/native/lane.ts` (relay) | `src/main/ext/lane.ts` |
+> | `src/main/sandbox/session.ts` (partition/CSP) | `src/main/ext/protocol.ts` + `lane.ts` (`persist:garret-ext`) |
+> | `src/main/sandbox/net.ts` (SSRF guard) | `src/main/net/fetch.ts` (dev tier) + `src/main/ext/broker.ts` (ext fetch) |
+> | `NativeWidget.tsx` / `SandboxWidget.tsx` | `src/renderer/src/ext/WidgetSurface.tsx` |
+> | `garret-widget://` / `garret-native://` | `garret://` (per-tier CSP in `ext/protocol.ts`) |
+> | `mac_window.mm` wrapper `src/main/native/macWindow.ts` | `src/main/windows/macWindow.ts` (core window infra, never was a tier) |
+>
+> The "open decisions" and "decisions to lock" sections below are a **decision record** — every one
+> is now **resolved and built**; they're kept for the rationale, not as live open questions. Where a
+> pillar's status changed, an inline **→ Built** note says so.
 
 > Companion docs: `docs/garret.html` (unified product + SDK authoring guide + this architecture,
-> rendered), `docs/native-ext-sdk-design.md` (SDK design, rev 2, critic-hardened),
-> `docs/native-phase3-design.md` (install/consent), `docs/native-ext-dx-review.md` (P1–P10),
-> `docs/sandbox-design.md` (web tier). This markdown file is the authoritative engineering reference;
+> rendered). The design docs `docs/native-ext-sdk-design.md`, `docs/native-phase3-design.md`,
+> `docs/native-ext-dx-review.md`, `docs/native-extensions-design.md`, and `docs/sandbox-design.md`
+> are **historical** — they record the two-tier design that was unified into `@garretapp/sdk`; each
+> carries a superseded banner. This markdown file is the authoritative engineering reference;
 > `garret.html` mirrors its content for reading.
 
 ## Scorecard
@@ -16,11 +41,11 @@ the decisions still open before the `garret` SDK (`docs/garret.html`) freezes th
 | # | Pillar | Status | Note |
 |---|---|---|---|
 | 1 | Window level model | ✅ **Solved** — stronger than pure Electron | native addon, not just `setAlwaysOnTop` |
-| 2 | IPC bridge protocol | 🟡 **Envelope done; streaming wire not frozen** | adopt first-class `stream_*` frames before the SDK |
-| 3 | Renderer isolation | ⚠️ **Open decision** | on `<webview>`; evaluate `WebContentsView` now |
-| 4 | Native host lifecycle | 🟡 **Core done; 2 gaps** | graceful-shutdown ladder + env scrub unbuilt |
-| 5 | Capability enforcement | ✅ **Solved** | main-enforced, signed consent, re-consent on change |
-| 6 | Power / visibility (cross-cutting) | 🟡 **Throttle built; occlusion signal pending** | HUD-gated poll stretch + `backgroundThrottling`; the real battery risk, not the render primitive |
+| 2 | IPC bridge protocol | ✅ **Solved** | first-class `stream_*` frames shipped in `packages/sdk/src/protocol.ts`; structured-clone envelope |
+| 3 | Renderer isolation | ✅ **Resolved** | stayed on `<webview>` behind the `WidgetSurface` abstraction (SDK contract is primitive-agnostic) |
+| 4 | Native host lifecycle | ✅ **Solved** | `SIGTERM→onDispose→3s→SIGKILL` ladder + `GARRET_*` env scrub built in `src/main/ext/host.ts` + SDK host |
+| 5 | Capability enforcement | ✅ **Solved** | main-enforced broker, HMAC-signed consent, re-consent on change |
+| 6 | Power / visibility (cross-cutting) | 🟡 **Throttle + `active` signal built; occlusion signal pending** | HUD-gated poll stretch + `backgroundThrottling` + `useActive()`; real occlusion source still a proxy |
 
 ---
 
@@ -32,7 +57,7 @@ wrong and the product doesn't exist.
 
 **What we built.** Pure `win.setAlwaysOnTop(true, 'desktop')` was **not enough** — it didn't survive
 full-screen Spaces and produced a Mission Control tile. We use a **native addon**
-(`native/mac_window.mm`, built to `garret_mac.node`, wrapped by `src/main/native/macWindow.ts`):
+(`native/mac_window.mm`, built to `garret_mac.node`, wrapped by `src/main/windows/macWindow.ts`):
 
 - `pinToDesktop(handle, offset)` → `window.level = kCGDesktopIconWindowLevel + offset`,
   `collectionBehavior = NSWindowCollectionBehaviorCanJoinAllSpaces` (ambient).
@@ -54,7 +79,13 @@ dim-backdrop / rise "feel" is CSS, not a resize.
 
 ---
 
-## 2. IPC bridge protocol — 🟡 envelope done, streaming wire not yet frozen
+## 2. IPC bridge protocol — ✅ solved (streaming wire frozen)
+
+> **→ Built.** The first-class `stream_*` frames proposed below **shipped** as the wire in
+> `packages/sdk/src/protocol.ts` (`req/res/err/stream_start/chunk/stream_end/stream_err/cancel/event/
+> ready/dispose`), structured-clone only. IDs are `${instanceId}:${ulid}`. The SDK's unified call
+> handle (`packages/sdk/src/client.ts`) drives it; host relay in `src/main/ext/host.ts` + `lane.ts`.
+> "Envelope done, wire not frozen" below is the pre-freeze state.
 
 **What it is.** Every widget call/event/stream flows through this. Two hops:
 `UI (renderer) ⇄ main (ipcMain) ⇄ native host (utilityProcess)`. Web widgets do only the left hop.
@@ -63,11 +94,11 @@ be right *before* SDK code exists.
 
 **What we built (and it's right on the fundamentals):**
 - Envelope: `{t:'req',id,method,args}` → `{t:'res',id,ok,value?,error?}`; `{t:'event',channel,payload}`
-  (`src/main/native/extensionHost.ts`).
+  (now `src/main/ext/host.ts`).
 - **Structured clone**, never manual JSON — `utilityProcess.postMessage` (main↔host) +
   `ipcRenderer.invoke` (renderer↔main), so `Uint8Array`/`Date`/`Map` survive. ✓
 - **Per-instance correlation** — each `ExtensionHost` has its own `seq`, and there is **one host per
-  placed instance** (keyed by the UI webview's `webContents` id in `src/main/native/lane.ts`). ✓
+  placed instance** (keyed by the UI webview's `webContents` id in `src/main/ext/lane.ts`). ✓
 - **Synchronous stream registration** — the rev-2 SDK design resolves the `{__gxStream:id}` marker
   before any chunk, so chunks can't race `.onData`. ✓
 
@@ -98,17 +129,22 @@ be right *before* SDK code exists.
 
 ---
 
-## 3. Renderer isolation — ⚠️ the one open foundational decision
+## 3. Renderer isolation — ✅ resolved (stay on `<webview>`, behind a surface abstraction)
+
+> **→ Built.** Resolved as pre-SDK decision #2 below: stayed on `<webview>` behind one
+> `src/renderer/src/ext/WidgetSurface.tsx` (which replaced the separate `NativeWidget`/`SandboxWidget`),
+> so the SDK froze a primitive-agnostic surface contract, not `<webview>` itself. Both tiers now load
+> over the single `garret://` scheme on the `persist:garret-ext` partition; per-tier CSP is set in
+> `src/main/ext/protocol.ts`.
 
 **What it is.** Each widget UI needs its own isolated renderer (process, session, CSP). The Electron
 primitive chosen here defines the security boundary and is the **hardest thing to change later**.
 
-**What we built.** We are **all-in on `<webview>`** (`src/renderer/src/native/NativeWidget.tsx`,
-`src/renderer/src/sandbox/SandboxWidget.tsx`). Isolation itself is strong for the web tier:
-`src/main/sandbox/session.ts` uses a **per-widget partition** with `setPermissionRequestHandler(deny-all)`,
-`setPermissionCheckHandler(false)`, and `onBeforeRequest` cancelling any non-`garret-widget:` request
-— all enforced in **main**, never the renderer. The **native** tier shares one
-`persist:garret-native` partition (acceptable: full-access/trusted, no isolation to enforce; noted).
+**What we built.** We are **all-in on `<webview>`** (now the single `src/renderer/src/ext/WidgetSurface.tsx`).
+Isolation is enforced in **main**: `src/main/ext/protocol.ts` serves `garret://` with a per-tier CSP
+(`connect-src 'none'` both tiers; web strict `script-src 'self'`, full-access allows inline), and the
+`persist:garret-ext` session denies permissions by default — never the renderer. (Pre-unification this
+was two partitions: a per-widget `garret-widget:` sandbox partition + a shared `persist:garret-native`.)
 
 **The divergence.** Electron discourages `<webview>` and steers toward **`WebContentsView`** (Electron
 28+/30+). Honest trade:
@@ -123,13 +159,18 @@ The security gap is *smaller than it looks* — per-partition session + strict C
 + `sandbox` are enforced in main regardless of primitive. The real cost of switching is **geometry
 management for a movable widget grid**.
 
-**Decision (OPEN):** stay on `<webview>` (keep board-layout simplicity, accept the tradeoff) **or**
-migrate to `WebContentsView` now (better isolation, take on geometry-sync). *Decide before the SDK
-freezes the render contract — this is the most expensive item to reverse.*
+**Decision (RESOLVED):** stayed on `<webview>` (kept board-layout simplicity), but froze the SDK
+render contract as the **`WidgetSurface` abstraction** rather than `<webview>` itself — so a later
+`WebContentsView` migration is an internal change, not an SDK break. See pre-SDK decision #2.
 
 ---
 
-## 4. Native host process lifecycle — 🟡 core done, two known gaps
+## 4. Native host process lifecycle — ✅ solved (both gaps built)
+
+> **→ Built.** Both gaps below are now implemented in `src/main/ext/host.ts` + the SDK host
+> (`packages/sdk/src/host.ts`): the graceful-shutdown ladder (`SIGTERM → ctx.onDispose → 3s →
+> SIGKILL`) and the `GARRET_*` env scrub (final merged env is scrubbed unconditionally, so a
+> caller-supplied `opts.env` can't reopen the vault-key leak). Host now lives in `src/main/ext/`.
 
 **What it is.** The strict contract that makes native extensions reliable.
 
@@ -143,7 +184,7 @@ main forks host → host async-inits → host sends {t:'ready'} on the port
   → host exits within 3s, else main SIGKILLs
 ```
 
-**What we built (`src/main/native/extensionHost.ts`):**
+**What we built (`src/main/ext/host.ts`):**
 - `utilityProcess.fork` (Electron's structured-IPC fork — correct over `child_process.fork` here). ✓
 - `{t:'ready'}` + **10s ready-timeout**; `ready` rejects on early exit so requests don't hang. ✓
 - **stderr/stdout piped + `[ext:<id>]`-prefixed in the core** (not the SDK). ✓
@@ -165,8 +206,9 @@ main forks host → host async-inits → host sends {t:'ready'} on the port
 main`. Never in the renderer.
 
 **What we built:**
-- **Enforced in main:** `src/main/sandbox/net.ts` (SSRF/private-IP/host-allowlist), session
-  `onBeforeRequest` cancels undeclared hosts, permission handlers deny by default.
+- **Enforced in main:** the capability broker (`src/main/ext/broker.ts`) gates every `g.*` call by
+  declared capability + tier; host-allowlist/SSRF/private-IP guards live in `src/main/net/fetch.ts`
+  (dev tier) and the broker's `fetch` (ext tier). Permission handlers on the ext session deny by default.
 - **Install record is the authoritative ceiling** — host-written, **HMAC-signed** (`.garret-ext.json`
   / `.garret-install.json`), never the user-writable `manifest.json`.
 - **Consent is a signed record; any capability/code change re-triggers it** (Phase 3): native → any
@@ -207,9 +249,10 @@ occluded painting, chatty streams.
   exposes no cheap "am I covered" API; Chromium's occlusion (via `NSWindowOcclusionState`) may be
   unreliable for a desktop-level `CanJoinAllSpaces` window. If we can surface a real occlusion state,
   it replaces the proxy and lets us throttle precisely (only when actually covered).
-- **SDK `active` signal (build with the SDK).** Expose board activity to widget UIs
-  (`useGarret().active` + `onActiveChange`) so widgets pause `rAF`/animations and the SDK's polling
-  helpers back off — the renderer half of the same throttle. Not yet plumbed to widget webviews.
+- **SDK `active` signal → Built.** Board activity is now broadcast to each widget webview
+  (`broadcastActive` in `src/main/ext/lane.ts` → `useActive()` / `g.active` + `onActiveChange` in the
+  SDK) so widgets pause `rAF`/animations and the SDK's polling helpers back off — the renderer half of
+  the same throttle.
 - **Verify under load.** The honest stress test: a polling + animating widget, board covered, measured
   with `powermetrics`/Activity Monitor Energy — to confirm the throttle holds where `ps` can't see.
 
@@ -273,10 +316,12 @@ blindly — verdict + grounding for each:
 
 ---
 
-## Decisions to lock before building the SDK
+## Decisions that were locked before building the SDK (all now built)
+
+*These were the pre-build forks; each is resolved and shipped in `@garretapp/sdk` + `src/main/ext/`.*
 
 1. **Renderer primitive (Pillar 3)** — `<webview>` (stay) vs `WebContentsView` (migrate now). *Highest
-   cost to reverse; decide first.*
+   cost to reverse; decided first.* **→ Stayed on `<webview>` behind `WidgetSurface`.**
 2. **Streaming wire (Pillar 2)** — adopt first-class `stream_*` frames (recommended) + **bridge-level
    backpressure** (recommended) vs document-and-defer.
 3. **Host shutdown contract (Pillar 4)** — commit `SIGTERM → onDispose → 3s → SIGKILL` + env scrub as
@@ -363,7 +408,8 @@ files are trusted/signed.
 
 ### 7. Dev loop — DEFINE *(author-facing; partly exists)*
 **Have:** electron-vite HMR (renderer), host = `utilityProcess` with stderr piped `[ext:<id>]`, dev
-auto-DevTools for `garret-native://` webviews. **Target for authors (`@garretapp/create-ext` + `garret
+auto-DevTools for `garret://` extension webviews (and the board window itself in dev). **Target for
+authors (`@garretapp/create-ext` + `garret
 dev`):** watch-build UI (vite) + host (esbuild) → a dev Garret loads `dist/`. **UI-only hot-reload**
 reloads the widget webview without restarting the host; **host-only reload** re-forks just that
 extension's host (UI stays, reconnects) — the two are independent. **Logs:** host stderr surfaced in

@@ -1,5 +1,13 @@
 # Phase 3 — Sandbox Host (design, rev 4)
 
+> **⚠️ Historical / superseded.** This describes the old **web/sandbox tier** (`garret-widget://`,
+> per-widget partition) that has been demolished. The two former widget tiers were unified into ONE
+> extension path: `@garretapp/sdk` (package `packages/sdk`), main-side `src/main/ext/*`, renderer-side
+> `src/renderer/src/ext/*`, preload `src/preload/extBridge.ts`, the single **`garret://`** scheme,
+> renderer prefix `gx:`. Tier (web vs full-access) is now an internal property **derived** from
+> declared capabilities — not an authoring fork. See `docs/architecture.md` (reconciliation banner +
+> old→new file-path map) and `docs/garret.html` for the current model.
+
 Run third-party widgets in an **out-of-process, isolated `<webview>`** that talks to the
 host only over a permission-enforced bridge implementing `GarretClient`. Secrets never
 cross; a misbehaving widget is killable without touching the host. The **entry ticket to
