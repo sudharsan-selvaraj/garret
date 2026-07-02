@@ -14,7 +14,7 @@ async function register(): Promise<void> {
     registry.register({
       apiVersion: 1,
       manifest: {
-        id: `ext:${e.id}`,
+        id: `gx:${e.id}`,
         name: e.name,
         defaultSize: e.defaultSize ?? { w: 4, h: 4 },
         configSchema: {}
@@ -49,12 +49,12 @@ export async function resyncExtensions(): Promise<void> {
     return
   }
   for (const p of registry.list()) {
-    if (p.manifest.id.startsWith('ext:')) registry.unregister(p.manifest.id)
+    if (p.manifest.id.startsWith('gx:')) registry.unregister(p.manifest.id)
   }
   for (const e of listed.extensions) {
     registry.register({
       apiVersion: 1,
-      manifest: { id: `ext:${e.id}`, name: e.name, defaultSize: e.defaultSize ?? { w: 4, h: 4 }, configSchema: {} },
+      manifest: { id: `gx:${e.id}`, name: e.name, defaultSize: e.defaultSize ?? { w: 4, h: 4 }, configSchema: {} },
       render: ({ ctx }: WidgetRenderProps) =>
         createElement(WidgetSurface, { extensionId: e.id, instanceId: ctx.instanceId, uiUrl: e.uiUrl, preloadUrl: listed.preloadUrl })
     } as AnyWidgetPlugin)
