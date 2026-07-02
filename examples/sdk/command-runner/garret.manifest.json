@@ -1,0 +1,11 @@
+{
+  "id": "command-runner",
+  "name": "Command Runner",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "description": "Run a command and stream its output.",
+  "ui": "dist/ui",
+  "host": "dist/host/index.cjs",
+  "capabilities": ["process"],
+  "defaultSize": { "w": 6, "h": 5 }
+}

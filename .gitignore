@@ -20,3 +20,7 @@ examples/**/dist
 
 # packaged example widget (regenerate via npm run pack:selftest)
 examples/**/*.garret
+
+# extension build artifacts
+examples/sdk/**/pack/
+examples/sdk/**/*.garret
