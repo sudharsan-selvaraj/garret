@@ -28,8 +28,10 @@ export function WidgetSurface({ extensionId, instanceId, uiUrl, preloadUrl }: Pr
     if (!wv) return
     const onGone = (): void => setCrashed(true)
     const onFail = (e: Event): void => {
-      // -3 == ABORTED (navigation replaced) — ignore; real load failures show the crashed state.
-      if ((e as unknown as { errorCode?: number }).errorCode !== -3) setCrashed(true)
+      // Only a MAIN-FRAME load failure is a crash. A failed subresource (missing font/image) or an
+      // aborted nav (-3) must not nuke a working widget (review S3).
+      const ev = e as unknown as { errorCode?: number; isMainFrame?: boolean }
+      if (ev.isMainFrame && ev.errorCode !== -3) setCrashed(true)
     }
     wv.addEventListener('render-process-gone', onGone)
     wv.addEventListener('unresponsive', onGone)

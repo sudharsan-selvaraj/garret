@@ -74,8 +74,17 @@ export function InstallDialog({
   )
 }
 
-/** Enable consent — shown only for a widget that runs with system access. Typed phrase breaks the
- *  click-through reflex. Safe widgets never see this (they toggle on directly). */
+/** True when turning a widget on grants access worth confirming (system access, an account, secrets,
+ *  or unrestricted network). Plain network:<host> + storage stay one-click (disclosed at install). */
+export function needsEnableConsent(e: InstalledExtension): boolean {
+  return (
+    e.tier === 'full' ||
+    e.capabilities.some((c) => c.startsWith('service:') || c === 'secrets' || c === 'network:*')
+  )
+}
+
+/** Enable consent, scaled to what the widget can do: full system access requires typing a phrase;
+ *  other sensitive access (account/secrets/open network) is a plain confirm. */
 export function EnableDialog({
   ext,
   busy,
@@ -87,13 +96,14 @@ export function EnableDialog({
   onConfirm: () => void
   onCancel: () => void
 }): JSX.Element {
+  const requirePhrase = ext.tier === 'full'
   const [typed, setTyped] = useState('')
-  const armed = typed.trim().toLowerCase() === ENABLE_PHRASE.toLowerCase()
+  const armed = !requirePhrase || typed.trim().toLowerCase() === ENABLE_PHRASE.toLowerCase()
   return (
     <div className="consent-backdrop" onClick={onCancel}>
       <div className="consent-card" onClick={(e) => e.stopPropagation()}>
         <div className="consent-head">
-          <span className="consent-icon consent-icon--danger">
+          <span className={`consent-icon${requirePhrase ? ' consent-icon--danger' : ''}`}>
             <TriangleAlert size={20} strokeWidth={1.75} />
           </span>
           <div className="consent-head-text">
@@ -101,21 +111,40 @@ export function EnableDialog({
             <div className="consent-source">v{ext.version}</div>
           </div>
         </div>
-        <p className="consent-danger-lede">
-          <strong>{ext.name}</strong> runs with <strong>full access to your Mac</strong>. It can read
-          and change files, run programs, and use the network. Only turn on widgets you trust.
-        </p>
-        <label className="consent-typebox">
-          <span>
-            To turn on, type <code>{ENABLE_PHRASE}</code>
-          </span>
-          <input value={typed} onChange={(e) => setTyped(e.target.value)} autoFocus spellCheck={false} autoComplete="off" />
-        </label>
+        {requirePhrase ? (
+          <p className="consent-danger-lede">
+            <strong>{ext.name}</strong> runs with <strong>full access to your Mac</strong> — it can read
+            and change files, run programs, and use the network. Only turn on widgets you trust.
+          </p>
+        ) : (
+          <>
+            <p className="consent-h">This widget will</p>
+            <ul className="consent-caps">
+              {ext.capabilities.map((c) => (
+                <li key={c} className="consent-cap">
+                  {describe(c)}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+        {requirePhrase && (
+          <label className="consent-typebox">
+            <span>
+              To turn on, type <code>{ENABLE_PHRASE}</code>
+            </span>
+            <input value={typed} onChange={(e) => setTyped(e.target.value)} autoFocus spellCheck={false} autoComplete="off" />
+          </label>
+        )}
         <div className="consent-actions">
           <button className="consent-cancel" onClick={onCancel}>
             Cancel
           </button>
-          <button className="consent-install consent-install--danger" onClick={onConfirm} disabled={busy || !armed}>
+          <button
+            className={`consent-install${requirePhrase ? ' consent-install--danger' : ''}`}
+            onClick={onConfirm}
+            disabled={busy || !armed}
+          >
             {busy ? 'Turning on…' : 'Turn on'}
           </button>
         </div>

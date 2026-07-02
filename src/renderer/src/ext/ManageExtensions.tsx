@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Blocks, FolderOpen, HardDriveDownload, ShieldAlert, Trash2 } from 'lucide-react'
 import type { ExtInstallPlan, InstalledExtension } from '@shared/types/ext'
 import { resyncExtensions } from '@renderer/ext/loader'
-import { InstallDialog, EnableDialog } from '@renderer/ext/ExtDialogs'
+import { InstallDialog, EnableDialog, needsEnableConsent } from '@renderer/ext/ExtDialogs'
 
 const DEV_KEY = 'ui.widgetDevMode'
 
@@ -68,8 +68,8 @@ export function ManageExtensions(): JSX.Element {
   const toggle = async (e: InstalledExtension): Promise<void> => {
     if (e.enabled) {
       await window.garret.ext.setEnabled(e.id, false)
-    } else if (e.tier === 'full') {
-      setEnabling(e) // system access → confirm first
+    } else if (needsEnableConsent(e)) {
+      setEnabling(e) // system access / account / secrets / open network → confirm first
       return
     } else {
       const res = await window.garret.ext.setEnabled(e.id, true)

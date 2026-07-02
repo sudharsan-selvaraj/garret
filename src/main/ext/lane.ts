@@ -123,21 +123,22 @@ export function registerExtHandlers(): void {
   })
 
   // ── per-placement config (settings) ─────────────────────────────────────────────────────────
-  ipcMain.handle(
-    Channels.extConfig,
-    (e, op: string, instanceId: string, value?: unknown, replace?: boolean) => {
-      const key = `ext.config.${instanceId}`
-      if (op === 'get') return persistence.kvGet(key) ?? {}
-      if (op === 'set') {
-        const cur = (persistence.kvGet(key) as Record<string, unknown>) ?? {}
-        const next = replace ? value : { ...cur, ...((value as Record<string, unknown>) ?? {}) }
-        persistence.kvSet(key, next)
-        e.sender.send(Channels.extConfigChange, next)
-        return next
-      }
-      return undefined
+  // Key from the BIND-VERIFIED binding (extId + instanceId), never a guest-supplied id — otherwise a
+  // widget could read/write another placement's (or another extension's) config. See review B1.
+  ipcMain.handle(Channels.extConfig, (e, op: string, value?: unknown, replace?: boolean) => {
+    const b = bound.get(e.sender.id)
+    if (!b) throw new Error('widget not bound')
+    const key = `ext.config.${b.extId}.${b.instanceId}`
+    if (op === 'get') return persistence.kvGet(key) ?? {}
+    if (op === 'set') {
+      const cur = (persistence.kvGet(key) as Record<string, unknown>) ?? {}
+      const next = replace ? value : { ...cur, ...((value as Record<string, unknown>) ?? {}) }
+      persistence.kvSet(key, next)
+      e.sender.send(Channels.extConfigChange, next)
+      return next
     }
-  )
+    return undefined
+  })
 
   // ── install / manage ────────────────────────────────────────────────────────────────────────
   ipcMain.handle(Channels.extInstallPlan, (_e, dir: string) => planInstall(dir))

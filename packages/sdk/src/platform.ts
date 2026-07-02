@@ -13,7 +13,7 @@ export interface ServiceStatus {
 export interface ServiceClient {
   /** Connection state is async (the account is connected in Garret's Settings, brokered by main). */
   status(): Promise<ServiceStatus>
-  query<R = unknown>(req: unknown): Promise<R>
+  query<R = unknown>(method: string, params?: Record<string, unknown>): Promise<R>
 }
 export interface StorageApi {
   get<T = unknown>(key: string): Promise<T | undefined>

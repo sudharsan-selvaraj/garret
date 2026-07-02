@@ -124,9 +124,15 @@ export function createWindow(mode: WindowMode): BrowserWindow {
         fillScreen()
       }
     })
-    // Re-fit the spanning board when displays change (plug/unplug, arrangement, scale).
+    // Re-fit the spanning board when displays change (plug/unplug, arrangement, scale). Bail when
+    // the union is unchanged — setBounds can itself fire display-metrics-changed, so this prevents a
+    // re-entrant loop + repeated board saves (review S5).
     const refit = (): void => {
-      bounds = unionBounds()
+      const nb = unionBounds()
+      if (nb.x === bounds.x && nb.y === bounds.y && nb.width === bounds.width && nb.height === bounds.height) {
+        return
+      }
+      bounds = nb
       pin()
       fillScreen()
       win.webContents.send(Channels.displaysChanged, bounds)

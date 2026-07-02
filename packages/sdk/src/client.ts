@@ -41,6 +41,7 @@ export function createHostClient<Api, Events extends EventMap = EventMap>(
   const pending = new Map<string, { resolve: (v: unknown) => void; reject: (e: unknown) => void }>()
   const streams = new Map<string, StreamState>()
   const events = new Map<string, Set<(p: unknown) => void>>()
+  const eventBuffer = new Map<string, unknown[]>() // events for a channel with no subscriber yet
   let seq = 0
   const nextId = (): string => `${opts.instanceId}:${++seq}`
 
@@ -90,7 +91,15 @@ export function createHostClient<Api, Events extends EventMap = EventMap>(
         break
       }
       case 'event': {
-        events.get(msg.channel)?.forEach((cb) => cb(msg.payload))
+        const subs = events.get(msg.channel)
+        if (subs && subs.size) {
+          subs.forEach((cb) => cb(msg.payload))
+        } else {
+          // No subscriber yet (host emitted before useHostEvent mounted) — buffer, bounded.
+          const buf = eventBuffer.get(msg.channel) ?? []
+          if (buf.length < 100) buf.push(msg.payload)
+          eventBuffer.set(msg.channel, buf)
+        }
         break
       }
     }
@@ -154,7 +163,21 @@ export function createHostClient<Api, Events extends EventMap = EventMap>(
   function callMethod(method: string, args: unknown): Promise<unknown> {
     const id = nextId()
     return new Promise((resolve, reject) => {
-      pending.set(id, { resolve, reject })
+      // A request must not hang forever (no host, dead host, dropped frame) — time it out.
+      const timer = setTimeout(() => {
+        pending.delete(id)
+        reject(new GarretError('TIMEOUT', `"${method}" timed out`))
+      }, 30_000)
+      pending.set(id, {
+        resolve: (v) => {
+          clearTimeout(timer)
+          resolve(v)
+        },
+        reject: (e) => {
+          clearTimeout(timer)
+          reject(e)
+        }
+      })
       transport.send({ t: 'req', id, method, args })
     })
   }
@@ -164,6 +187,12 @@ export function createHostClient<Api, Events extends EventMap = EventMap>(
       let set = events.get(channel)
       if (!set) events.set(channel, (set = new Set()))
       set.add(cb)
+      // Replay anything buffered before this first subscriber (review S1).
+      const buffered = eventBuffer.get(channel)
+      if (buffered?.length) {
+        eventBuffer.delete(channel)
+        buffered.forEach((p) => cb(p))
+      }
       return () => set!.delete(cb)
     },
     dispose(): void {

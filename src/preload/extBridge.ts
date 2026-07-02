@@ -20,9 +20,17 @@ const CONFIG_CHANGE = 'ext:config-change'
 const extId = location.hostname
 const instanceId = new URLSearchParams(location.search).get('instance') || 'unknown'
 
-// ── host transport (full tier): a raw WireMessage pipe, buffered until the host is bound ─────────
+// ── host transport (full tier): a raw WireMessage pipe ───────────────────────────────────────────
+// OUTBOUND is buffered until bind resolves (the host isn't launched yet). INBOUND is buffered until
+// the SDK client attaches its first onMessage, so a host frame relayed before the client mounts
+// (e.g. an initial 'event') isn't dropped (review S1).
 const frameCbs = new Set<(m: WireMessage) => void>()
-ipcRenderer.on(HOST_FRAME, (_e: IpcRendererEvent, msg: WireMessage) => frameCbs.forEach((cb) => cb(msg)))
+const inbound: WireMessage[] = []
+let hasSubscriber = false
+ipcRenderer.on(HOST_FRAME, (_e: IpcRendererEvent, msg: WireMessage) => {
+  if (hasSubscriber) frameCbs.forEach((cb) => cb(msg))
+  else inbound.push(msg)
+})
 let bound = false
 const sendQueue: WireMessage[] = []
 const hostTransport = {
@@ -32,6 +40,10 @@ const hostTransport = {
   },
   onMessage(cb: (m: WireMessage) => void): () => void {
     frameCbs.add(cb)
+    if (!hasSubscriber) {
+      hasSubscriber = true
+      for (const m of inbound.splice(0)) cb(m)
+    }
     return () => frameCbs.delete(cb)
   }
 }
@@ -88,7 +100,7 @@ const runtime = {
   },
   service: (id: string) => ({
     status: () => call('service', 'status', [id]),
-    query: (req: unknown) => call('service', 'query', [id, req])
+    query: (method: string, params?: unknown) => call('service', 'query', [id, method, params])
   }),
   notify: (title: string, body?: string) => void call('notify', '', [title, body]),
   openExternal: (url: string) => call('openExternal', '', [url]) as Promise<boolean>,
@@ -106,7 +118,7 @@ const runtime = {
   inGarret: true,
   config: {
     get: () => config,
-    set: (value: unknown, replace = false) => void ipcRenderer.invoke(CONFIG, 'set', instanceId, value, replace),
+    set: (value: unknown, replace = false) => void ipcRenderer.invoke(CONFIG, 'set', value, replace),
     subscribe(cb: (c: unknown) => void): () => void {
       configCbs.add(cb)
       return () => configCbs.delete(cb)
@@ -120,7 +132,7 @@ contextBridge.exposeInMainWorld('__garret', runtime)
 void (async () => {
   try {
     const res = (await ipcRenderer.invoke(BIND, extId, instanceId)) as { ok: boolean; hasHost?: boolean }
-    config = await ipcRenderer.invoke(CONFIG, 'get', instanceId)
+    config = await ipcRenderer.invoke(CONFIG, 'get')
     configCbs.forEach((cb) => cb(config))
     if (res?.ok) {
       bound = true
