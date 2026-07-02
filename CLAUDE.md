@@ -11,3 +11,7 @@ Build UI that looks and feels like a native macOS app.
 - **Unify only related things.** Merge flows or components only when they are genuinely the same concern. Do not force unrelated items together for the sake of unification.
 
 Apply this to every settings pane, dialog, manager, and widget surface. When a screen starts to feel crowded, split it by logical group before adding more.
+
+## Workflow
+
+At the end of every implementation phase, run an adversarial staff-engineer critic that reviews the phase's code against the architecture (`docs/architecture.md`, `docs/garret.html`): fidelity to the locked decisions, plus real bugs, security holes, and races. Fix all blockers before starting the next phase.
