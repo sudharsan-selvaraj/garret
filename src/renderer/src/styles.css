@@ -2723,24 +2723,6 @@ button[disabled],
 .add-preview-card--compact {
   max-width: 260px;
 }
-/* Author-supplied preview image (third-party widgets) — fills the card edge-to-edge at its
- * natural aspect and is clipped to the rounded corners, so the image IS the preview (no
- * surrounding card bg, no letterbox, no double-frame). Works for any image the author ships. */
-.add-preview-img-wrap {
-  padding: 0;
-  min-height: 0;
-  background: none;
-  overflow: hidden;
-  line-height: 0;
-}
-.add-preview-img {
-  width: 100%;
-  height: auto;
-  max-height: 240px; /* safety cap for very tall images (then crops from the top) */
-  object-fit: cover;
-  object-position: top;
-  display: block;
-}
 /* Section sub-note (e.g. the Installed "unverified" caption). */
 .add-section-note {
   margin-left: auto;
