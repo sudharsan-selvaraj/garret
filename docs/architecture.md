@@ -256,15 +256,15 @@ blindly — verdict + grounding for each:
 | ARCH-04 `fork` vs `spawn` | **Partial** | We use `utilityProcess.fork` (Electron-native, defensibly better than `child_process.fork`). ready-timeout/stderr/crash-surface done; **env-scrub + graceful-shutdown are the §4 gaps.** |
 | ARCH-05 window level + Mission Control | **Mostly already done** | `mac_window.mm` already sets `CanJoinAllSpaces\|Stationary\|IgnoresCycle` + non-activating panel + `visibleOnFullScreen`. Residual nuance: HUD uses **screen-saver** level (above Notification/Control Center) — test `floating` (§1). |
 | ARCH-06 tier-inference contradiction | **Valid — adopt** | Real doc contradiction. Resolution below (require both). |
-| SDK-01 `@garret/sdk` scoped package | Adopt | matches §14 Q1. |
+| SDK-01 `@garretapp/sdk` scoped package | Adopt | matches §14 Q1. |
 | SDK-02 sibling calls via **function declarations** | Adopt (supersedes rev-2 `methods` arg) | hoisted fn decls cross-reference safely — simpler, removes SDK surface. |
 | SDK-03 `ctx.spawn` array-only + `spawnShell` opt-in | Adopt | string form is a shell-injection surface even in a trusted ext. |
 | SDK-04 `useConfig` → `patchCfg` (merge) + `setCfg` (replace) | Adopt | current single-key `setCfg` on a multi-key type is ambiguous. |
 | SDK-05 `useStream` React hook | Adopt | removes the manual `useEffect`+cancel leak. |
 | SDK-06 `g.instanceStorage` (per-placement) | Adopt | key-level merge doesn't stop **same-key cross-instance clobber**; per-instance namespace does. |
-| SDK-07 typed `g.service<T>()` | Adopt | generic response type now; typed clients (`@garret/sdk/services`) later. |
+| SDK-07 typed `g.service<T>()` | Adopt | generic response type now; typed clients (`@garretapp/sdk/services`) later. |
 | SDK-08 doc fixes | Valid — confirmed | gotchas table **skips P8** (P1–P7,P9,P10); config x-ref says **§07 but is §08**; `garret/ui`/`defineManifest`/`g.window` need examples. |
-| Q1–Q8 open questions | Resolved | Q1 `@garret/sdk` · Q2 `garret.manifest.json` · Q3 require-both · Q4 React+`/ui` only · Q5 keep `Stream<C,R>` (default `void`) · Q6 mini-schema + `defineConfig()` · Q7 compat shim (sunset 6mo) · Q8 no web-tier host. |
+| Q1–Q8 open questions | Resolved | Q1 `@garretapp/sdk` · Q2 `garret.manifest.json` · Q3 require-both · Q4 React+`/ui` only · Q5 keep `Stream<C,R>` (default `void`) · Q6 mini-schema + `defineConfig()` · Q7 compat shim (sunset 6mo) · Q8 no web-tier host. |
 | OS-01 desktop layer cross-platform | Valid — future | §7 above. |
 | OS-02 secrets cross-platform | Partial | already on `safeStorage` (cross-platform); residual = **Linux no-daemon → `UNAVAILABLE`**, not a crash. |
 | OS-03 `resolveBinary` per-OS probe+hints | Valid — future | not built yet; design cross-platform from the start (§7). |
@@ -363,7 +363,7 @@ files are trusted/signed.
 
 ### 7. Dev loop — DEFINE *(author-facing; partly exists)*
 **Have:** electron-vite HMR (renderer), host = `utilityProcess` with stderr piped `[ext:<id>]`, dev
-auto-DevTools for `garret-native://` webviews. **Target for authors (`@garret/create-ext` + `garret
+auto-DevTools for `garret-native://` webviews. **Target for authors (`@garretapp/create-ext` + `garret
 dev`):** watch-build UI (vite) + host (esbuild) → a dev Garret loads `dist/`. **UI-only hot-reload**
 reloads the widget webview without restarting the host; **host-only reload** re-forks just that
 extension's host (UI stays, reconnects) — the two are independent. **Logs:** host stderr surfaced in

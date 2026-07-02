@@ -1,0 +1,36 @@
+{
+  "name": "@garretapp/sdk",
+  "version": "0.1.0",
+  "description": "Build extensions for Garret — one SDK for both web widgets and full-access native extensions. Host runtime (defineHost), UI client + React hooks. See docs/garret.html.",
+  "license": "MIT",
+  "author": "Sudharsan Selvaraj",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+      "require": { "types": "./dist/index.d.cts", "default": "./dist/index.cjs" }
+    },
+    "./host": {
+      "import": { "types": "./dist/host.d.ts", "default": "./dist/host.js" },
+      "require": { "types": "./dist/host.d.cts", "default": "./dist/host.cjs" }
+    },
+    "./ui": {
+      "import": { "types": "./dist/ui.d.ts", "default": "./dist/ui.js" },
+      "require": { "types": "./dist/ui.d.cts", "default": "./dist/ui.cjs" }
+    },
+    "./react": {
+      "import": { "types": "./dist/react.d.ts", "default": "./dist/react.js" },
+      "require": { "types": "./dist/react.d.cts", "default": "./dist/react.cjs" }
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup src/index.ts src/host.ts src/ui.ts src/react.ts --format esm,cjs --dts --clean --treeshake"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true }
+  }
+}

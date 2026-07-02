@@ -1,0 +1,98 @@
+import { GarretError } from './errors'
+import type { Transport } from './protocol'
+
+/**
+ * Platform capabilities — the Garret-brokered surface available to a widget UI in BOTH tiers
+ * (`useGarret()`). Every call is enforced in Garret's main process against the manifest's declared
+ * capabilities. The concrete implementation is injected by the preload as `window.__garret` (U3);
+ * outside Garret (dev in a browser) a fallback reports `inGarret === false` and throws on use.
+ */
+export interface ServiceClient {
+  connected: boolean
+  query<R = unknown>(req: unknown): Promise<R>
+}
+export interface StorageApi {
+  get<T = unknown>(key: string): Promise<T | undefined>
+  set(key: string, value: unknown): Promise<void>
+  delete(key: string): Promise<void>
+  keys(): Promise<string[]>
+  clear(): Promise<void>
+}
+export interface SecretsApi {
+  get(key: string): Promise<string | undefined>
+  set(key: string, value: string): Promise<void>
+  delete(key: string): Promise<void>
+}
+export interface GarretPlatform {
+  /** per-extension (shared across placements), atomic + key-merged. */
+  storage: StorageApi
+  /** per-placement (isolated) — safe for cursors/state that mustn't clobber other instances. */
+  instanceStorage: StorageApi
+  secrets: SecretsApi
+  fetch: typeof fetch
+  service<T extends ServiceClient = ServiceClient>(id: string): T
+  notify(title: string, body?: string): void
+  openExternal(url: string): Promise<boolean>
+  clipboard: { readText(): Promise<string>; writeText(value: string): Promise<void> }
+  /** false when the board is ambient/idle — pause rAF/animations, throttle polling. */
+  active: boolean
+  onActiveChange(cb: (active: boolean) => void): () => void
+  /** false in a plain browser (dev) — render a "run inside Garret" state instead of a blank UI. */
+  inGarret: boolean
+}
+
+/** What the preload injects. Extends the platform with the wiring the SDK runtimes need. */
+export interface GarretRuntime extends GarretPlatform {
+  instanceId: string
+  /** the per-widget host bridge; null for web widgets (no host). */
+  hostTransport: Transport | null
+  config: {
+    get(): unknown
+    /** replace=false → shallow merge (patch); true → full replace. */
+    set(value: unknown, replace?: boolean): void
+    subscribe(cb: (config: unknown) => void): () => void
+  }
+}
+
+declare global {
+  // eslint-disable-next-line no-var
+  interface Window {
+    __garret?: GarretRuntime
+  }
+}
+
+export function getRuntime(): GarretRuntime | undefined {
+  return typeof window !== 'undefined' ? window.__garret : undefined
+}
+export function getHostTransport(): Transport | null {
+  return getRuntime()?.hostTransport ?? null
+}
+export function getInstanceId(): string {
+  return getRuntime()?.instanceId ?? 'dev'
+}
+
+function nope(): never {
+  throw new GarretError('UNAVAILABLE', 'not running inside Garret')
+}
+const stubStorage: StorageApi = { get: nope, set: nope, delete: nope, keys: nope, clear: nope }
+const stubSecrets: SecretsApi = { get: nope, set: nope, delete: nope }
+
+/** The platform capabilities. Real inside Garret; a fail-loud fallback in a plain browser. */
+export function getGarret(): GarretPlatform {
+  const rt = getRuntime()
+  if (rt) return rt
+  return {
+    inGarret: false,
+    storage: stubStorage,
+    instanceStorage: stubStorage,
+    secrets: stubSecrets,
+    fetch: (...a: Parameters<typeof fetch>) => fetch(...a),
+    service: <T extends ServiceClient = ServiceClient>(): T =>
+      ({ connected: false, query: nope }) as unknown as T,
+    notify: () => {},
+    openExternal: async () => false,
+    clipboard: { readText: nope, writeText: nope },
+    active: true,
+    onActiveChange: () => () => {}
+  }
+}

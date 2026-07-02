@@ -148,7 +148,7 @@
 
         <!-- ══════════════ PART 2 — AUTHORING ══════════════ -->
         <div class="part" id="model">
-          <div class="lbl">Part 2 · Building an extension (proposed <code>@garret/sdk</code>)</div>
+          <div class="lbl">Part 2 · Building an extension (proposed <code>@garretapp/sdk</code>)</div>
           <h1>Authoring guide</h1>
           <p class="sub">One SDK, one project shape, one UI programming model — for both a safe web widget and a full-access native extension. You declare <b>capabilities</b>; Garret derives the tier and the consent.</p>
         </div>
@@ -170,9 +170,9 @@
 
         <section id="install">
           <h2><span class="n">02</span>Install &amp; project structure</h2>
-          <pre><code class="language-bash">npm create @garret/create-ext@latest my-extension   # scaffolds the structure
+          <pre><code class="language-bash">npm create @garretapp/create-ext@latest my-extension   # scaffolds the structure
 # or, in an existing project:
-npm i @garret/sdk</code></pre>
+npm i @garretapp/sdk</code></pre>
           <div class="filename">my-extension/</div>
           <pre><code class="language-text">my-extension/
 ├─ garret.manifest.json     # identity + capabilities + size
@@ -182,10 +182,10 @@ npm i @garret/sdk</code></pre>
 └─ build.mjs                # one build → dist/{ui,host} + manifest → .garret</code></pre>
           <table>
             <tr><th>Import from</th><th>Runs in</th><th>Gives you</th></tr>
-            <tr><td><code>@garret/sdk/react</code></td><td>UI</td><td><code>useHost</code>, <code>useGarret</code>, <code>useHostEvent</code>, <code>useConfig</code>, <code>useStream</code></td></tr>
-            <tr><td><code>@garret/sdk/ui</code></td><td>UI (no React)</td><td><code>createClient</code>, <code>getGarret</code> — vanilla/Svelte/Vue path</td></tr>
-            <tr><td><code>@garret/sdk/host</code></td><td>Host</td><td><code>defineHost</code> + the <code>ctx</code> toolkit</td></tr>
-            <tr><td><code>@garret/sdk</code></td><td>shared</td><td>types: <code>Stream</code>, <code>GarretError</code>, <code>defineManifest</code>, <code>defineConfig</code></td></tr>
+            <tr><td><code>@garretapp/sdk/react</code></td><td>UI</td><td><code>useHost</code>, <code>useGarret</code>, <code>useHostEvent</code>, <code>useConfig</code>, <code>useStream</code></td></tr>
+            <tr><td><code>@garretapp/sdk/ui</code></td><td>UI (no React)</td><td><code>createClient</code>, <code>getGarret</code> — vanilla/Svelte/Vue path</td></tr>
+            <tr><td><code>@garretapp/sdk/host</code></td><td>Host</td><td><code>defineHost</code> + the <code>ctx</code> toolkit</td></tr>
+            <tr><td><code>@garretapp/sdk</code></td><td>shared</td><td>types: <code>Stream</code>, <code>GarretError</code>, <code>defineManifest</code>, <code>defineConfig</code></td></tr>
           </table>
         </section>
 
@@ -204,7 +204,7 @@ npm i @garret/sdk</code></pre>
   "defaultSize": { "w": 3, "h": 2 }
 }</code></pre>
               <div class="filename">ui/App.tsx</div>
-              <pre><code class="language-tsx">import { useGarret } from '@garret/sdk/react'
+              <pre><code class="language-tsx">import { useGarret } from '@garretapp/sdk/react'
 
 export default function App() {
   const g = useGarret()
@@ -227,7 +227,7 @@ export default function App() {
   "defaultSize": { "w": 6, "h": 5 }
 }</code></pre>
               <div class="filename">host/index.ts</div>
-              <pre><code class="language-ts">import { defineHost } from '@garret/sdk/host'
+              <pre><code class="language-ts">import { defineHost } from '@garretapp/sdk/host'
 
 export default defineHost&lt;Api&gt;((ctx) =&gt; ({
   run: ({ argv }) =&gt; ctx.stream((out, signal) =&gt; {
@@ -244,7 +244,7 @@ export default defineHost&lt;Api&gt;((ctx) =&gt; ({
           <h2><span class="n">04</span>Manifest — <code>garret.manifest.json</code></h2>
           <p>A predictable, Garret-specific filename (avoids colliding with Chrome/PWA/VS Code <code>manifest.json</code>). Optionally authored in TS with <code>defineManifest()</code> for autocomplete.</p>
           <div class="filename">garret.manifest.ts (optional, for types)</div>
-          <pre><code class="language-ts">import { defineManifest } from '@garret/sdk'
+          <pre><code class="language-ts">import { defineManifest } from '@garretapp/sdk'
 export default defineManifest({
   id: 'gh-stars', name: 'GitHub Stars', version: '0.1.0', apiVersion: 1,
   ui: 'dist/ui/', capabilities: ['network:api.github.com', 'storage'],
@@ -262,7 +262,7 @@ export default defineManifest({
         </section>
 
         <section id="ui-api">
-          <h2><span class="n">05</span>UI API — <code>@garret/sdk/react</code></h2>
+          <h2><span class="n">05</span>UI API — <code>@garretapp/sdk/react</code></h2>
           <p>Hooks; all auto-clean up on unmount.</p>
           <h3><code>useHost&lt;Api, Events&gt;()</code> — call your host</h3>
           <pre><code class="language-tsx">const host = useHost&lt;Api, Events&gt;()
@@ -289,10 +289,10 @@ setCfg({ repo: 'nodejs/node', poll: 60 })  // full REPLACE</code></pre>
         </section>
 
         <section id="host-api">
-          <h2><span class="n">06</span>Host API — <code>@garret/sdk/host</code></h2>
+          <h2><span class="n">06</span>Host API — <code>@garretapp/sdk/host</code></h2>
           <p><code>defineHost</code> hides the entire bridge envelope + sends <code>ready</code> only after your (possibly async) factory resolves. Cross-reference sibling methods with <b>function declarations</b> — they hoist, so no extra machinery:</p>
           <div class="filename">host/index.ts</div>
-          <pre><code class="language-ts">import { defineHost } from '@garret/sdk/host'
+          <pre><code class="language-ts">import { defineHost } from '@garretapp/sdk/host'
 import { readdir } from 'node:fs/promises'
 
 export default defineHost&lt;Api, Events&gt;((ctx) =&gt; {
@@ -345,7 +345,7 @@ export default defineHost&lt;Api, Events&gt;((ctx) =&gt; {
           <h2><span class="n">08a</span>Streaming</h2>
           <p>Declare it in the contract by returning <code>Stream&lt;Chunk, Result&gt;</code> (Result defaults to <code>void</code>); produce with <code>ctx.stream</code>; consume with a <code>StreamCall</code> (or <code>useStream</code>).</p>
           <div class="filename">shared/api.ts</div>
-          <pre><code class="language-ts">import type { Stream } from '@garret/sdk'
+          <pre><code class="language-ts">import type { Stream } from '@garretapp/sdk'
 export interface Api {
   list(a: { dir: string }): { items: string[] }
   run(a: { argv: string[] }): Stream&lt;string, { code: number }&gt;   // Chunk, Result
@@ -371,7 +371,7 @@ run.onData(c =&gt; append(c)).onEnd(({ code }) =&gt; done(code)).onError(showErr
 
         <section id="errors">
           <h2><span class="n">09</span>Errors</h2>
-          <pre><code class="language-ts">import { GarretError } from '@garret/sdk'
+          <pre><code class="language-ts">import { GarretError } from '@garretapp/sdk'
 try { await host.devices() }
 catch (e) { if (e instanceof GarretError &amp;&amp; e.code === 'BINARY_NOT_FOUND') showInstall(e.hint) }</code></pre>
           <p>Codes: <code>BINARY_NOT_FOUND</code> (carries <code>hint</code>) · <code>NOT_FOUND</code> · <code>PERMISSION</code> · <code>UNAVAILABLE</code> (cap off / not in Garret / vault down) · <code>BAD_ARGS</code> · <code>TIMEOUT</code> / <code>CANCELLED</code> · <code>NETWORK</code> · <code>INTERNAL</code>.</p>
@@ -419,7 +419,7 @@ catch (e) { if (e instanceof GarretError &amp;&amp; e.code === 'BINARY_NOT_FOUND
         <section id="example">
           <h2><span class="n">13</span>Full example — Device Control</h2>
           <div class="filename">shared/api.ts</div>
-          <pre><code class="language-ts">import type { Stream } from '@garret/sdk'
+          <pre><code class="language-ts">import type { Stream } from '@garretapp/sdk'
 export interface Device { serial: string; model: string }
 export interface Api {
   devices(): { devices: Device[] }
@@ -427,7 +427,7 @@ export interface Api {
 }
 export interface Events { deviceAdded: Device; deviceRemoved: { serial: string } }</code></pre>
           <div class="filename">host/index.ts</div>
-          <pre><code class="language-ts">import { defineHost } from '@garret/sdk/host'
+          <pre><code class="language-ts">import { defineHost } from '@garretapp/sdk/host'
 export default defineHost&lt;Api, Events&gt;((ctx) =&gt; {
   const track = ctx.spawn(['adb', 'track-devices'])
   track.stdout.on('data', () =&gt; { /* diff → ctx.emit('deviceAdded' | 'deviceRemoved', …) */ })
@@ -517,7 +517,7 @@ return &lt;ul&gt;{devices.map(d =&gt;
 
         <section id="decisions">
           <h2><span class="n">·</span>Locked decisions</h2>
-          <div><span class="verdict v-do">Q1</span><b>Package:</b> <code>@garret/sdk</code> (scoped) with <code>/react</code>, <code>/host</code>, <code>/ui</code> — replaces <code>garret-widget-sdk</code> + <code>garret-ext</code>.</div>
+          <div><span class="verdict v-do">Q1</span><b>Package:</b> <code>@garretapp/sdk</code> (scoped) with <code>/react</code>, <code>/host</code>, <code>/ui</code> — replaces <code>garret-widget-sdk</code> + <code>garret-ext</code>.</div>
           <div style="margin-top:8px"><span class="verdict v-do">Q2</span><b>Manifest:</b> <code>garret.manifest.json</code> (no collision with other tools).</div>
           <div style="margin-top:8px"><span class="verdict v-do">Q3</span><b>Tier:</b> require BOTH a <code>host</code> entry and an explicit system capability; reject invalid combos at install.</div>
           <div style="margin-top:8px"><span class="verdict v-skip">Q4</span><b>Frameworks:</b> React (<code>/react</code>) + a 0-dep <code>/ui</code> at launch; Svelte/Vue via community packages if demand appears.</div>
@@ -554,7 +554,7 @@ return &lt;ul&gt;{devices.map(d =&gt;
             <tr><td>ARCH-04 <code>fork</code> vs <code>spawn</code></td><td><b>Partial</b></td><td>We use <code>utilityProcess.fork</code> (Electron-native, defensibly better). ready-timeout/stderr/crash-surface done; <b>env-scrub + graceful-shutdown are the §4 gaps</b>.</td></tr>
             <tr><td>ARCH-05 window level + Mission Control</td><td><b>Mostly done</b></td><td><code>mac_window.mm</code> already sets <code>CanJoinAllSpaces|Stationary|IgnoresCycle</code> + non-activating panel + <code>visibleOnFullScreen</code>. Residual: HUD at screen-saver level — test <code>floating</code>.</td></tr>
             <tr><td>ARCH-06 tier-inference contradiction</td><td><b>Valid — adopted</b></td><td>Real doc contradiction; resolved as require-both (Q3 / decision #3).</td></tr>
-            <tr><td>SDK-01 <code>@garret/sdk</code></td><td>Adopt</td><td>scoped package, matches Q1.</td></tr>
+            <tr><td>SDK-01 <code>@garretapp/sdk</code></td><td>Adopt</td><td>scoped package, matches Q1.</td></tr>
             <tr><td>SDK-02 function-declaration sibling calls</td><td>Adopt (supersedes <code>methods</code> arg)</td><td>hoisted fn decls cross-reference safely — simpler, removes SDK surface.</td></tr>
             <tr><td>SDK-03 array-only <code>spawn</code> + <code>spawnShell</code></td><td>Adopt</td><td>string form is a shell-injection surface even in a trusted ext.</td></tr>
             <tr><td>SDK-04 <code>patchCfg</code>/<code>setCfg</code></td><td>Adopt</td><td>single-key <code>setCfg</code> on a multi-key type is ambiguous.</td></tr>
@@ -579,7 +579,7 @@ return &lt;ul&gt;{devices.map(d =&gt;
             <tr><td>4 <span style="color:var(--red)">blk</span></td><td><code>g.active</code> is a polling contract</td><td>Define + build the UI side: <code>useGarret().active</code> + <code>useActive()</code> + <code>onActiveChange</code> (<code>true</code>=HUD/focused). Polling/<code>rAF</code>/animation <b>should pause when <code>!active</code></b>; SDK polling helpers do it automatically. Main already throttles host-side (§6); this plumbs the renderer half.</td></tr>
             <tr><td>5 <span style="color:var(--amber)">auth</span></td><td><code>.garret</code> format + signing never defined</td><td><b>ZIP</b> (slip-safe), root <code>garret.manifest.json</code> + <code>ui/</code> (+ <code>host/</code>). <b>Not author-signed</b> — sideload/trust. The <b>local install record</b> is HMAC-signed (per-app <code>safeStorage</code> key) committing to <code>sha256(all files)+id+version+enabled</code> → stops local tampering (forged <code>enabled</code>, swapped files), <b>not</b> author auth. Docs must not imply <code>.garret</code> is trusted.</td></tr>
             <tr><td>6 <span style="color:var(--amber)">auth</span></td><td>Updates completely absent</td><td>v1 = <b>manual re-install</b> (no registry). Any code/capability change on update <b>resets to disabled + re-consents before it runs</b>. <code>storage</code>/<code>secrets</code> preserved (separate data dir); author migrates via an <code>onUpgrade(fromVersion)</code> hook. Install is atomic → mid-install crash keeps the old version; no auto-rollback post-install.</td></tr>
-            <tr><td>7 <span style="color:var(--amber)">auth</span></td><td>Dev loop undefined</td><td><code>@garret/create-ext</code> + <code>garret dev</code>: watch-build UI (vite) + host (esbuild); <b>UI hot-reload independent of host re-fork</b>; host stderr in the widget DevTools console + terminal (prefixed); <code>garret dev --inspect-host</code> for a debugger.</td></tr>
+            <tr><td>7 <span style="color:var(--amber)">auth</span></td><td>Dev loop undefined</td><td><code>@garretapp/create-ext</code> + <code>garret dev</code>: watch-build UI (vite) + host (esbuild); <b>UI hot-reload independent of host re-fork</b>; host stderr in the widget DevTools console + terminal (prefixed); <code>garret dev --inspect-host</code> for a debugger.</td></tr>
             <tr><td>8 <span style="color:var(--accent)">dec</span></td><td>Multi-monitor model (macOS)</td><td><b>One spanning board across all displays</b> for v1 — window = union of <code>getAllDisplays()</code>, <b>one global grid</b>, widgets on any display. Smallest change from today; keeps the coordinate contract trivial. Adds a <code>screen</code>-change listener (re-fit + clamp orphaned widgets). Caveats: display gaps = dead zones (click-through), mixed-DPI is OS-scaled. Per-display boards (exact per-display scale, no dead zones) deferred — additive, not a contract change.</td></tr>
             <tr><td>9 <span style="color:var(--amber)">auth</span></td><td><code>g.service</code> connection UX</td><td><b>Built:</b> first-party connectors (Google/Jira/GitHub) + OAuth (loopback+PKCE, token encrypted) + Settings connect/revoke. A widget's <code>service:x</code> reads <code>connected</code>/<code>query()</code> <b>brokered by main — never sees the token</b>. v1 exposes existing connectors; new ones are first-party.</td></tr>
             <tr><td>10 <span style="color:var(--accent)">fix</span></td><td><code>window</code> declarable but dead</td><td>Manifest validator <b>rejects any capability not in the implemented set</b> — <code>"window"</code> is rejected at install, not silently accepted. Removed from the advertised list until it ships.</td></tr>
@@ -588,7 +588,7 @@ return &lt;ul&gt;{devices.map(d =&gt;
         </section>
 
         <footer>
-          Garret — unified product overview, proposed <code>@garret/sdk</code> authoring guide, and core architecture.
+          Garret — unified product overview, proposed <code>@garretapp/sdk</code> authoring guide, and core architecture.
           Supersedes <code>garret-overview.html</code> + <code>garret-sdk-guide.html</code>; the terse engineering reference lives in <code>docs/architecture.md</code>. SDK is a spec for review — not yet implemented.
         </footer>
       </main>
