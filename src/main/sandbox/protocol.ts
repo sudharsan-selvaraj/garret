@@ -2,6 +2,7 @@ import { join, normalize, sep } from 'node:path'
 import { readFile } from 'node:fs/promises'
 import { app, protocol, type Protocol, type Session } from 'electron'
 import { nativeSchemePrivilege } from '@main/native/protocol'
+import { extSchemePrivilege } from '@main/ext/protocol'
 
 /**
  * Custom scheme that serves sandboxed third-party widget bundles. Each widget gets a
@@ -106,7 +107,8 @@ export function registerSandboxScheme(): void {
       scheme: SANDBOX_SCHEME,
       privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: false }
     },
-    nativeSchemePrivilege
+    nativeSchemePrivilege,
+    extSchemePrivilege
   ])
 }
 

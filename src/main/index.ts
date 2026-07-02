@@ -21,6 +21,7 @@ import {
 } from '@main/windows/createWindow'
 import { registerSandboxScheme, registerSandboxProtocol } from '@main/sandbox/protocol'
 import { registerNativeHandlers } from '@main/native/lane'
+import { registerExtHandlers, broadcastActive } from '@main/ext/lane'
 import { registerWcvSpike } from '@main/spike/wcvSpike'
 
 // Declare the sandbox widget scheme BEFORE app `ready` (Electron requirement) so it has a
@@ -61,6 +62,7 @@ function setHud(active: boolean): void {
   // Power: HUD up = the board is the user's focus → poll at full rate + refresh; dismissed = it's
   // ambient (usually behind apps) → the scheduler stretches intervals. See docs/architecture.md §6.
   setBoardActive(active)
+  broadcastActive(active) // renderer half: widget UIs pause rAF/animations via useActive()
   updateTrayMenu()
 }
 
@@ -223,7 +225,7 @@ app.whenReady().then(() => {
       "img-src 'self' data: https:", // widget preview images arrive as data: URLs (sandbox.previewDataUrl)
       "font-src 'self' data:",
       dev ? "connect-src 'self' http: https: ws: wss:" : "connect-src 'self' https: wss:",
-      "frame-src 'self' garret-widget: garret-native: https:",
+      "frame-src 'self' garret-widget: garret-native: garret: https:",
       "object-src 'none'",
       "base-uri 'none'"
     ].join('; ')
@@ -237,6 +239,7 @@ app.whenReady().then(() => {
   initScheduler()
 
   registerNativeHandlers() // native-extension lane (renderer ↔ main ↔ raw-Node host)
+  registerExtHandlers() // unified extension system (garret-sdk) — one path for web + native
   registerWcvSpike() // dev-only WebContentsView geometry spike (GARRET_WCV_SPIKE=1)
 
   win = createWindow(WINDOW_MODE)

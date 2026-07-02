@@ -61,6 +61,21 @@ export const Channels = {
   nativeExtListInstalled: 'native-ext:list-installed',
   nativeExtSetEnabled: 'native-ext:set-enabled',
   nativeExtRemove: 'native-ext:remove',
+  // --- unified extension system (garret-sdk) ---
+  extList: 'ext:list', // board loader → { preloadUrl, extensions: ExtRuntimeInfo[] }
+  extBind: 'ext:bind', // (extensionId, instanceId, wcId) → { ok, hasHost }
+  extUnbind: 'ext:unbind', // (wcId)
+  extHostSend: 'ext:host-send', // renderer → main: a WireMessage for the bound host
+  extHostFrame: 'ext:host-frame', // main → renderer: a WireMessage from the host
+  extPlatform: 'ext:platform', // (domain, op, args) → broker
+  extActive: 'ext:active', // main → renderer: board active/idle
+  extInstallPlan: 'ext:install-plan',
+  extInstallFromFile: 'ext:install-from-file',
+  extInstallCommit: 'ext:install-commit',
+  extInstallCleanup: 'ext:install-cleanup',
+  extListInstalled: 'ext:list-installed',
+  extSetEnabled: 'ext:set-enabled',
+  extRemove: 'ext:remove',
   // --- WebContentsView geometry spike (dev-only, throwaway) ---
   wcvSpikeEnabled: 'wcv-spike:enabled',
   wcvSpikeCreate: 'wcv-spike:create',
