@@ -63,13 +63,16 @@ function secretKey(id: string): Buffer {
 
 // ── fetch allowlist ──────────────────────────────────────────────────────────────────────────────
 function fetchAllowed(binding: Binding, url: string): boolean {
-  if (binding.tier === 'full') return true
-  let host: string
+  if (binding.tier === 'full') return true // full-access: unrestricted (consented)
+  let u: URL
   try {
-    host = new URL(url).hostname.toLowerCase()
+    u = new URL(url)
   } catch {
     return false
   }
+  if (u.protocol !== 'https:') return false // web tier: TLS only (no http:// downgrade)
+  const host = u.hostname.toLowerCase()
+  // `network:<host>` is exact-hostname (any port). `network:*` allows any host.
   return binding.capabilities.some((c) => {
     if (!c.startsWith('network:')) return false
     const h = c.slice(8)

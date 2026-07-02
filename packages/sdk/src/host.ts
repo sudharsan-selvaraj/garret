@@ -225,7 +225,10 @@ export function defineHost<Api extends Methods, Events extends EventMap = EventM
       send({ t: 'ready' })
     })
     .catch((err) => {
+      // The host can't run without its methods. Log (piped to Garret's dev console) and exit now,
+      // so main's exit handler surfaces the failure immediately instead of after the ready-timeout.
       console.error('[host] factory failed during startup:', err)
+      process.exit(1)
     })
 }
 
@@ -246,7 +249,7 @@ async function resolveBinary(name: string, opts?: { hint?: string }): Promise<st
   const exe = platform === 'win32' ? `${name}.exe` : name
   const dirs = [...(process.env.PATH?.split(delimiter) ?? []), ...(PROBE[platform] ?? [])]
   for (const dir of dirs) {
-    if (!dir) continue
+    if (!dir || dir.includes('undefined')) continue // guard PROBE entries built from unset env vars
     const full = join(dir, exe)
     try {
       accessSync(full, constants.X_OK)

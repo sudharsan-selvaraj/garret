@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Garret — Product, SDK &amp; Architecture</title>
+    <title>Garret â Product, SDK &amp; Architecture</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" />
     <style>
       :root {
@@ -38,7 +38,7 @@
       .pill{display:inline-block;font-size:11px;font-weight:600;padding:3px 10px;border-radius:999px;margin-bottom:12px}
       .pill.proposal{background:rgba(191,90,242,.15);color:var(--purple);border:.5px solid rgba(191,90,242,.4)}
       .filename{font-family:var(--mono);font-size:11.5px;color:var(--text-3);margin:16px 0 -6px;display:flex;gap:6px}
-      .filename::before{content:"▸";color:var(--accent)}
+      .filename::before{content:"â¸";color:var(--accent)}
       .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:14px 0}
       .card{background:var(--panel);border:1px solid var(--hair);border-radius:14px;padding:4px 18px 16px}
       .chip{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 8px;border-radius:999px}
@@ -73,8 +73,8 @@
   <body>
     <div class="layout">
       <nav>
-        <div class="brand"><em>◆</em> Garret</div>
-        <div class="brand-sub">Product · SDK · Architecture</div>
+        <div class="brand"><em>â</em> Garret</div>
+        <div class="brand-sub">Product Â· SDK Â· Architecture</div>
         <div class="grp">Overview</div>
         <a href="#what">What Garret is</a>
         <a href="#modes">The three modes</a>
@@ -104,66 +104,66 @@
       </nav>
 
       <main>
-        <span class="pill proposal">LIVING DOC · product overview + proposed SDK (spec for review) + core architecture</span>
+        <span class="pill proposal">LIVING DOC Â· product overview + proposed SDK (spec for review) + core architecture</span>
 
-        <!-- ══════════════ PART 1 — OVERVIEW ══════════════ -->
+        <!-- ââââââââââââââ PART 1 â OVERVIEW ââââââââââââââ -->
         <div class="part" id="what">
-          <div class="lbl">Part 1 · Product</div>
-          <h1>Garret — the programmable desktop layer for macOS</h1>
-          <p class="sub">Garret turns the empty space behind your windows into glanceable widgets, summons them all above everything with a keystroke, and lets anyone build a widget for it — from a weather card to a full device controller.</p>
+          <div class="lbl">Part 1 Â· Product</div>
+          <h1>Garret â the programmable desktop layer for macOS</h1>
+          <p class="sub">Garret turns the empty space behind your windows into glanceable widgets, summons them all above everything with a keystroke, and lets anyone build a widget for it â from a weather card to a full device controller.</p>
         </div>
 
         <section>
-          <h2><span class="n">·</span>The problem</h2>
-          <p>The info you glance at all day — calendar, PRs, builds, clipboard, a connected phone — lives in a dozen apps, tabs, and menu-bar drips. The context-switch tax is constant, and the most valuable pixels on screen (the desktop) do nothing but hold a wallpaper. And if the widget you need doesn't exist, you're stuck — you can't just build it.</p>
+          <h2><span class="n">Â·</span>The problem</h2>
+          <p>The info you glance at all day â calendar, PRs, builds, clipboard, a connected phone â lives in a dozen apps, tabs, and menu-bar drips. The context-switch tax is constant, and the most valuable pixels on screen (the desktop) do nothing but hold a wallpaper. And if the widget you need doesn't exist, you're stuck â you can't just build it.</p>
         </section>
 
         <section id="modes">
-          <h2><span class="n">·</span>The three modes</h2>
+          <h2><span class="n">Â·</span>The three modes</h2>
           <p>One layer, surfaced at the level of attention you want.</p>
           <div class="modes">
-            <div class="mode"><span class="ic">🌤️</span><h3>Ambient</h3><p>Widgets live <b>on the desktop layer</b> — above the wallpaper, behind your apps. Always there, never in the way.</p><div class="eg">calendar · PRs · CI · system load</div></div>
-            <div class="mode"><span class="ic">⚡</span><h3>HUD</h3><p>Hit <code>⌘⇧Space</code> and the whole layer floats <b>above every app</b> — even a full-screen Space — ready to act, then dismiss.</p><div class="eg">check &amp; act without leaving your app</div></div>
-            <div class="mode"><span class="ic">⌘</span><h3>Action palettes</h3><p>Focused, keystroke-summoned tools that <b>do</b> a thing and get out of the way.</p><div class="eg">clipboard · device control · command runner</div></div>
+            <div class="mode"><span class="ic">ð¤ï¸</span><h3>Ambient</h3><p>Widgets live <b>on the desktop layer</b> â above the wallpaper, behind your apps. Always there, never in the way.</p><div class="eg">calendar Â· PRs Â· CI Â· system load</div></div>
+            <div class="mode"><span class="ic">â¡</span><h3>HUD</h3><p>Hit <code>ââ§Space</code> and the whole layer floats <b>above every app</b> â even a full-screen Space â ready to act, then dismiss.</p><div class="eg">check &amp; act without leaving your app</div></div>
+            <div class="mode"><span class="ic">â</span><h3>Action palettes</h3><p>Focused, keystroke-summoned tools that <b>do</b> a thing and get out of the way.</p><div class="eg">clipboard Â· device control Â· command runner</div></div>
           </div>
         </section>
 
         <section id="ecosystem">
-          <h2><span class="n">·</span>The ecosystem — Garret is a container</h2>
-          <p>Garret ships the layer, the HUD, and the plumbing, then gets out of the way. Anyone builds a widget and shares it as a <code>.garret</code> file. Two tiers, <b>one authoring model</b>, and the tier is chosen by what a widget needs — you don't pick it.</p>
+          <h2><span class="n">Â·</span>The ecosystem â Garret is a container</h2>
+          <p>Garret ships the layer, the HUD, and the plumbing, then gets out of the way. Anyone builds a widget and shares it as a <code>.garret</code> file. Two tiers, <b>one authoring model</b>, and the tier is chosen by what a widget needs â you don't pick it.</p>
           <div class="grid2">
-            <div class="card"><h3><span class="chip web">web · sandboxed</span></h3><p>Isolated, strict policy, gets exactly the access it declares (a network host, an account, storage) and nothing more. One-click trust.</p></div>
-            <div class="card"><h3><span class="chip native">native · full access</span></h3><p>Raw Node in an isolated process — run programs, touch files, talk to USB. Off by default; runs only after a plain "full access, no sandbox" confirmation.</p></div>
+            <div class="card"><h3><span class="chip web">web Â· sandboxed</span></h3><p>Isolated, strict policy, gets exactly the access it declares (a network host, an account, storage) and nothing more. One-click trust.</p></div>
+            <div class="card"><h3><span class="chip native">native Â· full access</span></h3><p>Raw Node in an isolated process â run programs, touch files, talk to USB. Off by default; runs only after a plain "full access, no sandbox" confirmation.</p></div>
           </div>
         </section>
 
         <section id="cases">
-          <h2><span class="n">·</span>Use cases</h2>
+          <h2><span class="n">Â·</span>Use cases</h2>
           <div class="cases">
-            <div class="case"><div class="who">Developers</div><h3>Ship without tab-hunting</h3><ul><li>PRs waiting on you · CI status</li><li>triage a review in the HUD</li><li>control a connected phone (scrcpy)</li><li>run a command, stream output</li></ul></div>
-            <div class="case"><div class="who">Knowledge workers</div><h3>Keep the day in view</h3><ul><li>next meeting · countdown</li><li>searchable clipboard history</li><li>jot a note from the HUD</li><li>inbox / task cards</li></ul></div>
+            <div class="case"><div class="who">Developers</div><h3>Ship without tab-hunting</h3><ul><li>PRs waiting on you Â· CI status</li><li>triage a review in the HUD</li><li>control a connected phone (scrcpy)</li><li>run a command, stream output</li></ul></div>
+            <div class="case"><div class="who">Knowledge workers</div><h3>Keep the day in view</h3><ul><li>next meeting Â· countdown</li><li>searchable clipboard history</li><li>jot a note from the HUD</li><li>inbox / task cards</li></ul></div>
             <div class="case"><div class="who">Power users</div><h3>Wire up your machine</h3><ul><li>live CPU / memory monitors</li><li>a filesystem browser</li><li>USB &amp; device tools</li><li>one-tap local automations</li></ul></div>
           </div>
         </section>
 
-        <!-- ══════════════ PART 2 — AUTHORING ══════════════ -->
+        <!-- ââââââââââââââ PART 2 â AUTHORING ââââââââââââââ -->
         <div class="part" id="model">
-          <div class="lbl">Part 2 · Building an extension (proposed <code>@garretapp/sdk</code>)</div>
+          <div class="lbl">Part 2 Â· Building an extension (proposed <code>@garretapp/sdk</code>)</div>
           <h1>Authoring guide</h1>
-          <p class="sub">One SDK, one project shape, one UI programming model — for both a safe web widget and a full-access native extension. You declare <b>capabilities</b>; Garret derives the tier and the consent.</p>
+          <p class="sub">One SDK, one project shape, one UI programming model â for both a safe web widget and a full-access native extension. You declare <b>capabilities</b>; Garret derives the tier and the consent.</p>
         </div>
 
         <section>
           <h2><span class="n">01</span>The model</h2>
-          <p>An extension is always a <b>UI</b> (a webview you write) and an <b>optional Host</b> (a Node backend, only when you need system access). They talk over one small, typed bridge — request/response, events, streams. The only difference between a web widget and a native extension is whether you ship a <code>host/</code>. Everything the UI can do has the <b>same API</b> either way.</p>
-          <div class="flow">  <span style="color:var(--accent)">UI</span> (webview, no Node)  ⇄  bridge  ⇄  <span style="color:var(--accent)">Host</span> (your raw-Node backend, full access)   ← native
-  <span style="color:var(--accent)">UI</span> (webview, no Node)  ⇄  bridge  ⇄  <span style="color:var(--accent)">Platform</span> (Garret-brokered capabilities)     ← web</div>
+          <p>An extension is always a <b>UI</b> (a webview you write) and an <b>optional Host</b> (a Node backend, only when you need system access). They talk over one small, typed bridge â request/response, events, streams. The only difference between a web widget and a native extension is whether you ship a <code>host/</code>. Everything the UI can do has the <b>same API</b> either way.</p>
+          <div class="flow">  <span style="color:var(--accent)">UI</span> (webview, no Node)  â  bridge  â  <span style="color:var(--accent)">Host</span> (your raw-Node backend, full access)   â native
+  <span style="color:var(--accent)">UI</span> (webview, no Node)  â  bridge  â  <span style="color:var(--accent)">Platform</span> (Garret-brokered capabilities)     â web</div>
           <table>
-            <tr><th>You declare…</th><th>Tier</th><th>Consent</th></tr>
+            <tr><th>You declareâ¦</th><th>Tier</th><th>Consent</th></tr>
             <tr><td>UI only, or safe caps (<code>storage</code>, <code>service:*</code>, <code>network:&lt;host&gt;</code>)</td><td><span class="chip web">web / sandboxed</span></td><td>Disclosure at install</td></tr>
             <tr><td>a <code>host/</code> <b>and</b> a system cap (<code>process</code>/<code>fs</code>/<code>native</code>/<code>network:*</code>)</td><td><span class="chip native">full access</span></td><td>Default-OFF, typed confirm</td></tr>
           </table>
-          <div class="call good"><span class="t">Tier rule (resolved — ARCH-06 / Q3): require BOTH</span>
+          <div class="call good"><span class="t">Tier rule (resolved â ARCH-06 / Q3): require BOTH</span>
             The <code>host</code> entry is the <em>runtime</em> signal (spawn a child?); explicit capabilities are the <em>consent</em> signal (what to tell the user). Full-access needs <b>both</b>. A <code>host</code> with no system cap is rejected at install ("host requires a capability"); a system cap with no <code>host</code> is rejected too ("<code>process</code> requires a host"). <code>network:*</code> also requires a host.
           </div>
         </section>
@@ -175,15 +175,15 @@
 npm i @garretapp/sdk</code></pre>
           <div class="filename">my-extension/</div>
           <pre><code class="language-text">my-extension/
-├─ garret.manifest.json     # identity + capabilities + size
-├─ shared/api.ts            # the typed contract (host-only)
-├─ ui/{ index.html, App.tsx }   # your UI  (always)
-├─ host/index.ts            # your Node backend  (full-access only)
-└─ build.mjs                # one build → dist/{ui,host} + manifest → .garret</code></pre>
+ââ garret.manifest.json     # identity + capabilities + size
+ââ shared/api.ts            # the typed contract (host-only)
+ââ ui/{ index.html, App.tsx }   # your UI  (always)
+ââ host/index.ts            # your Node backend  (full-access only)
+ââ build.mjs                # one build â dist/{ui,host} + manifest â .garret</code></pre>
           <table>
             <tr><th>Import from</th><th>Runs in</th><th>Gives you</th></tr>
             <tr><td><code>@garretapp/sdk/react</code></td><td>UI</td><td><code>useHost</code>, <code>useGarret</code>, <code>useHostEvent</code>, <code>useConfig</code>, <code>useStream</code></td></tr>
-            <tr><td><code>@garretapp/sdk/ui</code></td><td>UI (no React)</td><td><code>createClient</code>, <code>getGarret</code> — vanilla/Svelte/Vue path</td></tr>
+            <tr><td><code>@garretapp/sdk/ui</code></td><td>UI (no React)</td><td><code>createClient</code>, <code>getGarret</code> â vanilla/Svelte/Vue path</td></tr>
             <tr><td><code>@garretapp/sdk/host</code></td><td>Host</td><td><code>defineHost</code> + the <code>ctx</code> toolkit</td></tr>
             <tr><td><code>@garretapp/sdk</code></td><td>shared</td><td>types: <code>Stream</code>, <code>GarretError</code>, <code>defineManifest</code>, <code>defineConfig</code></td></tr>
           </table>
@@ -213,7 +213,7 @@ export default function App() {
     g.fetch('https://api.github.com/repos/nodejs/node')
      .then(r =&gt; r.json()).then(d =&gt; setN(d.stargazers_count))
   }, [])
-  return &lt;div&gt;★ {n ?? '…'}&lt;/div&gt;
+  return &lt;div&gt;â {n ?? 'â¦'}&lt;/div&gt;
 }</code></pre>
             </div>
             <div class="card">
@@ -241,7 +241,7 @@ export default defineHost&lt;Api&gt;((ctx) =&gt; ({
         </section>
 
         <section id="manifest">
-          <h2><span class="n">04</span>Manifest — <code>garret.manifest.json</code></h2>
+          <h2><span class="n">04</span>Manifest â <code>garret.manifest.json</code></h2>
           <p>A predictable, Garret-specific filename (avoids colliding with Chrome/PWA/VS Code <code>manifest.json</code>). Optionally authored in TS with <code>defineManifest()</code> for autocomplete.</p>
           <div class="filename">garret.manifest.ts (optional, for types)</div>
           <pre><code class="language-ts">import { defineManifest } from '@garretapp/sdk'
@@ -254,49 +254,49 @@ export default defineManifest({
             <tr><th>Field</th><th>Notes</th></tr>
             <tr><td><code>id</code></td><td>lowercase <code>[a-z0-9._-]</code>, no <code>..</code>. Directory + origin.</td></tr>
             <tr><td><code>ui</code></td><td>built UI dir (contains <code>index.html</code>). Required.</td></tr>
-            <tr><td><code>host</code></td><td>built Node entry. Presence + a system cap ⇒ full-access tier (§01).</td></tr>
-            <tr><td><code>capabilities</code></td><td><code>storage</code>·<code>secrets</code>·<code>network:&lt;host&gt;</code>·<code>service:&lt;id&gt;</code>·<code>notify</code>·<code>clipboard</code>·<code>openExternal</code> (web); <code>process</code>·<code>fs</code>·<code>native</code>·<code>network:*</code> (full — need a host).</td></tr>
+            <tr><td><code>host</code></td><td>built Node entry. Presence + a system cap â full-access tier (Â§01).</td></tr>
+            <tr><td><code>capabilities</code></td><td><code>storage</code>Â·<code>secrets</code>Â·<code>network:&lt;host&gt;</code>Â·<code>service:&lt;id&gt;</code>Â·<code>notify</code>Â·<code>clipboard</code>Â·<code>openExternal</code> (web); <code>process</code>Â·<code>fs</code>Â·<code>native</code>Â·<code>network:*</code> (full â need a host).</td></tr>
             <tr><td><code>defaultSize</code>, <code>minSize</code></td><td>grid units.</td></tr>
-            <tr><td><code>config</code></td><td>settings schema (§08).</td></tr>
+            <tr><td><code>config</code></td><td>settings schema (Â§08).</td></tr>
           </table>
         </section>
 
         <section id="ui-api">
-          <h2><span class="n">05</span>UI API — <code>@garretapp/sdk/react</code></h2>
+          <h2><span class="n">05</span>UI API â <code>@garretapp/sdk/react</code></h2>
           <p>Hooks; all auto-clean up on unmount.</p>
-          <h3><code>useHost&lt;Api, Events&gt;()</code> — call your host</h3>
+          <h3><code>useHost&lt;Api, Events&gt;()</code> â call your host</h3>
           <pre><code class="language-tsx">const host = useHost&lt;Api, Events&gt;()
 const { items } = await host.list({ dir })          // request/response (typed)
-const run = host.run({ argv })                      // stream (typed) → StreamCall</code></pre>
-          <h3><code>useGarret()</code> — platform capabilities (both tiers)</h3>
+const run = host.run({ argv })                      // stream (typed) â StreamCall</code></pre>
+          <h3><code>useGarret()</code> â platform capabilities (both tiers)</h3>
           <pre><code class="language-tsx">const g = useGarret()
 await g.storage.set('lastDir', dir)          // per-extension (shared across placements)
-await g.instanceStorage.set('cursor', 'p3')  // per-placement (isolated) — see §10
-const res = await g.fetch('https://api.github.com/…')
+await g.instanceStorage.set('cursor', 'p3')  // per-placement (isolated) â see Â§10
+const res = await g.fetch('https://api.github.com/â¦')
 g.notify('Done', 'Build finished')
 if (!g.inGarret) return &lt;RunInGarretNotice/&gt;   // dev-in-browser fallback</code></pre>
           <h3><code>useHostEvent&lt;Events&gt;(channel, handler, deps?)</code></h3>
           <pre><code class="language-tsx">useHostEvent('changed', ({ dir }) =&gt; { if (dir === current) refresh() })</code></pre>
-          <h3><code>useStream(factory, deps)</code> — streaming without the footgun</h3>
+          <h3><code>useStream(factory, deps)</code> â streaming without the footgun</h3>
           <pre><code class="language-tsx">const { chunks, result, error, status, cancel } =
   useStream(() =&gt; host.run({ argv }), [argv])
-// status: 'idle' | 'streaming' | 'done' | 'error' — deps auto-cancel + restart,
+// status: 'idle' | 'streaming' | 'done' | 'error' â deps auto-cancel + restart,
 // all cleanup handled by the hook (no manual useEffect + .cancel()).</code></pre>
-          <h3><code>useConfig&lt;T&gt;()</code> — settings (§08)</h3>
+          <h3><code>useConfig&lt;T&gt;()</code> â settings (Â§08)</h3>
           <pre><code class="language-tsx">const [cfg, patchCfg, setCfg] = useConfig&lt;{ repo: string; poll: number }&gt;()
-patchCfg({ repo: e.target.value })   // shallow MERGE — other keys untouched
+patchCfg({ repo: e.target.value })   // shallow MERGE â other keys untouched
 setCfg({ repo: 'nodejs/node', poll: 60 })  // full REPLACE</code></pre>
         </section>
 
         <section id="host-api">
-          <h2><span class="n">06</span>Host API — <code>@garretapp/sdk/host</code></h2>
-          <p><code>defineHost</code> hides the entire bridge envelope + sends <code>ready</code> only after your (possibly async) factory resolves. Cross-reference sibling methods with <b>function declarations</b> — they hoist, so no extra machinery:</p>
+          <h2><span class="n">06</span>Host API â <code>@garretapp/sdk/host</code></h2>
+          <p><code>defineHost</code> hides the entire bridge envelope + sends <code>ready</code> only after your (possibly async) factory resolves. Cross-reference sibling methods with <b>function declarations</b> â they hoist, so no extra machinery:</p>
           <div class="filename">host/index.ts</div>
           <pre><code class="language-ts">import { defineHost } from '@garretapp/sdk/host'
 import { readdir } from 'node:fs/promises'
 
 export default defineHost&lt;Api, Events&gt;((ctx) =&gt; {
-  // function declarations hoist → safe to cross-reference (the P9 fix — no `methods` arg)
+  // function declarations hoist â safe to cross-reference (the P9 fix â no `methods` arg)
   async function list({ dir }: { dir: string }) { return { items: await readdir(dir) } }
   function run({ argv }: { argv: string[] }) {
     return ctx.stream((out, signal) =&gt; {
@@ -306,7 +306,7 @@ export default defineHost&lt;Api, Events&gt;((ctx) =&gt; {
     })
   }
   async function restart(a: { argv: string[] }) { await stop(); return run(a) } // plain call
-  function stop() { /* … */ }
+  function stop() { /* â¦ */ }
   return { list, run, restart, stop }
 })</code></pre>
           <h3>The <code>ctx</code> toolkit</h3>
@@ -314,28 +314,28 @@ export default defineHost&lt;Api, Events&gt;((ctx) =&gt; {
             <tr><th>Member</th><th>Signature</th><th>Notes</th></tr>
             <tr><td><code>ctx.emit</code></td><td><code>(channel, payload)</code></td><td>push a typed event to the UI.</td></tr>
             <tr><td><code>ctx.stream</code></td><td><code>(fn) =&gt; Stream</code></td><td><code>fn(out, signal)</code>; <code>out.push/end/error</code>; <code>signal</code> aborts on cancel/dispose.</td></tr>
-            <tr><td><code>ctx.spawn</code></td><td><code>(argv: string[], opts)</code></td><td><b>array only</b> — <code>execFile</code> semantics, no shell. Scrubs <code>GARRET_*</code> from the child env; auto-killed on dispose.</td></tr>
-            <tr><td><code>ctx.spawnShell</code></td><td><code>(cmd: string, opts)</code></td><td>explicit shell opt-in — <em>you own the injection risk</em>.</td></tr>
+            <tr><td><code>ctx.spawn</code></td><td><code>(argv: string[], opts)</code></td><td><b>array only</b> â <code>execFile</code> semantics, no shell. Scrubs <code>GARRET_*</code> from the child env; auto-killed on dispose.</td></tr>
+            <tr><td><code>ctx.spawnShell</code></td><td><code>(cmd: string, opts)</code></td><td>explicit shell opt-in â <em>you own the injection risk</em>.</td></tr>
             <tr><td><code>ctx.resolveBinary</code></td><td><code>(name, {hint?}) =&gt; Promise&lt;string&gt;</code></td><td>per-OS PATH probe; throws <code>BINARY_NOT_FOUND</code> with a platform-correct install hint.</td></tr>
-            <tr><td><code>ctx.storage</code>/<code>secrets</code>/<code>fetch</code></td><td>see §07</td><td>same surface as the UI's <code>g.*</code>; unrestricted in a host.</td></tr>
-            <tr><td><code>ctx.onDispose</code></td><td><code>(cb)</code></td><td>run on teardown (SIGTERM → onDispose → SIGKILL).</td></tr>
+            <tr><td><code>ctx.storage</code>/<code>secrets</code>/<code>fetch</code></td><td>see Â§07</td><td>same surface as the UI's <code>g.*</code>; unrestricted in a host.</td></tr>
+            <tr><td><code>ctx.onDispose</code></td><td><code>(cb)</code></td><td>run on teardown (SIGTERM â onDispose â SIGKILL).</td></tr>
           </table>
-          <div class="call danger"><span class="t">SDK-03 — <code>ctx.spawn</code> takes <code>string[]</code>, never a raw string</span>
-            A string passed to a shell is an injection surface even in a trusted extension (a compromised <code>g.fetch</code> response could populate a command field). Split it yourself — you're in control — or use <code>ctx.spawnShell</code> and own the risk.</div>
+          <div class="call danger"><span class="t">SDK-03 â <code>ctx.spawn</code> takes <code>string[]</code>, never a raw string</span>
+            A string passed to a shell is an injection surface even in a trusted extension (a compromised <code>g.fetch</code> response could populate a command field). Split it yourself â you're in control â or use <code>ctx.spawnShell</code> and own the risk.</div>
         </section>
 
         <section id="platform">
-          <h2><span class="n">07</span>Platform capabilities — <code>useGarret()</code> / <code>ctx</code></h2>
+          <h2><span class="n">07</span>Platform capabilities â <code>useGarret()</code> / <code>ctx</code></h2>
           <table>
             <tr><th>API</th><th>Signature</th><th>Cap</th></tr>
-            <tr><td><code>g.storage</code></td><td><code>get·set·delete·keys·clear</code> — per-extension, atomic, key-merged</td><td><code>storage</code></td></tr>
+            <tr><td><code>g.storage</code></td><td><code>getÂ·setÂ·deleteÂ·keysÂ·clear</code> â per-extension, atomic, key-merged</td><td><code>storage</code></td></tr>
             <tr><td><code>g.instanceStorage</code></td><td>same, but <b>per-placement</b> (namespaced <code>ext:instance:id</code> in main)</td><td><code>storage</code></td></tr>
-            <tr><td><code>g.secrets</code></td><td><code>get·set·delete</code> — encrypted (<code>safeStorage</code>), fail-closed</td><td><code>secrets</code></td></tr>
-            <tr><td><code>g.fetch</code></td><td><code>(url, init?) =&gt; Promise&lt;Response&gt;</code></td><td><code>network:&lt;host&gt;</code></td></tr>
-            <tr><td><code>g.service&lt;T&gt;(id)</code></td><td><code>=&gt; { connected, query&lt;R&gt;(req):Promise&lt;R&gt;, token? }</code> — typed clients later</td><td><code>service:&lt;id&gt;</code></td></tr>
+            <tr><td><code>g.secrets</code></td><td><code>getÂ·setÂ·delete</code> â encrypted (<code>safeStorage</code>), fail-closed</td><td><code>secrets</code></td></tr>
+            <tr><td><code>g.fetch</code></td><td><code>(url, init?) =&gt; Promise&lt;Response&gt;</code> — web tier: <b>https only</b>, exact declared host (any port); full tier: unrestricted</td><td><code>network:&lt;host&gt;</code></td></tr>
+            <tr><td><code>g.service&lt;T&gt;(id)</code></td><td><code>=&gt; { connected, query&lt;R&gt;(req):Promise&lt;R&gt;, token? }</code> â typed clients later</td><td><code>service:&lt;id&gt;</code></td></tr>
             <tr><td><code>g.notify</code>/<code>openExternal</code>/<code>clipboard</code></td><td>the matching call</td><td>respective cap</td></tr>
-            <tr><td><code>g.window</code> <span style="color:var(--amber)">(roadmap)</span></td><td><code>openPanel(opts)</code> — floating panels; <b>not shipped</b></td><td><b>not a declarable capability yet — <code>"window"</code> is rejected at install</b></td></tr>
-            <tr><td><code>g.inGarret</code></td><td><code>boolean</code> — false in a plain browser (dev)</td><td>—</td></tr>
+            <tr><td><code>g.window</code> <span style="color:var(--amber)">(roadmap)</span></td><td><code>openPanel(opts)</code> â floating panels; <b>not shipped</b></td><td><b>not a declarable capability yet â <code>"window"</code> is rejected at install</b></td></tr>
+            <tr><td><code>g.inGarret</code></td><td><code>boolean</code> â false in a plain browser (dev)</td><td>â</td></tr>
           </table>
           <div class="call info"><span class="t">Enforced in main, never the renderer</span>
             Every capability is checked in the main process (network via session <code>onBeforeRequest</code>; storage/secrets/service via <code>ipcMain.handle</code> gates). A compromised renderer can't skip a check that lives where widget code never runs.</div>
@@ -351,11 +351,11 @@ export interface Api {
   run(a: { argv: string[] }): Stream&lt;string, { code: number }&gt;   // Chunk, Result
 }
 export interface Events { changed: { dir: string } }</code></pre>
-          <pre><code class="language-tsx">const run = host.run({ argv })   // StreamCall — NOT a promise (can't await an endless stream)
+          <pre><code class="language-tsx">const run = host.run({ argv })   // StreamCall â NOT a promise (can't await an endless stream)
 run.onData(c =&gt; append(c)).onEnd(({ code }) =&gt; done(code)).onError(showErr)
-// run.cancel()  ·  await run.result()  (bounded streams only)</code></pre>
+// run.cancel()  Â·  await run.result()  (bounded streams only)</code></pre>
           <div class="call good"><span class="t">Guarantees (from the review + critic passes)</span>
-            Stream start returns <b>synchronously</b> (can't be killed by the request timeout) · pre-<code>.onData</code> chunks are <b>bounded-buffered</b> + a stream nobody consumes auto-cancels · <code>StreamCall</code> is deliberately <b>not thenable</b> · backpressure coalesces; filter firehoses host-side.</div>
+            Stream start returns <b>synchronously</b> (can't be killed by the request timeout) Â· pre-<code>.onData</code> chunks are <b>bounded-buffered</b> + a stream nobody consumes auto-cancels Â· <code>StreamCall</code> is deliberately <b>not thenable</b> Â· backpressure coalesces; filter firehoses host-side.</div>
         </section>
 
         <section id="config">
@@ -374,14 +374,14 @@ run.onData(c =&gt; append(c)).onEnd(({ code }) =&gt; done(code)).onError(showErr
           <pre><code class="language-ts">import { GarretError } from '@garretapp/sdk'
 try { await host.devices() }
 catch (e) { if (e instanceof GarretError &amp;&amp; e.code === 'BINARY_NOT_FOUND') showInstall(e.hint) }</code></pre>
-          <p>Codes: <code>BINARY_NOT_FOUND</code> (carries <code>hint</code>) · <code>NOT_FOUND</code> · <code>PERMISSION</code> · <code>UNAVAILABLE</code> (cap off / not in Garret / vault down) · <code>BAD_ARGS</code> · <code>TIMEOUT</code> / <code>CANCELLED</code> · <code>NETWORK</code> · <code>INTERNAL</code>.</p>
+          <p>Codes: <code>BINARY_NOT_FOUND</code> (carries <code>hint</code>) Â· <code>NOT_FOUND</code> Â· <code>PERMISSION</code> Â· <code>UNAVAILABLE</code> (cap off / not in Garret / vault down) Â· <code>BAD_ARGS</code> Â· <code>TIMEOUT</code> / <code>CANCELLED</code> Â· <code>NETWORK</code> Â· <code>INTERNAL</code>.</p>
         </section>
 
         <section id="lifecycle">
           <h2><span class="n">10</span>Lifecycle &amp; instances</h2>
           <ul>
-            <li><b>One host per placed instance.</b> Removal/disable → SIGTERM → <code>ctx.onDispose</code> → spawned children auto-killed → SIGKILL after 3s.</li>
-            <li><b>config is per-instance; <code>storage</code>/<code>secrets</code> are per-extension</b> (shared across placements) — atomic + key-level merged. <b>Same-key writes from two placements still clobber</b> → use <code>g.instanceStorage</code> for per-placement state (SDK-06).</li>
+            <li><b>One host per placed instance.</b> Removal/disable â SIGTERM â <code>ctx.onDispose</code> â spawned children auto-killed â SIGKILL after 3s.</li>
+            <li><b>config is per-instance; <code>storage</code>/<code>secrets</code> are per-extension</b> (shared across placements) â atomic + key-level merged. <b>Same-key writes from two placements still clobber</b> â use <code>g.instanceStorage</code> for per-placement state (SDK-06).</li>
             <li><b>Payloads are structured-clone</b> (<code>Date</code>/<code>Map</code>/<code>Uint8Array</code> survive; functions/class instances/handles don't). Binary travels as <code>Uint8Array</code>.</li>
             <li><b>Persistence</b> lives outside the integrity-checked code dir; removed on uninstall.</li>
             <li><b>Power:</b> when the board is ambient (not HUD), polling is throttled and (via the SDK <code>active</code> signal) widgets should pause <code>rAF</code>/animations.</li>
@@ -395,29 +395,29 @@ catch (e) { if (e instanceof GarretError &amp;&amp; e.code === 'BINARY_NOT_FOUND
             <tr><th>#</th><th>Raw-bridge footgun</th><th>SDK fix</th></tr>
             <tr><td>P1</td><td>Streaming faked with hand-rolled ids + UI correlation</td><td>first-class <code>ctx.stream</code>/<code>StreamCall</code></td></tr>
             <tr><td>P2</td><td>Events = one untyped firehose</td><td>typed <code>useHostEvent(channel,cb)</code> + auto-unsub</td></tr>
-            <tr><td>P3</td><td>Stringly-typed methods; typos are runtime errors</td><td>one shared <code>Api</code> type → typed both sides</td></tr>
+            <tr><td>P3</td><td>Stringly-typed methods; typos are runtime errors</td><td>one shared <code>Api</code> type â typed both sides</td></tr>
             <tr><td>P4</td><td>~15 lines of envelope boilerplate per host</td><td><code>defineHost</code> owns it; <code>ready</code> automatic</td></tr>
             <tr><td>P5</td><td>Intervals/watchers/children leaked</td><td><code>ctx.onDispose</code> + auto-tracked <code>ctx.spawn</code></td></tr>
-            <tr><td>P6</td><td>No storage → invent a racy plaintext dotfile</td><td><code>storage</code>/<code>secrets</code>: namespaced, atomic, encrypted, GC'd</td></tr>
+            <tr><td>P6</td><td>No storage â invent a racy plaintext dotfile</td><td><code>storage</code>/<code>secrets</code>: namespaced, atomic, encrypted, GC'd</td></tr>
             <tr><td>P7</td><td>Errors flattened to strings; no install hint</td><td>typed <code>GarretError</code> + <code>ctx.resolveBinary</code> hints</td></tr>
             <tr><td>P8</td><td>Manual arg-guarding + naive shell splitting</td><td>typed args + array-only <code>ctx.spawn</code> (no shell)</td></tr>
-            <tr><td>P9</td><td>Sibling call → <code>ReferenceError: stop is not defined</code></td><td>function-declaration methods hoist — plain calls</td></tr>
-            <tr><td>P10</td><td>Inline UI script redeclares a global (<code>const garret</code>) → silent abort</td><td>module-scoped bundled UI — a global can't be redeclared</td></tr>
-            <tr><td>—</td><td>Host crash invisible; a stuck host hangs the UI forever</td><td>stderr piped/prefixed; <code>ready</code>-timeout surfaces failures</td></tr>
+            <tr><td>P9</td><td>Sibling call â <code>ReferenceError: stop is not defined</code></td><td>function-declaration methods hoist â plain calls</td></tr>
+            <tr><td>P10</td><td>Inline UI script redeclares a global (<code>const garret</code>) â silent abort</td><td>module-scoped bundled UI â a global can't be redeclared</td></tr>
+            <tr><td>â</td><td>Host crash invisible; a stuck host hangs the UI forever</td><td>stderr piped/prefixed; <code>ready</code>-timeout surfaces failures</td></tr>
           </table>
         </section>
 
         <section id="build">
           <h2><span class="n">12</span>Build &amp; package</h2>
-          <pre><code class="language-bash">npm run build   # vite → dist/ui · esbuild → dist/host/index.cjs · pack → my-ext.garret</code></pre>
+          <pre><code class="language-bash">npm run build   # vite â dist/ui Â· esbuild â dist/host/index.cjs Â· pack â my-ext.garret</code></pre>
           <div class="call warn"><span class="t">CSP-safe UI build (baked into the scaffold)</span>
-            The native UI origin runs under <code>script-src 'self' 'unsafe-inline'; connect-src 'none'</code>. The scaffold sets <code>build.modulePreload.polyfill = false</code> (the polyfill uses <code>fetch</code> → blocked), forbids <b>WASM</b> in the UI, and emits same-origin hashed assets only. Do network in the host or via <code>g.fetch</code>.</div>
-          <div class="call info"><span class="t">Native addons (<code>.node</code>) — the open gate</span>
-            Compiled addons (node-pty/usb) aren't supported by the package pipeline yet (per-platform ABI). MVP: shell out to external binaries via <code>ctx.spawn</code>. When added, addons ship per-platform (<code>addon.darwin-arm64.node</code>, …) and Garret loads the right one — see Architecture / cross-platform.</div>
+            The native UI origin runs under <code>script-src 'self' 'unsafe-inline'; connect-src 'none'</code>. The scaffold sets <code>build.modulePreload.polyfill = false</code> (the polyfill uses <code>fetch</code> â blocked), forbids <b>WASM</b> in the UI, and emits same-origin hashed assets only. Do network in the host or via <code>g.fetch</code>.</div>
+          <div class="call info"><span class="t">Native addons (<code>.node</code>) â the open gate</span>
+            Compiled addons (node-pty/usb) aren't supported by the package pipeline yet (per-platform ABI). MVP: shell out to external binaries via <code>ctx.spawn</code>. When added, addons ship per-platform (<code>addon.darwin-arm64.node</code>, â¦) and Garret loads the right one â see Architecture / cross-platform.</div>
         </section>
 
         <section id="example">
-          <h2><span class="n">13</span>Full example — Device Control</h2>
+          <h2><span class="n">13</span>Full example â Device Control</h2>
           <div class="filename">shared/api.ts</div>
           <pre><code class="language-ts">import type { Stream } from '@garretapp/sdk'
 export interface Device { serial: string; model: string }
@@ -430,7 +430,7 @@ export interface Events { deviceAdded: Device; deviceRemoved: { serial: string }
           <pre><code class="language-ts">import { defineHost } from '@garretapp/sdk/host'
 export default defineHost&lt;Api, Events&gt;((ctx) =&gt; {
   const track = ctx.spawn(['adb', 'track-devices'])
-  track.stdout.on('data', () =&gt; { /* diff → ctx.emit('deviceAdded' | 'deviceRemoved', …) */ })
+  track.stdout.on('data', () =&gt; { /* diff â ctx.emit('deviceAdded' | 'deviceRemoved', â¦) */ })
   ctx.onDispose(() =&gt; track.kill())
   async function devices() {
     const adb = await ctx.resolveBinary('adb')   // BINARY_NOT_FOUND w/ per-OS hint
@@ -452,144 +452,144 @@ const load = () =&gt; host.devices().then(r =&gt; setDevices(r.devices))
 useEffect(load, []); useHostEvent('deviceAdded', load); useHostEvent('deviceRemoved', load)
 return &lt;ul&gt;{devices.map(d =&gt;
   &lt;li key={d.serial}&gt;{d.model}
-    &lt;button onClick={() =&gt; host.mirror({ serial: d.serial }).onData(console.log)}&gt;▶&lt;/button&gt;
+    &lt;button onClick={() =&gt; host.mirror({ serial: d.serial }).onData(console.log)}&gt;â¶&lt;/button&gt;
   &lt;/li&gt;)}&lt;/ul&gt;</code></pre>
         </section>
 
-        <!-- ══════════════ PART 3 — ARCHITECTURE ══════════════ -->
+        <!-- ââââââââââââââ PART 3 â ARCHITECTURE ââââââââââââââ -->
         <div class="part" id="pillars">
-          <div class="lbl">Part 3 · Core architecture</div>
+          <div class="lbl">Part 3 Â· Core architecture</div>
           <h1>Architecture &amp; decisions</h1>
           <p class="sub">The foundations the SDK sits on, ordered by cost-to-change. Full detail + file references live in <code>docs/architecture.md</code>; this is the summary + the resolved decisions.</p>
         </div>
 
         <section>
-          <h2><span class="n">·</span>The six pillars</h2>
+          <h2><span class="n">Â·</span>The six pillars</h2>
           <table>
             <tr><th>#</th><th>Pillar</th><th>Status</th></tr>
-            <tr><td>1</td><td>Window level model</td><td>✅ solved — native addon (<code>kCGDesktopIconWindowLevel</code>/<code>kCGScreenSaverWindowLevel</code> + <code>CanJoinAllSpaces|Stationary|IgnoresCycle</code> + non-activating panel + <code>visibleOnFullScreen</code>), stronger than pure <code>setAlwaysOnTop</code></td></tr>
-            <tr><td>2</td><td>IPC wire protocol</td><td>🟡 envelope done (structured clone, per-instance ids); adopt first-class <code>stream_*</code> frames + bridge-level backpressure before the SDK</td></tr>
-            <tr><td>3</td><td>Renderer isolation</td><td>⚠️ on <code>&lt;webview&gt;</code> with per-partition session enforcement in main; <code>WebContentsView</code> is the modern path — the one genuine fork (geometry-sync cost measured via a spike)</td></tr>
-            <tr><td>4</td><td>Host process lifecycle</td><td>🟡 <code>utilityProcess.fork</code> + ready-timeout + stderr + crash-surface done; graceful <code>SIGTERM→onDispose→SIGKILL</code> + <code>GARRET_*</code> env-scrub pending</td></tr>
-            <tr><td>5</td><td>Capability enforcement</td><td>✅ solved — main-enforced (<code>session.onBeforeRequest</code>, permission deny), HMAC-signed consent, re-consent on change</td></tr>
-            <tr><td>6</td><td>Power / visibility</td><td>🟡 HUD-gated poll throttle + <code>backgroundThrottling</code> built; SDK <code>active</code> signal + a true occlusion source pending</td></tr>
+            <tr><td>1</td><td>Window level model</td><td>â solved â native addon (<code>kCGDesktopIconWindowLevel</code>/<code>kCGScreenSaverWindowLevel</code> + <code>CanJoinAllSpaces|Stationary|IgnoresCycle</code> + non-activating panel + <code>visibleOnFullScreen</code>), stronger than pure <code>setAlwaysOnTop</code></td></tr>
+            <tr><td>2</td><td>IPC wire protocol</td><td>ð¡ envelope done (structured clone, per-instance ids); adopt first-class <code>stream_*</code> frames + bridge-level backpressure before the SDK</td></tr>
+            <tr><td>3</td><td>Renderer isolation</td><td>â ï¸ on <code>&lt;webview&gt;</code> with per-partition session enforcement in main; <code>WebContentsView</code> is the modern path â the one genuine fork (geometry-sync cost measured via a spike)</td></tr>
+            <tr><td>4</td><td>Host process lifecycle</td><td>ð¡ <code>utilityProcess.fork</code> + ready-timeout + stderr + crash-surface done; graceful <code>SIGTERMâonDisposeâSIGKILL</code> + <code>GARRET_*</code> env-scrub pending</td></tr>
+            <tr><td>5</td><td>Capability enforcement</td><td>â solved â main-enforced (<code>session.onBeforeRequest</code>, permission deny), HMAC-signed consent, re-consent on change</td></tr>
+            <tr><td>6</td><td>Power / visibility</td><td>ð¡ HUD-gated poll throttle + <code>backgroundThrottling</code> built; SDK <code>active</code> signal + a true occlusion source pending</td></tr>
           </table>
 
-          <h3>1 · Window level model — ✅ solved (harder than it looks)</h3>
-          <p>One <code>BrowserWindow</code> in two states: <b>Ambient</b> (desktop level, below apps, above wallpaper, click-through) and <b>HUD</b> (above everything incl. full-screen Spaces, focusable). Pure <code>setAlwaysOnTop(true,'desktop')</code> was <b>not enough</b> — it didn't survive full-screen Spaces and showed a Mission Control tile. We use a native addon (<code>native/mac_window.mm</code> → <code>garret_mac.node</code>, wrapped by <code>macWindow.ts</code>):</p>
+          <h3>1 Â· Window level model â â solved (harder than it looks)</h3>
+          <p>One <code>BrowserWindow</code> in two states: <b>Ambient</b> (desktop level, below apps, above wallpaper, click-through) and <b>HUD</b> (above everything incl. full-screen Spaces, focusable). Pure <code>setAlwaysOnTop(true,'desktop')</code> was <b>not enough</b> â it didn't survive full-screen Spaces and showed a Mission Control tile. We use a native addon (<code>native/mac_window.mm</code> â <code>garret_mac.node</code>, wrapped by <code>macWindow.ts</code>):</p>
           <ul>
-            <li><code>pinToDesktop</code> → <code>window.level = kCGDesktopIconWindowLevel+offset</code>, <code>collectionBehavior = CanJoinAllSpaces | Stationary | IgnoresCycle</code>.</li>
-            <li><code>raiseToHud</code> → <code>kCGScreenSaverWindowLevel</code> + <code>CanJoinAllSpaces | FullScreenAuxiliary | Stationary</code>.</li>
-            <li><code>makePanel</code> → a <b>non-activating <code>NSPanel</code></b> — the one window kind macOS floats over another app's full-screen Space without activating / Space-switching.</li>
-            <li><code>createWindow.ts</code>: <code>setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })</code> — the critical flag. Ambient click-through: <code>setIgnoreMouseEvents(true, { forward: true })</code>; window transparent.</li>
+            <li><code>pinToDesktop</code> â <code>window.level = kCGDesktopIconWindowLevel+offset</code>, <code>collectionBehavior = CanJoinAllSpaces | Stationary | IgnoresCycle</code>.</li>
+            <li><code>raiseToHud</code> â <code>kCGScreenSaverWindowLevel</code> + <code>CanJoinAllSpaces | FullScreenAuxiliary | Stationary</code>.</li>
+            <li><code>makePanel</code> â a <b>non-activating <code>NSPanel</code></b> â the one window kind macOS floats over another app's full-screen Space without activating / Space-switching.</li>
+            <li><code>createWindow.ts</code>: <code>setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })</code> â the critical flag. Ambient click-through: <code>setIgnoreMouseEvents(true, { forward: true })</code>; window transparent.</li>
           </ul>
-          <div class="call warn"><span class="t">Subtle trap: level authority</span> Electron's <code>setAlwaysOnTop</code> and the native <code>window.level</code> must <b>agree</b> or they fight. Fix: the addon is the single authority, and the desktop re-pin on <code>show</code> is guarded while HUD is up (<code>index.ts setHud</code>). Keep geometry <b>stable across the level switch</b> — the dim/rise feel is CSS, not a resize. <b>Residual nuance (ARCH-05):</b> HUD sits at screen-saver level (above Notification/Control Center) — test <code>floating</code> if that ever looks wrong.</div>
+          <div class="call warn"><span class="t">Subtle trap: level authority</span> Electron's <code>setAlwaysOnTop</code> and the native <code>window.level</code> must <b>agree</b> or they fight. Fix: the addon is the single authority, and the desktop re-pin on <code>show</code> is guarded while HUD is up (<code>index.ts setHud</code>). Keep geometry <b>stable across the level switch</b> â the dim/rise feel is CSS, not a resize. <b>Residual nuance (ARCH-05):</b> HUD sits at screen-saver level (above Notification/Control Center) â test <code>floating</code> if that ever looks wrong.</div>
 
-          <h3>2 · IPC bridge protocol — 🟡 envelope done, streaming wire not frozen</h3>
-          <p>Two hops: <code>UI (renderer) ⇄ main ⇄ native host (utilityProcess)</code>; web widgets do only the left hop. The SDK is a thin wrapper over this wire, so it must be right <em>before</em> SDK code. Right on the fundamentals today (<code>extensionHost.ts</code>): <code>{t:'req'} → {t:'res'}</code> + <code>{t:'event'}</code>; <b>structured clone</b> (never manual JSON — <code>Uint8Array</code>/<code>Date</code>/<code>Map</code> survive); <b>per-instance correlation</b> (one host per placement, own <code>seq</code>); <b>synchronous stream registration</b>.</p>
+          <h3>2 Â· IPC bridge protocol â ð¡ envelope done, streaming wire not frozen</h3>
+          <p>Two hops: <code>UI (renderer) â main â native host (utilityProcess)</code>; web widgets do only the left hop. The SDK is a thin wrapper over this wire, so it must be right <em>before</em> SDK code. Right on the fundamentals today (<code>extensionHost.ts</code>): <code>{t:'req'} â {t:'res'}</code> + <code>{t:'event'}</code>; <b>structured clone</b> (never manual JSON â <code>Uint8Array</code>/<code>Date</code>/<code>Map</code> survive); <b>per-instance correlation</b> (one host per placement, own <code>seq</code>); <b>synchronous stream registration</b>.</p>
           <p><b>Open (adopt before SDK):</b> first-class <code>stream_*</code> wire frames instead of layering over the event channel, and <b>bridge-level backpressure</b> (don't push 10k <code>adb logcat</code> chunks). Target envelope:</p>
           <pre><code class="language-ts">{ t:'req', id, method, args }   { t:'res', id, result }   { t:'err', id, code, message, hint? }
 { t:'stream_start', id, method, args }   { t:'chunk', id, data }   { t:'stream_end', id, result }
 { t:'stream_err', id, code, message }    { t:'cancel', id }        { t:'event', channel, payload }
 // ids namespaced ${instanceId}:${ulid()}</code></pre>
 
-          <h3>3 · Renderer isolation — ⚠️ the one open foundational decision</h3>
-          <p>Each widget UI needs its own isolated renderer (process, session, CSP); the Electron primitive here is the <b>hardest thing to change later</b>. We're all-in on <code>&lt;webview&gt;</code> (<code>NativeWidget.tsx</code>, <code>SandboxWidget.tsx</code>). Isolation is strong for the web tier — <code>sandbox/session.ts</code> uses a per-widget partition with <code>setPermissionRequestHandler(deny-all)</code> + <code>onBeforeRequest</code> cancelling non-<code>garret-widget:</code> requests, all in <b>main</b>. (Native shares one <code>persist:garret-native</code> partition — fine, it's full-access/trusted.)</p>
+          <h3>3 Â· Renderer isolation â â ï¸ the one open foundational decision</h3>
+          <p>Each widget UI needs its own isolated renderer (process, session, CSP); the Electron primitive here is the <b>hardest thing to change later</b>. We're all-in on <code>&lt;webview&gt;</code> (<code>NativeWidget.tsx</code>, <code>SandboxWidget.tsx</code>). Isolation is strong for the web tier â <code>sandbox/session.ts</code> uses a per-widget partition with <code>setPermissionRequestHandler(deny-all)</code> + <code>onBeforeRequest</code> cancelling non-<code>garret-widget:</code> requests, all in <b>main</b>. (Native shares one <code>persist:garret-native</code> partition â fine, it's full-access/trusted.)</p>
           <table>
             <tr><th></th><th><code>&lt;webview&gt;</code> (current)</th><th><code>WebContentsView</code> (proposed)</th></tr>
             <tr><td>Isolation</td><td>Good (own process/session/CSP)</td><td>Best; officially supported</td></tr>
-            <tr><td>Board integration</td><td><b>A DOM element</b> — position/drag/z-order/scroll free from the grid</td><td><b>Manual geometry</b> — hand-sync bounds every frame</td></tr>
+            <tr><td>Board integration</td><td><b>A DOM element</b> â position/drag/z-order/scroll free from the grid</td><td><b>Manual geometry</b> â hand-sync bounds every frame</td></tr>
             <tr><td>Electron direction</td><td>Discouraged, historically buggy</td><td>The future</td></tr>
           </table>
           <div class="call warn"><span class="t">DECISION OPEN</span> Stay on <code>&lt;webview&gt;</code> (keep layout simplicity, accept the tradeoff) <b>or</b> migrate to <code>WebContentsView</code> now (better isolation, take on geometry-sync). The security gap is smaller than it looks (enforcement is main-side regardless); the real cost is geometry management for a movable grid. A spike measured that cost: happy path small, cost concentrates in scroll + DPI/multi-monitor. Decide before the SDK freezes the render contract.</div>
 
-          <h3>4 · Native host lifecycle — 🟡 core done, two gaps</h3>
-          <p>Target: <code>fork → host {t:'ready'} → 10s ready-timeout → steady state → remove/disable → SIGTERM → ctx.onDispose → 3s → SIGKILL</code>. Built (<code>extensionHost.ts</code>): <code>utilityProcess.fork</code> (Electron-native, correct over <code>child_process.fork</code>), ready + 10s timeout, stderr/stdout piped &amp; <code>[ext:&lt;id&gt;]</code>-prefixed, crash surfaces as error (no silent restart), one host per placement.</p>
-          <div class="call warn"><span class="t">Gaps (build in SDK step-4)</span> <b>Graceful shutdown ladder</b> — today <code>kill()</code> is an immediate <code>child.kill()</code>; need <code>SIGTERM → onDispose → 3s → SIGKILL</code>. <b>Env scrub</b> — delete <code>GARRET_*</code> before spawn and from <code>ctx.spawn</code> children (matters once the SDK injects a secret-key env var).</div>
+          <h3>4 Â· Native host lifecycle â ð¡ core done, two gaps</h3>
+          <p>Target: <code>fork â host {t:'ready'} â 10s ready-timeout â steady state â remove/disable â SIGTERM â ctx.onDispose â 3s â SIGKILL</code>. Built (<code>extensionHost.ts</code>): <code>utilityProcess.fork</code> (Electron-native, correct over <code>child_process.fork</code>), ready + 10s timeout, stderr/stdout piped &amp; <code>[ext:&lt;id&gt;]</code>-prefixed, crash surfaces as error (no silent restart), one host per placement.</p>
+          <div class="call warn"><span class="t">Gaps (build in SDK step-4)</span> <b>Graceful shutdown ladder</b> â today <code>kill()</code> is an immediate <code>child.kill()</code>; need <code>SIGTERM â onDispose â 3s â SIGKILL</code>. <b>Env scrub</b> â delete <code>GARRET_*</code> before spawn and from <code>ctx.spawn</code> children (matters once the SDK injects a secret-key env var).</div>
 
-          <h3>5 · Capability enforcement — ✅ solved (already the intended model)</h3>
-          <p><code>declared in manifest → verified at install → enforced in main</code>, never the renderer. <code>sandbox/net.ts</code> (SSRF/private-IP/allowlist) + session <code>onBeforeRequest</code> + permission-deny. The <b>install record is the authoritative ceiling</b> — host-written, HMAC-signed, never the user-writable manifest. <b>Consent is a signed record; any capability/code change re-triggers it</b> (native: sha delta → <code>enabled:false</code> + re-consent; sandbox: added-permissions re-prompt). Full-access hosts get unrestricted <code>ctx.fetch</code> — the consented bargain. Remaining: scrub <code>GARRET_*</code> (Pillar 4).</p>
+          <h3>5 Â· Capability enforcement â â solved (already the intended model)</h3>
+          <p><code>declared in manifest â verified at install â enforced in main</code>, never the renderer. <code>sandbox/net.ts</code> (SSRF/private-IP/allowlist) + session <code>onBeforeRequest</code> + permission-deny. The <b>install record is the authoritative ceiling</b> â host-written, HMAC-signed, never the user-writable manifest. <b>Consent is a signed record; any capability/code change re-triggers it</b> (native: sha delta â <code>enabled:false</code> + re-consent; sandbox: added-permissions re-prompt). Full-access hosts get unrestricted <code>ctx.fetch</code> â the consented bargain. Remaining: scrub <code>GARRET_*</code> (Pillar 4).</p>
 
-          <h3>6 · Power / visibility — 🟡 throttle built; occlusion signal pending</h3>
-          <p>Garret is an <b>always-on desktop layer</b>; macOS treats it as "visible" even when covered, so OS throttling may not kick in — the real battery risk, not the render primitive (measured <b>0.0% CPU at rest</b>; the primitive is power-neutral). Built: a <b>HUD-gated poll throttle</b> (<code>scheduler.ts setBoardActive</code> stretches every job's interval ×4 when ambient, snaps to full rate + refresh on HUD; first poll still immediate); wired via <code>setHud → setBoardActive</code> + focus/blur; <code>backgroundThrottling: true</code> explicit; full pause on system sleep.</p>
-          <div class="call warn"><span class="t">Gaps</span> A <b>true occlusion signal</b> (HUD/focus is a heuristic proxy). The <b>SDK <code>active</code> signal</b> (<code>useGarret().active</code>) so widget UIs pause <code>rAF</code>/animations — build with the SDK. Verify under load with <code>powermetrics</code>. Tunable: <code>IDLE_MULTIPLIER</code>.</div>
+          <h3>6 Â· Power / visibility â ð¡ throttle built; occlusion signal pending</h3>
+          <p>Garret is an <b>always-on desktop layer</b>; macOS treats it as "visible" even when covered, so OS throttling may not kick in â the real battery risk, not the render primitive (measured <b>0.0% CPU at rest</b>; the primitive is power-neutral). Built: a <b>HUD-gated poll throttle</b> (<code>scheduler.ts setBoardActive</code> stretches every job's interval Ã4 when ambient, snaps to full rate + refresh on HUD; first poll still immediate); wired via <code>setHud â setBoardActive</code> + focus/blur; <code>backgroundThrottling: true</code> explicit; full pause on system sleep.</p>
+          <div class="call warn"><span class="t">Gaps</span> A <b>true occlusion signal</b> (HUD/focus is a heuristic proxy). The <b>SDK <code>active</code> signal</b> (<code>useGarret().active</code>) so widget UIs pause <code>rAF</code>/animations â build with the SDK. Verify under load with <code>powermetrics</code>. Tunable: <code>IDLE_MULTIPLIER</code>.</div>
         </section>
 
         <section id="decisions">
-          <h2><span class="n">·</span>Locked decisions</h2>
-          <div><span class="verdict v-do">Q1</span><b>Package:</b> <code>@garretapp/sdk</code> (scoped) with <code>/react</code>, <code>/host</code>, <code>/ui</code> — replaces <code>garret-widget-sdk</code> + <code>garret-ext</code>.</div>
+          <h2><span class="n">Â·</span>Locked decisions</h2>
+          <div><span class="verdict v-do">Q1</span><b>Package:</b> <code>@garretapp/sdk</code> (scoped) with <code>/react</code>, <code>/host</code>, <code>/ui</code> â replaces <code>garret-widget-sdk</code> + <code>garret-ext</code>.</div>
           <div style="margin-top:8px"><span class="verdict v-do">Q2</span><b>Manifest:</b> <code>garret.manifest.json</code> (no collision with other tools).</div>
           <div style="margin-top:8px"><span class="verdict v-do">Q3</span><b>Tier:</b> require BOTH a <code>host</code> entry and an explicit system capability; reject invalid combos at install.</div>
           <div style="margin-top:8px"><span class="verdict v-skip">Q4</span><b>Frameworks:</b> React (<code>/react</code>) + a 0-dep <code>/ui</code> at launch; Svelte/Vue via community packages if demand appears.</div>
           <div style="margin-top:8px"><span class="verdict v-do">Q5</span><b>Streams:</b> keep <code>Stream&lt;Chunk, Result&gt;</code>; Result defaults to <code>void</code>.</div>
           <div style="margin-top:8px"><span class="verdict v-do">Q6</span><b>Config:</b> JSON mini-schema in the manifest + a build-time <code>defineConfig()</code> TS helper (no Zod runtime).</div>
           <div style="margin-top:8px"><span class="verdict v-skip">Q7</span><b>Migration:</b> a compat shim for existing sandboxed widgets at launch; sunset in ~6 months.</div>
-          <div style="margin-top:8px"><span class="verdict v-skip">Q8</span><b>Web-tier host:</b> no — "has host ⇒ full access" is absolute for MVP.</div>
+          <div style="margin-top:8px"><span class="verdict v-skip">Q8</span><b>Web-tier host:</b> no â "has host â full access" is absolute for MVP.</div>
           <div class="call warn" style="margin-top:16px"><span class="t">Still to lock before writing SDK code</span>
-            <b>(1) Renderer primitive</b> — <code>&lt;webview&gt;</code> vs <code>WebContentsView</code> (the hardest to reverse; geometry-sync cost now measured). <b>(2) Streaming wire</b> — adopt <code>stream_*</code> frames + bridge-level backpressure. <b>(3) Host shutdown</b> — commit the SIGTERM→onDispose→SIGKILL ladder + env-scrub.</div>
+            <b>(1) Renderer primitive</b> â <code>&lt;webview&gt;</code> vs <code>WebContentsView</code> (the hardest to reverse; geometry-sync cost now measured). <b>(2) Streaming wire</b> â adopt <code>stream_*</code> frames + bridge-level backpressure. <b>(3) Host shutdown</b> â commit the SIGTERMâonDisposeâSIGKILL ladder + env-scrub.</div>
         </section>
 
         <section id="crossplatform">
-          <h2><span class="n">·</span>Cross-platform (future) — macOS-only today</h2>
-          <p>Garret is macOS-only now (native <code>mac_window.mm</code>, <code>safeStorage</code>, Homebrew hints). The desktop layer (Pillar 1) is the hard divergence — every OS needs a different trick, and Wayland/GNOME has no clean path yet.</p>
+          <h2><span class="n">Â·</span>Cross-platform (future) â macOS-only today</h2>
+          <p>Garret is macOS-only now (native <code>mac_window.mm</code>, <code>safeStorage</code>, Homebrew hints). The desktop layer (Pillar 1) is the hard divergence â every OS needs a different trick, and Wayland/GNOME has no clean path yet.</p>
           <table>
             <tr><th>Feature</th><th>macOS</th><th>Windows</th><th>Linux X11</th><th>Wayland</th></tr>
-            <tr><td>Ambient desktop layer</td><td>✅ native</td><td>🟡 WorkerW</td><td>🟡 <code>_NET_WM…_DESKTOP</code></td><td>❌ compositor-specific</td></tr>
-            <tr><td>HUD (above all)</td><td>✅</td><td>✅</td><td>✅ <code>_STATE_ABOVE</code></td><td>🟡 layer-shell</td></tr>
-            <tr><td>Overlay on full-screen</td><td>✅</td><td>❌</td><td>🟡</td><td>🟡</td></tr>
-            <tr><td>Secrets</td><td>✅ safeStorage</td><td>✅ DPAPI</td><td>🟡 libsecret (daemon)</td><td>🟡 same</td></tr>
-            <tr><td>Binary hints</td><td>✅ brew</td><td>🟡 scoop/choco</td><td>✅ apt/dnf</td><td>✅ same</td></tr>
+            <tr><td>Ambient desktop layer</td><td>â native</td><td>ð¡ WorkerW</td><td>ð¡ <code>_NET_WMâ¦_DESKTOP</code></td><td>â compositor-specific</td></tr>
+            <tr><td>HUD (above all)</td><td>â</td><td>â</td><td>â <code>_STATE_ABOVE</code></td><td>ð¡ layer-shell</td></tr>
+            <tr><td>Overlay on full-screen</td><td>â</td><td>â</td><td>ð¡</td><td>ð¡</td></tr>
+            <tr><td>Secrets</td><td>â safeStorage</td><td>â DPAPI</td><td>ð¡ libsecret (daemon)</td><td>ð¡ same</td></tr>
+            <tr><td>Binary hints</td><td>â brew</td><td>ð¡ scoop/choco</td><td>â apt/dnf</td><td>â same</td></tr>
           </table>
-          <p><b>Design implication:</b> a single <code>GarretPlatform</code> interface (window sink/raise + <code>supportsDesktopLayer</code>/<code>supportsFullscreenOverlay</code> flags, secrets, <code>resolveBinary</code> with a per-OS probe+hint table, autostart, tray) with one impl per OS. <code>resolveBinary</code>'s hint (<code>brew install …</code>) is wrong everywhere else — it needs a per-OS table. Order: <b>macOS → Windows → Linux X11 → Wayland (post-1.0)</b>.</p>
+          <p><b>Design implication:</b> a single <code>GarretPlatform</code> interface (window sink/raise + <code>supportsDesktopLayer</code>/<code>supportsFullscreenOverlay</code> flags, secrets, <code>resolveBinary</code> with a per-OS probe+hint table, autostart, tray) with one impl per OS. <code>resolveBinary</code>'s hint (<code>brew install â¦</code>) is wrong everywhere else â it needs a per-OS table. Order: <b>macOS â Windows â Linux X11 â Wayland (post-1.0)</b>.</p>
         </section>
 
         <section id="adjudication">
-          <h2><span class="n">·</span>Audit adjudication</h2>
-          <p>An external 27-finding audit was reviewed against the code. Nothing dismissed blindly — verdict + grounding for each:</p>
+          <h2><span class="n">Â·</span>Audit adjudication</h2>
+          <p>An external 27-finding audit was reviewed against the code. Nothing dismissed blindly â verdict + grounding for each:</p>
           <table>
             <tr><th>Finding</th><th>Verdict</th><th>Grounding</th></tr>
-            <tr><td>ARCH-01 renderer isolation</td><td><b>Valid</b> = open Pillar 3</td><td>We do use <code>&lt;webview&gt;</code>. But its CSP-bypass critique doesn't apply — enforcement is already <b>session-level per-partition</b> (<code>sandbox/session.ts</code>), not attribute-CSP. <code>WebContentsView</code> still the modern path.</td></tr>
-            <tr><td>ARCH-02 IPC wire / <code>stream_*</code> frames</td><td><b>Valid</b> — already §2</td><td>Structured clone + per-instance ids already true; adopt <code>stream_*</code> frames before the SDK.</td></tr>
+            <tr><td>ARCH-01 renderer isolation</td><td><b>Valid</b> = open Pillar 3</td><td>We do use <code>&lt;webview&gt;</code>. But its CSP-bypass critique doesn't apply â enforcement is already <b>session-level per-partition</b> (<code>sandbox/session.ts</code>), not attribute-CSP. <code>WebContentsView</code> still the modern path.</td></tr>
+            <tr><td>ARCH-02 IPC wire / <code>stream_*</code> frames</td><td><b>Valid</b> â already Â§2</td><td>Structured clone + per-instance ids already true; adopt <code>stream_*</code> frames before the SDK.</td></tr>
             <tr><td>ARCH-03 enforce caps in main</td><td><b>Valid, already done</b></td><td><code>session.ts</code> (main) <code>onBeforeRequest</code>/permission-deny + Phase-3 HMAC-signed consent, re-consent on change. Fully satisfied.</td></tr>
-            <tr><td>ARCH-04 <code>fork</code> vs <code>spawn</code></td><td><b>Partial</b></td><td>We use <code>utilityProcess.fork</code> (Electron-native, defensibly better). ready-timeout/stderr/crash-surface done; <b>env-scrub + graceful-shutdown are the §4 gaps</b>.</td></tr>
-            <tr><td>ARCH-05 window level + Mission Control</td><td><b>Mostly done</b></td><td><code>mac_window.mm</code> already sets <code>CanJoinAllSpaces|Stationary|IgnoresCycle</code> + non-activating panel + <code>visibleOnFullScreen</code>. Residual: HUD at screen-saver level — test <code>floating</code>.</td></tr>
-            <tr><td>ARCH-06 tier-inference contradiction</td><td><b>Valid — adopted</b></td><td>Real doc contradiction; resolved as require-both (Q3 / decision #3).</td></tr>
+            <tr><td>ARCH-04 <code>fork</code> vs <code>spawn</code></td><td><b>Partial</b></td><td>We use <code>utilityProcess.fork</code> (Electron-native, defensibly better). ready-timeout/stderr/crash-surface done; <b>env-scrub + graceful-shutdown are the Â§4 gaps</b>.</td></tr>
+            <tr><td>ARCH-05 window level + Mission Control</td><td><b>Mostly done</b></td><td><code>mac_window.mm</code> already sets <code>CanJoinAllSpaces|Stationary|IgnoresCycle</code> + non-activating panel + <code>visibleOnFullScreen</code>. Residual: HUD at screen-saver level â test <code>floating</code>.</td></tr>
+            <tr><td>ARCH-06 tier-inference contradiction</td><td><b>Valid â adopted</b></td><td>Real doc contradiction; resolved as require-both (Q3 / decision #3).</td></tr>
             <tr><td>SDK-01 <code>@garretapp/sdk</code></td><td>Adopt</td><td>scoped package, matches Q1.</td></tr>
-            <tr><td>SDK-02 function-declaration sibling calls</td><td>Adopt (supersedes <code>methods</code> arg)</td><td>hoisted fn decls cross-reference safely — simpler, removes SDK surface.</td></tr>
+            <tr><td>SDK-02 function-declaration sibling calls</td><td>Adopt (supersedes <code>methods</code> arg)</td><td>hoisted fn decls cross-reference safely â simpler, removes SDK surface.</td></tr>
             <tr><td>SDK-03 array-only <code>spawn</code> + <code>spawnShell</code></td><td>Adopt</td><td>string form is a shell-injection surface even in a trusted ext.</td></tr>
             <tr><td>SDK-04 <code>patchCfg</code>/<code>setCfg</code></td><td>Adopt</td><td>single-key <code>setCfg</code> on a multi-key type is ambiguous.</td></tr>
             <tr><td>SDK-05 <code>useStream</code></td><td>Adopt</td><td>removes the manual <code>useEffect</code>+cancel leak.</td></tr>
             <tr><td>SDK-06 <code>g.instanceStorage</code></td><td>Adopt</td><td>key-level merge doesn't stop same-key cross-instance clobber; per-instance namespace does.</td></tr>
             <tr><td>SDK-07 typed <code>g.service&lt;T&gt;</code></td><td>Adopt</td><td>generic response now; typed clients later.</td></tr>
-            <tr><td>SDK-08 doc fixes</td><td>Valid — confirmed</td><td>gotchas table <b>skipped P8</b> (fixed); config x-ref said <b>§07 but is §08</b> (fixed); <code>defineManifest</code>/<code>g.window</code>/<code>/ui</code> now shown.</td></tr>
-            <tr><td>Q1–Q8 open questions</td><td>Resolved</td><td>see Locked decisions above.</td></tr>
-            <tr><td>OS-02 secrets cross-platform</td><td>Partial</td><td>already on <code>safeStorage</code> (cross-platform); residual = Linux no-daemon → <code>UNAVAILABLE</code>, not a crash.</td></tr>
-            <tr><td>OS-01 / OS-03 / OS-04 / OS-05</td><td>Valid — future</td><td>desktop-layer per-OS · <code>resolveBinary</code> per-OS · native-addon per-platform builds · <code>GarretPlatform</code> abstraction — see Cross-platform above.</td></tr>
+            <tr><td>SDK-08 doc fixes</td><td>Valid â confirmed</td><td>gotchas table <b>skipped P8</b> (fixed); config x-ref said <b>Â§07 but is Â§08</b> (fixed); <code>defineManifest</code>/<code>g.window</code>/<code>/ui</code> now shown.</td></tr>
+            <tr><td>Q1âQ8 open questions</td><td>Resolved</td><td>see Locked decisions above.</td></tr>
+            <tr><td>OS-02 secrets cross-platform</td><td>Partial</td><td>already on <code>safeStorage</code> (cross-platform); residual = Linux no-daemon â <code>UNAVAILABLE</code>, not a crash.</td></tr>
+            <tr><td>OS-01 / OS-03 / OS-04 / OS-05</td><td>Valid â future</td><td>desktop-layer per-OS Â· <code>resolveBinary</code> per-OS Â· native-addon per-platform builds Â· <code>GarretPlatform</code> abstraction â see Cross-platform above.</td></tr>
           </table>
         </section>
 
         <section id="presdk">
-          <h2><span class="n">·</span>Pre-SDK resolutions</h2>
-          <p>Ten contracts a review flagged as must-resolve before SDK code. Decision + grounding for each — <b>blocking</b> (SDK surface depends on it), <b>author-facing</b> (must exist before external authors), or <b>defer-OK</b> (decided now, built later).</p>
+          <h2><span class="n">Â·</span>Pre-SDK resolutions</h2>
+          <p>Ten contracts a review flagged as must-resolve before SDK code. Decision + grounding for each â <b>blocking</b> (SDK surface depends on it), <b>author-facing</b> (must exist before external authors), or <b>defer-OK</b> (decided now, built later).</p>
           <table>
             <tr><th>#</th><th>Item</th><th>Decision</th></tr>
-            <tr><td>1 <span style="color:var(--red)">blk</span></td><td>Action palettes have no SDK surface</td><td>Ambient &amp; HUD are the <b>same board widget</b> (HUD = board raised). Only <b>palette</b> is distinct — today first-party windows (clipboard). <b>v1 = board widgets only; third-party palettes deferred.</b> When added: <code>"surface":"palette"</code>, <b>user owns the shortcut</b> (manifest suggests), compact fixed size, ephemeral lifecycle (<code>onDispose</code> = uninstall only; summon/dismiss via <code>active</code>).</td></tr>
-            <tr><td>2 <span style="color:var(--red)">blk</span></td><td>Pillar 3 primitive still open</td><td><b>Stay on <code>&lt;webview&gt;</code> for v1</b> (isolation already main-enforced; DOM layout worth keeping; geometry-sync cost is real). <b>Unblocker:</b> the SDK lifecycle (<code>onMount</code>/<code>onResize</code>/<code>onVisibilityChange</code>) is defined <b>primitive-agnostically</b> behind a <code>WidgetSurface</code> — so a later <code>WebContentsView</code> swap is internal, not an SDK break. Revisit if webview is hard-deprecated.</td></tr>
-            <tr><td>3 <span style="color:var(--red)">blk</span></td><td>Widget crash isolation contract</td><td><b>Built:</b> <code>WidgetErrorBoundary</code> isolates React throws per-widget (Retry). <b>Gap:</b> webview <em>guest</em> crashes blank silently → add <code>render-process-gone</code>/<code>did-fail-load</code> handlers → same crashed state. <b>Contract:</b> Garret catches your UI's render errors + a crashed webview; you handle your own async/promise rejections.</td></tr>
-            <tr><td>4 <span style="color:var(--red)">blk</span></td><td><code>g.active</code> is a polling contract</td><td>Define + build the UI side: <code>useGarret().active</code> + <code>useActive()</code> + <code>onActiveChange</code> (<code>true</code>=HUD/focused). Polling/<code>rAF</code>/animation <b>should pause when <code>!active</code></b>; SDK polling helpers do it automatically. Main already throttles host-side (§6); this plumbs the renderer half.</td></tr>
-            <tr><td>5 <span style="color:var(--amber)">auth</span></td><td><code>.garret</code> format + signing never defined</td><td><b>ZIP</b> (slip-safe), root <code>garret.manifest.json</code> + <code>ui/</code> (+ <code>host/</code>). <b>Not author-signed</b> — sideload/trust. The <b>local install record</b> is HMAC-signed (per-app <code>safeStorage</code> key) committing to <code>sha256(all files)+id+version+enabled</code> → stops local tampering (forged <code>enabled</code>, swapped files), <b>not</b> author auth. Docs must not imply <code>.garret</code> is trusted.</td></tr>
-            <tr><td>6 <span style="color:var(--amber)">auth</span></td><td>Updates completely absent</td><td>v1 = <b>manual re-install</b> (no registry). Any code/capability change on update <b>resets to disabled + re-consents before it runs</b>. <code>storage</code>/<code>secrets</code> preserved (separate data dir); author migrates via an <code>onUpgrade(fromVersion)</code> hook. Install is atomic → mid-install crash keeps the old version; no auto-rollback post-install.</td></tr>
+            <tr><td>1 <span style="color:var(--red)">blk</span></td><td>Action palettes have no SDK surface</td><td>Ambient &amp; HUD are the <b>same board widget</b> (HUD = board raised). Only <b>palette</b> is distinct â today first-party windows (clipboard). <b>v1 = board widgets only; third-party palettes deferred.</b> When added: <code>"surface":"palette"</code>, <b>user owns the shortcut</b> (manifest suggests), compact fixed size, ephemeral lifecycle (<code>onDispose</code> = uninstall only; summon/dismiss via <code>active</code>).</td></tr>
+            <tr><td>2 <span style="color:var(--red)">blk</span></td><td>Pillar 3 primitive still open</td><td><b>Stay on <code>&lt;webview&gt;</code> for v1</b> (isolation already main-enforced; DOM layout worth keeping; geometry-sync cost is real). <b>Unblocker:</b> the SDK lifecycle (<code>onMount</code>/<code>onResize</code>/<code>onVisibilityChange</code>) is defined <b>primitive-agnostically</b> behind a <code>WidgetSurface</code> â so a later <code>WebContentsView</code> swap is internal, not an SDK break. Revisit if webview is hard-deprecated.</td></tr>
+            <tr><td>3 <span style="color:var(--red)">blk</span></td><td>Widget crash isolation contract</td><td><b>Built:</b> <code>WidgetErrorBoundary</code> isolates React throws per-widget (Retry). <b>Gap:</b> webview <em>guest</em> crashes blank silently â add <code>render-process-gone</code>/<code>did-fail-load</code> handlers â same crashed state. <b>Contract:</b> Garret catches your UI's render errors + a crashed webview; you handle your own async/promise rejections.</td></tr>
+            <tr><td>4 <span style="color:var(--red)">blk</span></td><td><code>g.active</code> is a polling contract</td><td>Define + build the UI side: <code>useGarret().active</code> + <code>useActive()</code> + <code>onActiveChange</code> (<code>true</code>=HUD/focused). Polling/<code>rAF</code>/animation <b>should pause when <code>!active</code></b>; SDK polling helpers do it automatically. Main already throttles host-side (Â§6); this plumbs the renderer half.</td></tr>
+            <tr><td>5 <span style="color:var(--amber)">auth</span></td><td><code>.garret</code> format + signing never defined</td><td><b>ZIP</b> (slip-safe), root <code>garret.manifest.json</code> + <code>ui/</code> (+ <code>host/</code>). <b>Not author-signed</b> â sideload/trust. The <b>local install record</b> is HMAC-signed (per-app <code>safeStorage</code> key) committing to <code>sha256(all files)+id+version+enabled</code> â stops local tampering (forged <code>enabled</code>, swapped files), <b>not</b> author auth. Docs must not imply <code>.garret</code> is trusted.</td></tr>
+            <tr><td>6 <span style="color:var(--amber)">auth</span></td><td>Updates completely absent</td><td>v1 = <b>manual re-install</b> (no registry). Any code/capability change on update <b>resets to disabled + re-consents before it runs</b>. <code>storage</code>/<code>secrets</code> preserved (separate data dir); author migrates via an <code>onUpgrade(fromVersion)</code> hook. Install is atomic â mid-install crash keeps the old version; no auto-rollback post-install.</td></tr>
             <tr><td>7 <span style="color:var(--amber)">auth</span></td><td>Dev loop undefined</td><td><code>@garretapp/create-ext</code> + <code>garret dev</code>: watch-build UI (vite) + host (esbuild); <b>UI hot-reload independent of host re-fork</b>; host stderr in the widget DevTools console + terminal (prefixed); <code>garret dev --inspect-host</code> for a debugger.</td></tr>
-            <tr><td>8 <span style="color:var(--accent)">dec</span></td><td>Multi-monitor model (macOS)</td><td><b>One spanning board across all displays</b> for v1 — window = union of <code>getAllDisplays()</code>, <b>one global grid</b>, widgets on any display. Smallest change from today; keeps the coordinate contract trivial. Adds a <code>screen</code>-change listener (re-fit + clamp orphaned widgets). Caveats: display gaps = dead zones (click-through), mixed-DPI is OS-scaled. Per-display boards (exact per-display scale, no dead zones) deferred — additive, not a contract change.</td></tr>
-            <tr><td>9 <span style="color:var(--amber)">auth</span></td><td><code>g.service</code> connection UX</td><td><b>Built:</b> first-party connectors (Google/Jira/GitHub) + OAuth (loopback+PKCE, token encrypted) + Settings connect/revoke. A widget's <code>service:x</code> reads <code>connected</code>/<code>query()</code> <b>brokered by main — never sees the token</b>. v1 exposes existing connectors; new ones are first-party.</td></tr>
-            <tr><td>10 <span style="color:var(--accent)">fix</span></td><td><code>window</code> declarable but dead</td><td>Manifest validator <b>rejects any capability not in the implemented set</b> — <code>"window"</code> is rejected at install, not silently accepted. Removed from the advertised list until it ships.</td></tr>
+            <tr><td>8 <span style="color:var(--accent)">dec</span></td><td>Multi-monitor model (macOS)</td><td><b>One spanning board across all displays</b> for v1 â window = union of <code>getAllDisplays()</code>, <b>one global grid</b>, widgets on any display. Smallest change from today; keeps the coordinate contract trivial. Adds a <code>screen</code>-change listener (re-fit + clamp orphaned widgets). Caveats: display gaps = dead zones (click-through), mixed-DPI is OS-scaled. Per-display boards (exact per-display scale, no dead zones) deferred â additive, not a contract change.</td></tr>
+            <tr><td>9 <span style="color:var(--amber)">auth</span></td><td><code>g.service</code> connection UX</td><td><b>Built:</b> first-party connectors (Google/Jira/GitHub) + OAuth (loopback+PKCE, token encrypted) + Settings connect/revoke. A widget's <code>service:x</code> reads <code>connected</code>/<code>query()</code> <b>brokered by main â never sees the token</b>. v1 exposes existing connectors; new ones are first-party.</td></tr>
+            <tr><td>10 <span style="color:var(--accent)">fix</span></td><td><code>window</code> declarable but dead</td><td>Manifest validator <b>rejects any capability not in the implemented set</b> â <code>"window"</code> is rejected at install, not silently accepted. Removed from the advertised list until it ships.</td></tr>
           </table>
-          <div class="call good"><span class="t">Net</span> Blocking 1–4 decided (palette scoped out · webview + surface abstraction · crash contract · <code>g.active</code>). Author-facing 5–7,9 defined against existing code. 8,10 decided. Full detail + file references in <code>docs/architecture.md</code> § Pre-SDK resolutions.</div>
+          <div class="call good"><span class="t">Net</span> Blocking 1â4 decided (palette scoped out Â· webview + surface abstraction Â· crash contract Â· <code>g.active</code>). Author-facing 5â7,9 defined against existing code. 8,10 decided. Full detail + file references in <code>docs/architecture.md</code> Â§ Pre-SDK resolutions.</div>
         </section>
 
         <footer>
-          Garret — unified product overview, proposed <code>@garretapp/sdk</code> authoring guide, and core architecture.
-          Supersedes <code>garret-overview.html</code> + <code>garret-sdk-guide.html</code>; the terse engineering reference lives in <code>docs/architecture.md</code>. SDK is a spec for review — not yet implemented.
+          Garret â unified product overview, proposed <code>@garretapp/sdk</code> authoring guide, and core architecture.
+          Supersedes <code>garret-overview.html</code> + <code>garret-sdk-guide.html</code>; the terse engineering reference lives in <code>docs/architecture.md</code>. SDK is a spec for review â not yet implemented.
         </footer>
       </main>
     </div>
