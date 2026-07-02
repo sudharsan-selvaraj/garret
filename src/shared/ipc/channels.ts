@@ -4,19 +4,8 @@ import type { ServiceStatus } from '../types/services'
 import type { PollUpdate, WatchSpec } from '../types/poll'
 import type { Preferences } from '../types/preferences'
 import type { ClipItem } from '../types/clipboard'
-import type { InstallPlan, InstalledWidget } from '../types/sandbox'
-import type { NativeInstallPlan, InstalledExtension } from '../types/native'
 import type { ExtRuntimeInfo, ExtInstallPlan, InstalledExtension as ExtInstalled } from '../types/ext'
 import type { WatchOptions } from 'garret-core'
-
-/** A native extension as the renderer needs it to render + place it. */
-export interface NativeExtensionInfo {
-  id: string
-  name: string
-  /** file:// URL of the extension's UI entry (index.html). */
-  uiUrl: string
-  defaultSize?: { w: number; h: number }
-}
 
 /**
  * The single source of truth for the main ↔ renderer contract.
@@ -39,30 +28,6 @@ export const Channels = {
   pluginsListExternal: 'plugins:list-external',
   pluginsFetch: 'plugins:fetch',
   pluginsOpenExternal: 'plugins:open-external',
-  sandboxPrepare: 'sandbox:prepare',
-  sandboxList: 'sandbox:list',
-  sandboxInstallPlan: 'sandbox:install-plan',
-  sandboxInstallFromFile: 'sandbox:install-from-file',
-  sandboxInstallCleanup: 'sandbox:install-cleanup',
-  sandboxInstallCommit: 'sandbox:install-commit',
-  sandboxRemove: 'sandbox:remove',
-  sandboxSetEnabled: 'sandbox:set-enabled',
-  sandboxRecordUsage: 'sandbox:record-usage',
-  sandboxPreviewDataUrl: 'sandbox:preview-data-url',
-  sandboxOpenFile: 'sandbox:open-file',
-  sandboxFlushOpenFiles: 'sandbox:flush-open-files',
-  nativeExtList: 'native-ext:list',
-  nativeExtStart: 'native-ext:start',
-  nativeExtStop: 'native-ext:stop',
-  nativeExtRequest: 'native-ext:request',
-  nativeExtEvent: 'native-ext:event',
-  nativeExtInstallPlan: 'native-ext:install-plan',
-  nativeExtInstallFromFile: 'native-ext:install-from-file',
-  nativeExtInstallCleanup: 'native-ext:install-cleanup',
-  nativeExtInstallCommit: 'native-ext:install-commit',
-  nativeExtListInstalled: 'native-ext:list-installed',
-  nativeExtSetEnabled: 'native-ext:set-enabled',
-  nativeExtRemove: 'native-ext:remove',
   // --- unified extension system (garret-sdk) ---
   extList: 'ext:list', // board loader → { preloadUrl, extensions: ExtRuntimeInfo[] }
   extBind: 'ext:bind', // (extensionId, instanceId, wcId) → { ok, hasHost }
@@ -80,6 +45,8 @@ export const Channels = {
   extListInstalled: 'ext:list-installed',
   extSetEnabled: 'ext:set-enabled',
   extRemove: 'ext:remove',
+  extOpenFile: 'ext:open-file', // main → renderer: a .garret was opened from Finder
+  extFlushOpenFiles: 'ext:flush-open-files', // renderer → main: drain opens queued before mount
   // --- WebContentsView geometry spike (dev-only, throwaway) ---
   wcvSpikeEnabled: 'wcv-spike:enabled',
   wcvSpikeCreate: 'wcv-spike:create',
@@ -237,56 +204,6 @@ export interface GarretApi {
     /** Open a URL in the browser AFTER a native confirm dialog; resolves true if opened. */
     openExternalConfirmed(url: string): Promise<boolean>
   }
-  /** Sandboxed (third-party) widget runtime + install lifecycle. */
-  sandbox: {
-    /** Configure a widget's partition session guards BEFORE its webview navigates. */
-    prepare(partition: string): Promise<{ preloadUrl: string }>
-    /** Installed sandboxed widgets (display manifest + the authoritative consented perms). */
-    list(): Promise<InstalledWidget[]>
-    /** Validate a source folder + produce a consent plan (writes nothing). */
-    planInstall(srcDir: string): Promise<InstallPlan>
-    /** Extract a `.garret` file to a temp dir + produce a consent plan (staged). */
-    installFromFile(garretPath: string): Promise<InstallPlan>
-    /** Remove a `.garret` staging temp dir after confirm/cancel (no-op for folder installs). */
-    installCleanup(source: string): void
-    /** Commit a plan the user confirmed (safe copy + install record). */
-    commitInstall(plan: InstallPlan): Promise<{ ok: boolean; error?: string }>
-    /** Uninstall a widget (deletes its dir + record). */
-    remove(id: string): Promise<void>
-    /** Enable/disable without uninstalling. */
-    setEnabled(id: string, enabled: boolean): Promise<void>
-    /** Record capabilities a running widget attempted-but-was-denied (disclosure). */
-    recordUsage(id: string, attemptedBlocked: string[]): void
-    /** Data: URL of a widget's manifest `preview` image for the gallery (null if none). */
-    previewDataUrl(id: string): Promise<string | null>
-    /** A `.garret` was opened from Finder (double-click / Open With) — deliver its path. */
-    onOpenFile(cb: (path: string) => void): () => void
-    /** Ask main to drain any `.garret` opens queued before the renderer's listener mounted. */
-    flushOpenFiles(): void
-  }
-  /** Native extensions (full-access, trusted, raw-Node host). See docs/native-extensions-design.md. */
-  nativeExt: {
-    /** Installed native extensions + the shared UI-bridge preload URL. */
-    list(): Promise<{ preloadUrl: string; extensions: NativeExtensionInfo[] }>
-    /** Launch the raw-Node host for a placed instance, bound to its UI webview's webContents id. */
-    start(extensionId: string, webContentsId: number): Promise<{ ok: boolean; error?: string }>
-    /** Tear down the host for a UI webview (on unmount). */
-    stop(webContentsId: number): void
-    /** Validate a source folder for install (writes nothing); returns the plan for consent. */
-    planInstall(srcDir: string): Promise<NativeInstallPlan>
-    /** Validate + stage a `.garret` extension file; returns the plan (staged temp in `source`). */
-    planInstallFromFile(garretPath: string): Promise<NativeInstallPlan>
-    /** Discard a staged `.garret` temp dir (on cancel). */
-    cleanupInstall(dir: string): Promise<void>
-    /** Commit a confirmed install. Installs DISABLED — the user enables it separately. */
-    commitInstall(plan: NativeInstallPlan): Promise<{ ok: boolean; error?: string }>
-    /** All installed native extensions (for the manager), with tamper/integrity flags. */
-    listInstalled(): Promise<InstalledExtension[]>
-    /** Enable/disable. Renderer MUST show the full-access consent before enabling. */
-    setEnabled(id: string, on: boolean): Promise<{ ok: boolean; error?: string }>
-    /** Uninstall (removes files + record). */
-    remove(id: string): Promise<void>
-  }
   /** Unified extension system (garret-sdk). Board-side API; guests use window.__garret (extBridge). */
   ext: {
     list(): Promise<{ preloadUrl: string; extensions: ExtRuntimeInfo[] }>
@@ -297,6 +214,10 @@ export interface GarretApi {
     listInstalled(): Promise<ExtInstalled[]>
     setEnabled(id: string, on: boolean): Promise<{ ok: boolean; error?: string }>
     remove(id: string): Promise<void>
+    /** A `.garret` was opened from Finder (double-click / Open With) — deliver its path. */
+    onOpenFile(cb: (path: string) => void): () => void
+    /** Ask main to drain any `.garret` opens queued before the renderer's listener mounted. */
+    flushOpenFiles(): void
   }
   /** DEV-ONLY throwaway: WebContentsView geometry spike (gated by GARRET_WCV_SPIKE=1). */
   wcvSpike: {

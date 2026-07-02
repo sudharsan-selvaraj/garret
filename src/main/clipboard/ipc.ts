@@ -1,6 +1,6 @@
 import { ipcMain, shell, systemPreferences, Notification } from 'electron'
 import { Channels } from '@shared/ipc/channels'
-import { pasteToPreviousApp } from '@main/native/macWindow'
+import { pasteToPreviousApp } from '@main/windows/macWindow'
 import { hideClipboardPicker } from '@main/windows/clipboardPicker'
 import { applyToPasteboard, clearClips, deleteClip, getClip, listClipboard } from './manager'
 

@@ -1,8 +1,6 @@
 import { useEffect } from 'react'
 import { registerBuiltins } from '@renderer/plugins/builtins'
 import { loadExternalWidgets } from '@renderer/plugins/externalLoader'
-import { loadSandboxedWidgets } from '@renderer/sandbox/loader'
-import { loadNativeExtensions } from '@renderer/native/loader'
 import { loadExtensions } from '@renderer/ext/loader'
 import { registerServices } from '@renderer/services/serviceRegistry'
 import { useBoardStore } from '@renderer/canvas/useBoardStore'
@@ -13,7 +11,7 @@ import { WidgetCanvas } from '@renderer/canvas/WidgetCanvas'
 import { Toolbar } from '@renderer/app/Toolbar'
 import { SettingsDialog } from '@renderer/app/SettingsDialog'
 import { AddDialog } from '@renderer/app/AddDialog'
-import { GarretOpenFileConsent } from '@renderer/sandbox/GarretOpenFileConsent'
+import { OpenFileConsent } from '@renderer/ext/OpenFileConsent'
 
 // Register built-in plugins + services once, at module load.
 registerBuiltins()
@@ -31,14 +29,9 @@ export default function App(): JSX.Element {
   useNotificationWatches()
 
   useEffect(() => {
-    // Register external widgets (dev tier + installed sandboxed) BEFORE hydrating so
-    // saved instances resolve from the registry on first render.
-    void Promise.allSettled([
-      loadExternalWidgets(),
-      loadSandboxedWidgets(),
-      loadNativeExtensions(),
-      loadExtensions()
-    ]).finally(() => void hydrate())
+    // Register widgets (dev-tier external + installed extensions) BEFORE hydrating so saved
+    // instances resolve from the registry on first render.
+    void Promise.allSettled([loadExternalWidgets(), loadExtensions()]).finally(() => void hydrate())
   }, [hydrate])
 
   // Spanning board: when displays change, pull any now-orphaned widget back on-screen.
@@ -87,7 +80,7 @@ export default function App(): JSX.Element {
       </main>
       {dialog === 'settings' && <SettingsDialog />}
       {dialog === 'add' && <AddDialog />}
-      <GarretOpenFileConsent />
+      <OpenFileConsent />
     </div>
   )
 }

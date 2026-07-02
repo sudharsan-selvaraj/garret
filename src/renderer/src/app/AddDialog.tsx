@@ -18,19 +18,14 @@ interface Group {
   widgets: AnyWidgetPlugin[]
 }
 
-/** Third-party (installed) widgets are namespaced by the registry: `sandbox:` (a .garret) or
- *  `ext:` (a dev-tier external). Everything else is a first-party built-in. */
+/** Dev-tier external widgets are namespaced `ext:` by the registry. Everything without a known
+ *  third-party prefix is a first-party built-in. */
 export function isThirdParty(w: AnyWidgetPlugin): boolean {
-  const id = w.manifest.id
-  return id.startsWith('sandbox:') || id.startsWith('ext:')
+  return w.manifest.id.startsWith('ext:')
 }
 
-/** Native extensions (`native:`) are full-access — their own tier, not lumped with sandboxed. */
-export function isNativeExtension(w: AnyWidgetPlugin): boolean {
-  return w.manifest.id.startsWith('native:')
-}
-
-/** Unified widgets (`gx:`) — a widget is a widget; web/native is not a user-facing category. */
+/** Unified installed widgets (`gx:`) — a widget is a widget; web/native is not a user-facing
+ *  category. */
 export function isExtWidget(w: AnyWidgetPlugin): boolean {
   return w.manifest.id.startsWith('gx:')
 }
@@ -47,14 +42,14 @@ function buildGroups(all: AnyWidgetPlugin[], query: string): Group[] {
     const widgets = all.filter((w) => w.manifest.serviceId === def.id && !isThirdParty(w) && matches(w))
     if (widgets.length) out.push({ id: def.id, name: def.name, icon: def.icon, serviceId: def.id, widgets })
   }
-  // Built-in miscellaneous (first-party, no service). Native extensions have no serviceId either,
-  // so exclude them explicitly — they get their own full-access group below.
+  // Built-in miscellaneous (first-party, no service). Installed widgets have no serviceId either,
+  // so exclude them explicitly — they get their own group below.
   const general = all.filter(
-    (w) => !w.manifest.serviceId && !isThirdParty(w) && !isNativeExtension(w) && !isExtWidget(w) && matches(w)
+    (w) => !w.manifest.serviceId && !isThirdParty(w) && !isExtWidget(w) && matches(w)
   )
   if (general.length) out.push({ id: 'general', name: 'General', widgets: general })
   // Installed widgets — one group, whatever they can access (a widget is a widget).
-  const widgets = all.filter((w) => (isThirdParty(w) || isExtWidget(w) || isNativeExtension(w)) && matches(w))
+  const widgets = all.filter((w) => (isThirdParty(w) || isExtWidget(w)) && matches(w))
   if (widgets.length) out.push({ id: 'widgets', name: 'Widgets', icon: Blocks, widgets })
   return out
 }
@@ -222,7 +217,7 @@ function WidgetItem({
           <div className="add-item-head">
             <WidgetIcon icon={manifest.icon} size={16} />
             <span className="add-item-name">{manifest.name}</span>
-            {(isThirdParty(plugin) || isExtWidget(plugin) || isNativeExtension(plugin)) && (
+            {(isThirdParty(plugin) || isExtWidget(plugin)) && (
               <span className="add-item-badge" title="Third-party · unverified author">
                 <ShieldAlert size={11} strokeWidth={2} /> Unverified
               </span>

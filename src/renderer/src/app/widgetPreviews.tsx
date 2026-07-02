@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
+import { type CSSProperties, type ReactNode } from 'react'
 import type { AnyWidgetPlugin } from '@sdk'
 
 // Lightweight, representative mocks of how each built-in widget looks — used only
@@ -232,41 +232,15 @@ const PREVIEWS: Record<string, () => JSX.Element> = {
 // Small/object-like widgets stay compact instead of stretching to full width.
 const COMPACT = new Set(['clock', 'weather'])
 
-/** Async-load a sandboxed widget's manifest preview image (data: URL). Renders nothing until
- *  loaded, and nothing if there's no image — so preview-less widgets show no empty box. */
-function SandboxPreview({ plugin, cls }: { plugin: AnyWidgetPlugin; cls: string }): JSX.Element | null {
-  const bareId = plugin.manifest.id.slice('sandbox:'.length)
-  const [src, setSrc] = useState<string | null>(null)
-  useEffect(() => {
-    let alive = true
-    window.garret.sandbox
-      .previewDataUrl(bareId)
-      .then((d) => alive && setSrc(d))
-      .catch(() => undefined)
-    return () => {
-      alive = false
-    }
-  }, [bareId])
-
-  if (!src) return null
-  return (
-    <div className={`${cls} add-preview-img-wrap`}>
-      <img className="add-preview-img" src={src} alt="" />
-    </div>
-  )
-}
-
 /**
- * Preview of a widget's layout for the Add dialog: a hand-authored mock for built-ins, an
- * author-supplied image for third-party widgets, or NOTHING (just the info row) when there's
- * no preview — no empty placeholder box.
+ * Preview of a widget's layout for the Add dialog: a hand-authored mock for built-ins, or NOTHING
+ * (just the info row) when there's no mock — no empty placeholder box.
  */
 export function WidgetPreview({ plugin }: { plugin: AnyWidgetPlugin }): JSX.Element | null {
-  const { id, preview } = plugin.manifest
+  const { id } = plugin.manifest
   const Mock = PREVIEWS[id]
   const cls = `add-preview-card${COMPACT.has(id) ? ' add-preview-card--compact' : ''}`
 
   if (Mock) return <div className={cls}><Mock /></div>
-  if (id.startsWith('sandbox:') && preview) return <SandboxPreview plugin={plugin} cls={cls} />
   return null
 }

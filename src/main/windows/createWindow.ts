@@ -7,7 +7,7 @@ import {
   disableFrameConstraint,
   startCursorMonitor,
   stopCursorMonitor
-} from '@main/native/macWindow'
+} from '@main/windows/macWindow'
 import { Channels } from '@shared/ipc/channels'
 import type { WindowMode } from '@shared/types/window'
 

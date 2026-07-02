@@ -9,23 +9,7 @@ import { getService } from '@main/services/registry'
 import * as scheduler from '@main/poll/scheduler'
 import { subscribeWatch, unsubscribeWatch, teardownWatchSender } from '@main/watcher'
 import { listExternalWidgets } from '@main/plugins/externalWidgets'
-import { sandboxFetch, devFetch } from '@main/sandbox/net'
-import {
-  bridgePreloadPath,
-  prepareSandboxPartition,
-  listSandboxedWidgets
-} from '@main/sandbox/session'
-import {
-  planInstall,
-  planInstallFromFile,
-  cleanupStaging,
-  commitInstall,
-  removeWidget,
-  setEnabled,
-  recordUsage,
-  getPreviewDataUrl
-} from '@main/sandbox/install'
-import type { InstallPlan } from '@shared/types/sandbox'
+import { sandboxFetch, devFetch } from '@main/net/fetch'
 
 /** Hooks the main process provides to IPC handlers (things outside the persistence layer). */
 export interface IpcHooks {
@@ -55,7 +39,7 @@ export function registerIpcHandlers(hooks: IpcHooks): void {
   ipcMain.handle(Channels.pluginsListExternal, () => listExternalWidgets())
   // Host-mediated fetch for external widgets (no CORS); structured result, never throws.
   // Sandbox path (opts.allowedHosts) adds the per-host allowlist + resolved-IP rebind guard;
-  // the dev tier is bounded but unrestricted. Both live in @main/sandbox/net.
+  // the dev tier is bounded but unrestricted. Both live in @main/net/fetch.
   ipcMain.handle(
     Channels.pluginsFetch,
     (
@@ -92,22 +76,6 @@ export function registerIpcHandlers(hooks: IpcHooks): void {
       return true
     }
     return false
-  })
-
-  ipcMain.handle(Channels.sandboxPrepare, (_e, partition: string) => {
-    prepareSandboxPartition(partition)
-    return { preloadUrl: bridgePreloadPath() }
-  })
-  ipcMain.handle(Channels.sandboxList, () => listSandboxedWidgets())
-  ipcMain.handle(Channels.sandboxInstallPlan, (_e, srcDir: string) => planInstall(srcDir))
-  ipcMain.handle(Channels.sandboxInstallFromFile, (_e, p: string) => planInstallFromFile(p))
-  ipcMain.handle(Channels.sandboxInstallCleanup, (_e, dir: string) => cleanupStaging(dir))
-  ipcMain.handle(Channels.sandboxInstallCommit, (_e, plan: InstallPlan) => commitInstall(plan))
-  ipcMain.handle(Channels.sandboxRemove, (_e, id: string) => removeWidget(id))
-  ipcMain.handle(Channels.sandboxSetEnabled, (_e, id: string, on: boolean) => setEnabled(id, on))
-  ipcMain.handle(Channels.sandboxPreviewDataUrl, (_e, id: string) => getPreviewDataUrl(id))
-  ipcMain.on(Channels.sandboxRecordUsage, (_e, id: string, caps: string[]) => {
-    void recordUsage(id, caps)
   })
 
   ipcMain.handle(Channels.serviceStatus, (_e, id: string) => getService(id).status())

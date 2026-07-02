@@ -19,14 +19,13 @@ import {
   setHudMode,
   type WindowMode
 } from '@main/windows/createWindow'
-import { registerSandboxScheme, registerSandboxProtocol } from '@main/sandbox/protocol'
-import { registerNativeHandlers } from '@main/native/lane'
+import { registerExtScheme } from '@main/ext/protocol'
 import { registerExtHandlers, broadcastActive } from '@main/ext/lane'
 import { registerWcvSpike } from '@main/spike/wcvSpike'
 
-// Declare the sandbox widget scheme BEFORE app `ready` (Electron requirement) so it has a
-// real, secure origin for the strict CSP that isolates third-party widgets.
-registerSandboxScheme()
+// Declare the unified extension scheme (garret://) BEFORE app `ready` (Electron requirement) so it
+// has a real, secure origin for the per-tier CSP that isolates every widget.
+registerExtScheme()
 
 // Spike #1b: run the proven widget board ON the interactive desktop layer.
 // Flip to 'windowed' for plain windowed development.
@@ -123,7 +122,7 @@ function deliverGarretOpen(path: string): void {
   const wc = win?.webContents
   if (wc && !wc.isLoading()) {
     setHud(true)
-    wc.send(Channels.sandboxOpenFile, path)
+    wc.send(Channels.extOpenFile, path)
   } else {
     pendingGarretOpens.push(path)
   }
@@ -132,10 +131,10 @@ app.on('open-file', (e, openedPath) => {
   e.preventDefault()
   if (openedPath.toLowerCase().endsWith('.garret')) deliverGarretOpen(openedPath)
 })
-ipcMain.on(Channels.sandboxFlushOpenFiles, (e) => {
+ipcMain.on(Channels.extFlushOpenFiles, (e) => {
   for (const path of pendingGarretOpens.splice(0)) {
     setHud(true)
-    e.sender.send(Channels.sandboxOpenFile, path)
+    e.sender.send(Channels.extOpenFile, path)
   }
 })
 
@@ -183,62 +182,56 @@ app.whenReady().then(() => {
   // Webview guests must never spawn an in-app popup: an unhandled window.open also crashes
   // the main process with "Render frame was disposed before WebFrameMain could be accessed"
   // (Electron touches the popup's frame after it's torn down). Web-embed guests open http(s)
-  // links in the user's browser; sandbox guests (garret-widget://) deny silently — they must
-  // route links through sdk.openExternal, which prompts the user.
+  // links in the user's browser; extension guests (garret://) deny silently — they must route
+  // links through the broker (g.openExternal), which prompts the user.
   app.on('web-contents-created', (_e, contents) => {
     if (contents.getType() !== 'webview') return
     contents.setWindowOpenHandler(({ url }) => {
-      const fromSandbox = contents.getURL().startsWith('garret-widget:')
-      if (!fromSandbox && /^https?:\/\//i.test(url)) void shell.openExternal(url)
+      const fromExt = contents.getURL().startsWith('garret:')
+      if (!fromExt && /^https?:\/\//i.test(url)) void shell.openExternal(url)
       return { action: 'deny' }
     })
-    // DEV: auto-open DevTools for native-extension UI webviews so their console/errors are
-    // inspectable (the guest has its own devtools, separate from the board window).
+    // DEV: auto-open DevTools for extension UI webviews so their console/errors are inspectable
+    // (the guest has its own devtools, separate from the board window).
     if (!app.isPackaged) {
       contents.on('dom-ready', () => {
-        if (contents.getURL().startsWith('garret-native:') && !contents.isDevToolsOpened()) {
+        if (contents.getURL().startsWith('garret:') && !contents.isDevToolsOpened()) {
           contents.openDevTools({ mode: 'detach' })
         }
       })
     }
   })
 
-  // Serve garret-widget:// on the default session. SandboxWidget (step 5) also registers
-  // it on each widget's partition session, where the isolated webviews actually load.
-  registerSandboxProtocol(session.defaultSession.protocol)
-
   // Host-renderer CSP — applied in BOTH dev and production. (Gating it to packaged builds
   // hid CSP-violation bugs until release and left dev with no policy at all.) Production is
   // strict; dev additionally permits Vite's eval/inline HMR + its dev-server websocket.
   //
   // `frame-src` must allow `https:` because the Web-embed widget loads user-chosen sites in a
-  // <webview> — a `garret-widget:`-only frame-src (per design §11) would break it. `https:`
-  // + `garret-widget:` covers both real cases; `http:`/`data:`/`blob:` frames stay blocked.
-  // Marketplace metadata (names/descriptions/icons) must be rendered as inert text + img-src
-  // images, never framed.
+  // <webview>, and `garret:` because every extension UI loads over the garret:// scheme. `http:`/
+  // `data:`/`blob:` frames stay blocked. Marketplace metadata (names/descriptions/icons) must be
+  // rendered as inert text + img-src images, never framed.
   {
     const dev = !app.isPackaged
     const HOST_CSP = [
       "default-src 'self'",
       dev ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'" : "script-src 'self'",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https:", // widget preview images arrive as data: URLs (sandbox.previewDataUrl)
+      "img-src 'self' data: https:",
       "font-src 'self' data:",
       dev ? "connect-src 'self' http: https: ws: wss:" : "connect-src 'self' https: wss:",
-      "frame-src 'self' garret-widget: garret-native: garret: https:",
+      "frame-src 'self' garret: https:",
       "object-src 'none'",
       "base-uri 'none'"
     ].join('; ')
     session.defaultSession.webRequest.onHeadersReceived((details, cb) => {
-      // Never override the sandbox protocol's own stricter WIDGET_CSP if a garret-widget://
-      // response is served on the default session — leave those headers untouched.
-      if (details.url.startsWith('garret-widget:')) return cb({})
+      // Never override the ext protocol's own per-tier CSP for garret:// responses served on the
+      // default session — leave those headers untouched.
+      if (details.url.startsWith('garret:')) return cb({})
       cb({ responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [HOST_CSP] } })
     })
   }
   initScheduler()
 
-  registerNativeHandlers() // native-extension lane (renderer ↔ main ↔ raw-Node host)
   registerExtHandlers() // unified extension system (garret-sdk) — one path for web + native
   registerWcvSpike() // dev-only WebContentsView geometry spike (GARRET_WCV_SPIKE=1)
 

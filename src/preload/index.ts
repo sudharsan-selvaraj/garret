@@ -89,40 +89,6 @@ const api: GarretApi = {
     fetch: (url, init, opts) => ipcRenderer.invoke(Channels.pluginsFetch, url, init, opts),
     openExternalConfirmed: (url) => ipcRenderer.invoke(Channels.pluginsOpenExternal, url)
   },
-  sandbox: {
-    prepare: (partition) => ipcRenderer.invoke(Channels.sandboxPrepare, partition),
-    list: () => ipcRenderer.invoke(Channels.sandboxList),
-    planInstall: (srcDir) => ipcRenderer.invoke(Channels.sandboxInstallPlan, srcDir),
-    installFromFile: (p) => ipcRenderer.invoke(Channels.sandboxInstallFromFile, p),
-    installCleanup: (source) => {
-      void ipcRenderer.invoke(Channels.sandboxInstallCleanup, source)
-    },
-    commitInstall: (plan) => ipcRenderer.invoke(Channels.sandboxInstallCommit, plan),
-    remove: (id) => ipcRenderer.invoke(Channels.sandboxRemove, id),
-    setEnabled: (id, enabled) => ipcRenderer.invoke(Channels.sandboxSetEnabled, id, enabled),
-    recordUsage: (id, attemptedBlocked) =>
-      ipcRenderer.send(Channels.sandboxRecordUsage, id, attemptedBlocked),
-    previewDataUrl: (id) => ipcRenderer.invoke(Channels.sandboxPreviewDataUrl, id),
-    onOpenFile: (cb) => {
-      const listener = (_e: unknown, path: string): void => cb(path)
-      ipcRenderer.on(Channels.sandboxOpenFile, listener)
-      return () => ipcRenderer.removeListener(Channels.sandboxOpenFile, listener)
-    },
-    flushOpenFiles: () => ipcRenderer.send(Channels.sandboxFlushOpenFiles)
-  },
-  nativeExt: {
-    list: () => ipcRenderer.invoke(Channels.nativeExtList),
-    start: (extensionId, webContentsId) =>
-      ipcRenderer.invoke(Channels.nativeExtStart, extensionId, webContentsId),
-    stop: (webContentsId) => ipcRenderer.send(Channels.nativeExtStop, webContentsId),
-    planInstall: (srcDir) => ipcRenderer.invoke(Channels.nativeExtInstallPlan, srcDir),
-    planInstallFromFile: (p) => ipcRenderer.invoke(Channels.nativeExtInstallFromFile, p),
-    cleanupInstall: (dir) => ipcRenderer.invoke(Channels.nativeExtInstallCleanup, dir),
-    commitInstall: (plan) => ipcRenderer.invoke(Channels.nativeExtInstallCommit, plan),
-    listInstalled: () => ipcRenderer.invoke(Channels.nativeExtListInstalled),
-    setEnabled: (id, on) => ipcRenderer.invoke(Channels.nativeExtSetEnabled, id, on),
-    remove: (id) => ipcRenderer.invoke(Channels.nativeExtRemove, id)
-  },
   ext: {
     list: () => ipcRenderer.invoke(Channels.extList),
     planInstall: (dir) => ipcRenderer.invoke(Channels.extInstallPlan, dir),
@@ -131,7 +97,13 @@ const api: GarretApi = {
     cleanupInstall: (dir) => ipcRenderer.invoke(Channels.extInstallCleanup, dir),
     listInstalled: () => ipcRenderer.invoke(Channels.extListInstalled),
     setEnabled: (id, on) => ipcRenderer.invoke(Channels.extSetEnabled, id, on),
-    remove: (id) => ipcRenderer.invoke(Channels.extRemove, id)
+    remove: (id) => ipcRenderer.invoke(Channels.extRemove, id),
+    onOpenFile: (cb) => {
+      const listener = (_e: unknown, path: string): void => cb(path)
+      ipcRenderer.on(Channels.extOpenFile, listener)
+      return () => ipcRenderer.removeListener(Channels.extOpenFile, listener)
+    },
+    flushOpenFiles: () => ipcRenderer.send(Channels.extFlushOpenFiles)
   },
   wcvSpike: {
     enabled: () => ipcRenderer.invoke(Channels.wcvSpikeEnabled),

@@ -66,12 +66,12 @@ export function WidgetHost({ widget }: { widget: PlacedWidget }): JSX.Element {
   const ctx = useWidgetContext(widget.id, refreshToken)
 
   if (!plugin) {
-    const isSandbox = widget.pluginId.startsWith('sandbox:')
+    const isInstalled = widget.pluginId.startsWith('gx:')
     return (
       <div className="widget widget-error">
-        <strong>{isSandbox ? 'Widget unavailable' : 'Unknown widget'}</strong>
+        <strong>{isInstalled ? 'Widget unavailable' : 'Unknown widget'}</strong>
         <code>
-          {isSandbox
+          {isInstalled
             ? 'Removed or disabled — manage it in Settings → Widgets.'
             : `No plugin registered for “${widget.pluginId}”.`}
         </code>

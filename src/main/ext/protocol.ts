@@ -1,4 +1,4 @@
-import { type Protocol, type Session } from 'electron'
+import { protocol, type Protocol, type Session } from 'electron'
 import { readFile } from 'node:fs/promises'
 import { join, normalize, sep } from 'node:path'
 import type { ExtTier } from '@shared/types/ext'
@@ -13,6 +13,11 @@ export const EXT_SCHEME = 'garret'
 export const extSchemePrivilege = {
   scheme: EXT_SCHEME,
   privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: false }
+}
+
+/** Declare `garret://` as a privileged (standard + secure) scheme. MUST run before app `ready`. */
+export function registerExtScheme(): void {
+  protocol.registerSchemesAsPrivileged([extSchemePrivilege])
 }
 
 const SAFE_ID = /^[a-z0-9][a-z0-9._-]*$/

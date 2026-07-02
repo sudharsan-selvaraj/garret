@@ -1,6 +1,6 @@
 import { join } from 'path'
 import { BrowserWindow, screen } from 'electron'
-import { makePanel, raiseToHud, rememberFrontmostApp } from '@main/native/macWindow'
+import { makePanel, raiseToHud, rememberFrontmostApp } from '@main/windows/macWindow'
 import { Channels } from '@shared/ipc/channels'
 
 const WIDTH = 680

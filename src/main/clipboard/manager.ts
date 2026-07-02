@@ -3,7 +3,7 @@ import { basename } from 'node:path'
 import { clipboard, nativeImage } from 'electron'
 import type { ClipItem, ClipKind } from '@shared/types/clipboard'
 import { persistence } from '@main/persistence/store'
-import * as mac from '@main/native/macWindow'
+import * as mac from '@main/windows/macWindow'
 import { clearPersistedHistory, loadHistory, saveHistory } from './store'
 
 const POLL_MS = 700
