@@ -1,7 +1,7 @@
 import { spawn as nodeSpawn, type ChildProcess, type SpawnOptions } from 'node:child_process'
 import { readFileSync, writeFileSync, renameSync, mkdirSync, existsSync, accessSync, constants } from 'node:fs'
 import { join, delimiter } from 'node:path'
-import { randomBytes, createCipheriv, createDecipheriv, timingSafeEqual } from 'node:crypto'
+import { randomBytes, createCipheriv, createDecipheriv } from 'node:crypto'
 import { GarretError } from './errors'
 import type { WireMessage } from './protocol'
 import type { EventMap, Stream } from './types'
@@ -79,13 +79,16 @@ function isStream(v: unknown): v is StreamMarker {
   return typeof v === 'object' && v !== null && STREAM_RUNTIME in v
 }
 
-type Methods = Record<string, (args?: unknown) => unknown>
+// Constrain over `keyof Api` (not `string`) so a plain `interface Api { … }` satisfies it — an
+// interface has no implicit index signature, so `Record<string, …>` would reject it and force authors
+// to write `type Api`. `any` here only bounds the shape; the real contract is the shared `Api` type.
+type Methods<Api> = Record<keyof Api, (args?: any) => any>
 
 /**
  * Define your host. `factory(ctx)` returns the methods your UI calls (use function declarations so
  * a method can call a sibling — see docs P9). May be async; `ready` is sent only after it resolves.
  */
-export function defineHost<Api extends Methods, Events extends EventMap = EventMap>(
+export function defineHost<Api extends Methods<Api>, Events extends EventMap = EventMap>(
   factory: (ctx: HostContext<Events>) => Api | Promise<Api>
 ): void {
   const children = new Set<ChildProcess>()
@@ -171,29 +174,20 @@ export function defineHost<Api extends Methods, Events extends EventMap = EventM
       .catch((err) => out.error(err))
   }
 
-  async function handleCall(id: string, method: string, args: unknown, streaming: boolean): Promise<void> {
-    const methods = ready as Api | undefined
+  async function handleCall(id: string, method: string, args: unknown): Promise<void> {
+    // `method` is an arbitrary string off the wire; look it up on the resolved method map.
+    const methods = ready as Record<string, ((args?: unknown) => unknown) | undefined> | undefined
     const fn = methods?.[method]
     if (typeof fn !== 'function') {
-      const e = { code: 'BAD_ARGS', message: `unknown method: ${method}` }
-      return send(streaming ? { t: 'stream_err', id, ...e } : { t: 'err', id, ...e })
+      return send({ t: 'err', id, code: 'BAD_ARGS', message: `unknown method: ${method}` })
     }
     try {
       const result = await fn(args)
-      const streamRet = isStream(result)
-      // Reconcile the client's static stream-list against the runtime return, so a mismatch is a
-      // loud error, not a silent hang (S2).
-      if (streaming && !streamRet) {
-        return send({ t: 'stream_err', id, code: 'BAD_ARGS', message: `method "${method}" did not return a stream` })
-      }
-      if (!streaming && streamRet) {
-        return send({ t: 'err', id, code: 'BAD_ARGS', message: `method "${method}" is streaming — call it as a stream` })
-      }
-      if (streamRet) driveStream(id, result[STREAM_RUNTIME])
+      // The return decides: a Stream drives chunk/stream_end; anything else resolves with res.
+      if (isStream(result)) driveStream(id, result[STREAM_RUNTIME])
       else send({ t: 'res', id, result })
     } catch (err) {
-      const e = wireError(err)
-      send(streaming ? { t: 'stream_err', id, code: e.code, message: e.message } : { t: 'err', id, ...e })
+      send({ t: 'err', id, ...wireError(err) })
     }
   }
 
@@ -204,7 +198,7 @@ export function defineHost<Api extends Methods, Events extends EventMap = EventM
     switch (msg.t) {
       case 'req':
       case 'stream_start':
-        void handleCall(msg.id, msg.method, msg.args, msg.t === 'stream_start')
+        void handleCall(msg.id, msg.method, msg.args)
         break
       case 'cancel':
         streams.get(msg.id)?.abort()
@@ -366,5 +360,3 @@ function makeSecrets(): Secrets {
 // re-exports so `@garret/sdk/host` is a complete surface
 export { GarretError } from './errors'
 export type { Stream } from './types'
-// timingSafeEqual kept imported for future MAC checks; referenced to avoid unused-import in strict builds
-void timingSafeEqual

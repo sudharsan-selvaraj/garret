@@ -5,24 +5,22 @@ import { GarretError } from './errors'
 import { getGarret, getHostTransport, getInstanceId, getRuntime, type GarretPlatform } from './platform'
 import type { EventMap, HostClient, StreamCall } from './types'
 
-// One widget UI is one realm → one host client, memoised at module scope. The stream-method list is
-// fixed by the first useHost() call (a widget's Api is static).
+// One widget UI is one realm → one host client, memoised at module scope.
 let singleton: Client<unknown, EventMap> | undefined
-function hostClient<Api, Events extends EventMap>(streams?: readonly string[]): Client<Api, Events> {
+function hostClient<Api, Events extends EventMap>(): Client<Api, Events> {
   if (!singleton) {
     const transport = getHostTransport()
     if (!transport) throw new GarretError('UNAVAILABLE', 'this extension has no host process')
-    singleton = createHostClient<unknown, EventMap>(transport, { instanceId: getInstanceId(), streams })
+    singleton = createHostClient<unknown, EventMap>(transport, { instanceId: getInstanceId() })
   }
   return singleton as unknown as Client<Api, Events>
 }
 
-/** Typed proxy of your host's methods. Pass `streams` = the names of methods returning `Stream<…>`. */
-export function useHost<Api, Events extends EventMap = EventMap>(opts?: {
-  streams?: readonly string[]
-}): HostClient<Api> {
+/** Typed proxy of your host's methods. Stream-vs-Promise is inferred from each method's `Api` return
+ *  type — nothing to configure. */
+export function useHost<Api, Events extends EventMap = EventMap>(): HostClient<Api> {
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  return useMemo(() => hostClient<Api, Events>(opts?.streams) as unknown as HostClient<Api>, [])
+  return useMemo(() => hostClient<Api, Events>() as unknown as HostClient<Api>, [])
 }
 
 /** Platform capabilities (storage/secrets/fetch/service/notify/…). Available in both tiers. */
@@ -52,11 +50,14 @@ export interface UseStreamResult<Chunk, Result> {
   cancel: () => void
 }
 
-/** Consume a stream in React without manual effect+cleanup. `deps` auto-cancel + restart. */
+/** Consume a stream in React without manual effect+cleanup. `deps` auto-cancel + restart; pass
+ *  `{ enabled: false }` to defer (e.g. until the user triggers a run). */
 export function useStream<Chunk, Result = void>(
   factory: () => StreamCall<Chunk, Result>,
-  deps: unknown[] = []
+  deps: unknown[] = [],
+  opts?: { enabled?: boolean }
 ): UseStreamResult<Chunk, Result> {
+  const enabled = opts?.enabled ?? true
   const [chunks, setChunks] = useState<Chunk[]>([])
   const [result, setResult] = useState<Result | undefined>(undefined)
   const [error, setError] = useState<GarretError | undefined>(undefined)
@@ -64,6 +65,10 @@ export function useStream<Chunk, Result = void>(
   const ref = useRef<StreamCall<Chunk, Result> | null>(null)
 
   useEffect(() => {
+    if (!enabled) {
+      setStatus('idle')
+      return
+    }
     setChunks([])
     setResult(undefined)
     setError(undefined)
@@ -82,7 +87,7 @@ export function useStream<Chunk, Result = void>(
       })
     return () => call.cancel()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps)
+  }, [enabled, ...deps])
 
   const cancel = useCallback(() => ref.current?.cancel(), [])
   return { chunks, result, error, status, cancel }

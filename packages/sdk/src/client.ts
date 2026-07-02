@@ -1,31 +1,31 @@
 import { garretErrorFromWire, GarretError } from './errors'
 import type { Transport } from './protocol'
-import type { EventMap, HostClient, StreamCall } from './types'
+import type { EventMap, HostClient } from './types'
 
 /**
- * UI-side host client — a typed proxy over the wire (protocol.ts). Methods listed in `streams`
- * return a {@link StreamCall} synchronously; the rest return a Promise. Owns correlation ids,
- * the pending map, per-stream state (incl. a bounded pre-attach chunk buffer), and event demux.
+ * UI-side host client — a typed proxy over the wire (protocol.ts). Every call returns ONE handle
+ * that is both a Promise (plain methods `await` it) and a stream sink (stream methods use
+ * `.onData/.onEnd`). The `HostClient<Api>` TYPE narrows it per method from the `Api` return type —
+ * so authors never restate which methods stream. The host decides stream-vs-value from the runtime
+ * return; the client handles either response on the same id.
  */
 export interface HostClientOptions {
   /** Correlation namespace so two placements of a widget never cross wires. */
   instanceId: string
-  /** Names of methods whose Api return type is `Stream<…>`. */
-  streams?: readonly string[]
 }
 
-const MAX_PREATTACH_CHUNKS = 1000 // bound the buffer for chunks that arrive before .onData attaches
+const MAX_PREATTACH_CHUNKS = 1000 // bound chunks buffered before .onData attaches
+const IDLE_TIMEOUT_MS = 30_000 // reject a call idle this long (dead/absent host); reset by each chunk
 
-interface StreamState {
+interface CallState {
   onData: Array<(c: unknown) => void>
   onEnd: Array<(r: unknown) => void>
   onError: Array<(e: GarretError) => void>
   buffer: unknown[]
   overflow: boolean
-  settled: boolean
-  attached: boolean
-  resultResolve?: (r: unknown) => void
-  resultReject?: (e: unknown) => void
+  resolve: (v: unknown) => void
+  reject: (e: unknown) => void
+  timer: ReturnType<typeof setTimeout>
 }
 
 export type Client<Api, Events extends EventMap> = HostClient<Api> & {
@@ -37,65 +37,60 @@ export function createHostClient<Api, Events extends EventMap = EventMap>(
   transport: Transport,
   opts: HostClientOptions
 ): Client<Api, Events> {
-  const streamMethods = new Set(opts.streams ?? [])
-  const pending = new Map<string, { resolve: (v: unknown) => void; reject: (e: unknown) => void }>()
-  const streams = new Map<string, StreamState>()
+  const calls = new Map<string, CallState>()
   const events = new Map<string, Set<(p: unknown) => void>>()
-  const eventBuffer = new Map<string, unknown[]>() // events for a channel with no subscriber yet
+  const eventBuffer = new Map<string, unknown[]>()
   let seq = 0
   const nextId = (): string => `${opts.instanceId}:${++seq}`
 
+  const settle = (id: string, fn: (s: CallState) => void): void => {
+    const s = calls.get(id)
+    if (!s) return
+    clearTimeout(s.timer)
+    calls.delete(id)
+    fn(s)
+  }
+  const timeoutError = (method: string): GarretError => new GarretError('TIMEOUT', `"${method}" timed out`)
+
   const off = transport.onMessage((msg) => {
     switch (msg.t) {
-      case 'res': {
-        const p = pending.get(msg.id)
-        if (p) {
-          pending.delete(msg.id)
-          p.resolve(msg.result)
-        }
+      case 'res':
+        settle(msg.id, (s) => s.resolve(msg.result))
         break
-      }
-      case 'err': {
-        const p = pending.get(msg.id)
-        if (p) {
-          pending.delete(msg.id)
-          p.reject(garretErrorFromWire(msg.code, msg.message, msg.hint))
-        }
+      case 'stream_end':
+        settle(msg.id, (s) => {
+          s.onEnd.forEach((cb) => cb(msg.result))
+          s.resolve(msg.result)
+        })
         break
-      }
+      case 'err':
+        settle(msg.id, (s) => {
+          const e = garretErrorFromWire(msg.code, msg.message, msg.hint)
+          s.onError.forEach((cb) => cb(e))
+          s.reject(e)
+        })
+        break
+      case 'stream_err':
+        settle(msg.id, (s) => {
+          const e = garretErrorFromWire(msg.code, msg.message)
+          s.onError.forEach((cb) => cb(e))
+          s.reject(e)
+        })
+        break
       case 'chunk': {
-        const s = streams.get(msg.id)
+        const s = calls.get(msg.id)
         if (!s) break
+        clearTimeout(s.timer) // activity → the stream is alive; re-arm the idle timer
+        s.timer = setTimeout(() => settle(msg.id, (st) => st.reject(timeoutError(msg.id))), IDLE_TIMEOUT_MS)
         if (s.onData.length) s.onData.forEach((cb) => cb(msg.data))
         else if (s.buffer.length < MAX_PREATTACH_CHUNKS) s.buffer.push(msg.data)
         else s.overflow = true
         break
       }
-      case 'stream_end': {
-        const s = streams.get(msg.id)
-        if (!s) break
-        s.settled = true
-        s.onEnd.forEach((cb) => cb(msg.result))
-        s.resultResolve?.(msg.result)
-        streams.delete(msg.id)
-        break
-      }
-      case 'stream_err': {
-        const s = streams.get(msg.id)
-        if (!s) break
-        s.settled = true
-        const e = garretErrorFromWire(msg.code, msg.message)
-        s.onError.forEach((cb) => cb(e))
-        s.resultReject?.(e)
-        streams.delete(msg.id)
-        break
-      }
       case 'event': {
         const subs = events.get(msg.channel)
-        if (subs && subs.size) {
-          subs.forEach((cb) => cb(msg.payload))
-        } else {
-          // No subscriber yet (host emitted before useHostEvent mounted) — buffer, bounded.
+        if (subs && subs.size) subs.forEach((cb) => cb(msg.payload))
+        else {
           const buf = eventBuffer.get(msg.channel) ?? []
           if (buf.length < 100) buf.push(msg.payload)
           eventBuffer.set(msg.channel, buf)
@@ -105,81 +100,66 @@ export function createHostClient<Api, Events extends EventMap = EventMap>(
     }
   })
 
-  function makeStreamCall(method: string, args: unknown): StreamCall<unknown, unknown> {
+  function makeCall(method: string, args: unknown): unknown {
     const id = nextId()
-    const s: StreamState = {
+    let resolve!: (v: unknown) => void
+    let reject!: (e: unknown) => void
+    const promise = new Promise<unknown>((res, rej) => {
+      resolve = res
+      reject = rej
+    })
+    promise.catch(() => {}) // no unhandledrejection when the author only uses .onError
+    const s: CallState = {
       onData: [],
       onEnd: [],
       onError: [],
       buffer: [],
       overflow: false,
-      settled: false,
-      attached: false
+      resolve,
+      reject,
+      timer: setTimeout(() => {
+        const e = timeoutError(method)
+        settle(id, (st) => {
+          st.onError.forEach((cb) => cb(e))
+          st.reject(e)
+        })
+      }, IDLE_TIMEOUT_MS)
     }
-    streams.set(id, s)
-    transport.send({ t: 'stream_start', id, method, args })
-    // Auto-cancel a stream nobody consumes (prevents an unbounded buffer from a forgotten handle).
-    queueMicrotask(() => {
-      if (!s.attached && streams.has(id)) call.cancel()
-    })
-    const flushBuffer = (cb: (c: unknown) => void): void => {
+    calls.set(id, s)
+    transport.send({ t: 'req', id, method, args })
+
+    const flush = (cb: (c: unknown) => void): void => {
       const buf = s.buffer
       s.buffer = []
       buf.forEach((c) => cb(c))
     }
-    const call: StreamCall<unknown, unknown> = {
-      onData(cb) {
-        s.attached = true
+    // One object, both shapes. HostClient<Api> exposes only the half the method's type allows.
+    const call = {
+      then: (onF?: ((v: unknown) => unknown) | null, onR?: ((e: unknown) => unknown) | null) => promise.then(onF, onR),
+      catch: (onR?: ((e: unknown) => unknown) | null) => promise.catch(onR),
+      finally: (cb?: (() => void) | null) => promise.finally(cb),
+      result: () => promise,
+      onData(cb: (c: unknown) => void) {
         s.onData.push(cb)
-        flushBuffer(cb)
+        flush(cb)
         return call
       },
-      onEnd(cb) {
-        s.attached = true
+      onEnd(cb: (r: unknown) => void) {
         s.onEnd.push(cb)
         return call
       },
-      onError(cb) {
-        s.attached = true
+      onError(cb: (e: GarretError) => void) {
         s.onError.push(cb)
         return call
       },
       cancel() {
-        if (!streams.has(id)) return
-        streams.delete(id)
+        if (!calls.has(id)) return
+        clearTimeout(s.timer)
+        calls.delete(id)
         transport.send({ t: 'cancel', id })
-      },
-      result() {
-        s.attached = true
-        return new Promise((resolve, reject) => {
-          s.resultResolve = resolve
-          s.resultReject = reject
-        })
       }
     }
     return call
-  }
-
-  function callMethod(method: string, args: unknown): Promise<unknown> {
-    const id = nextId()
-    return new Promise((resolve, reject) => {
-      // A request must not hang forever (no host, dead host, dropped frame) — time it out.
-      const timer = setTimeout(() => {
-        pending.delete(id)
-        reject(new GarretError('TIMEOUT', `"${method}" timed out`))
-      }, 30_000)
-      pending.set(id, {
-        resolve: (v) => {
-          clearTimeout(timer)
-          resolve(v)
-        },
-        reject: (e) => {
-          clearTimeout(timer)
-          reject(e)
-        }
-      })
-      transport.send({ t: 'req', id, method, args })
-    })
   }
 
   const base = {
@@ -187,8 +167,7 @@ export function createHostClient<Api, Events extends EventMap = EventMap>(
       let set = events.get(channel)
       if (!set) events.set(channel, (set = new Set()))
       set.add(cb)
-      // Replay anything buffered before this first subscriber (review S1).
-      const buffered = eventBuffer.get(channel)
+      const buffered = eventBuffer.get(channel) // replay events emitted before this first subscriber
       if (buffered?.length) {
         eventBuffer.delete(channel)
         buffered.forEach((p) => cb(p))
@@ -197,18 +176,17 @@ export function createHostClient<Api, Events extends EventMap = EventMap>(
     },
     dispose(): void {
       off()
-      pending.clear()
-      streams.clear()
+      for (const s of calls.values()) clearTimeout(s.timer)
+      calls.clear()
       events.clear()
+      eventBuffer.clear()
     }
   }
 
   return new Proxy(base, {
     get(target, prop: string) {
       if (prop in target) return (target as Record<string, unknown>)[prop]
-      // A method call: stream method → StreamCall (sync), else → Promise. Single-arg convention.
-      return (args?: unknown) =>
-        streamMethods.has(prop) ? makeStreamCall(prop, args) : callMethod(prop, args)
+      return (args?: unknown) => makeCall(prop, args) // single-arg convention
     }
   }) as unknown as Client<Api, Events>
 }
