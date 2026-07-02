@@ -149,6 +149,11 @@ const api: GarretApi = {
     get: (key) => ipcRenderer.invoke(Channels.storeGet, key),
     set: (key, value) => ipcRenderer.invoke(Channels.storeSet, key, value)
   },
+  onDisplaysChanged: (cb) => {
+    const listener = (_e: unknown, b: { x: number; y: number; width: number; height: number }): void => cb(b)
+    ipcRenderer.on(Channels.displaysChanged, listener)
+    return () => ipcRenderer.removeListener(Channels.displaysChanged, listener)
+  },
   window: {
     setIgnoreMouseEvents: (ignore) => ipcRenderer.send(Channels.setIgnoreMouse, ignore),
     onCursorMove: (cb) => {

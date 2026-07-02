@@ -21,6 +21,8 @@ interface BoardStore {
   removeWidget: (id: string) => void
   updateConfig: (id: string, patch: Record<string, unknown>) => void
   updateFrame: (id: string, frame: Frame) => void
+  /** Pull any widget now outside the board (e.g. a display was unplugged) back on-screen. */
+  clampToBounds: (width: number, height: number) => void
   setOpacity: (id: string, opacity: number) => void
   setLocked: (id: string, locked: boolean) => void
   setColor: (id: string, color: string | undefined) => void
@@ -91,6 +93,15 @@ export const useBoardStore = create<BoardStore>((set, get) => {
       mut(id, (w) => ({ ...w, config: { ...w.config, ...patch } })),
 
     updateFrame: (id, frame) => mut(id, (w) => ({ ...w, ...frame })),
+
+    clampToBounds: (width, height) => {
+      const clamped = get().widgets.map((w) => ({
+        ...w,
+        x: Math.max(0, Math.min(w.x, Math.max(0, width - w.width))),
+        y: Math.max(0, Math.min(w.y, Math.max(0, height - w.height)))
+      }))
+      apply(clamped)
+    },
 
     setOpacity: (id, opacity) => mut(id, (w) => ({ ...w, opacity })),
 

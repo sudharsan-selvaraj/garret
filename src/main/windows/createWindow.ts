@@ -22,6 +22,25 @@ export type { WindowMode }
 const DESKTOP_LEVEL_OFFSET = 1
 
 /**
+ * The board spans ALL displays (docs § Pre-SDK #8): one window sized to the union of every
+ * display's bounds, giving one global grid. Display gaps become dead zones (harmless — click-through).
+ */
+function unionBounds(): { x: number; y: number; width: number; height: number } {
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  for (const d of screen.getAllDisplays()) {
+    const b = d.bounds
+    minX = Math.min(minX, b.x)
+    minY = Math.min(minY, b.y)
+    maxX = Math.max(maxX, b.x + b.width)
+    maxY = Math.max(maxY, b.y + b.height)
+  }
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
+}
+
+/**
  * When the HUD is summoned we raise the window above everything. macOS fires
  * `show` events while it composites the window onto a full-screen Space; without
  * this guard the `show` handler would re-pin it to the desktop level on every one
@@ -44,7 +63,7 @@ export function createWindow(mode: WindowMode): BrowserWindow {
   // and Dock. workArea subtracts whatever the Dock reserves, which would otherwise
   // leave an uncovered strip (e.g. a left/bottom Dock) showing through as an
   // undimmed gap when the HUD is summoned.
-  const bounds = screen.getPrimaryDisplay().bounds
+  let bounds = unionBounds()
 
   const win = new BrowserWindow({
     ...(isDesktop
@@ -104,6 +123,21 @@ export function createWindow(mode: WindowMode): BrowserWindow {
         pin()
         fillScreen()
       }
+    })
+    // Re-fit the spanning board when displays change (plug/unplug, arrangement, scale).
+    const refit = (): void => {
+      bounds = unionBounds()
+      pin()
+      fillScreen()
+      win.webContents.send(Channels.displaysChanged, bounds)
+    }
+    screen.on('display-added', refit)
+    screen.on('display-removed', refit)
+    screen.on('display-metrics-changed', refit)
+    win.on('closed', () => {
+      screen.removeListener('display-added', refit)
+      screen.removeListener('display-removed', refit)
+      screen.removeListener('display-metrics-changed', refit)
     })
     trackCursor(win)
   }

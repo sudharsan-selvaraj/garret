@@ -41,6 +41,12 @@ export default function App(): JSX.Element {
     ]).finally(() => void hydrate())
   }, [hydrate])
 
+  // Spanning board: when displays change, pull any now-orphaned widget back on-screen.
+  useEffect(
+    () => window.garret.onDisplaysChanged((b) => useBoardStore.getState().clampToBounds(b.width, b.height)),
+    []
+  )
+
   // The desktop window spans the FULL display (so the HUD dim covers the menu bar
   // and Dock). Expose the work-area inset as a CSS var so floating chrome can sit
   // clear of the menu bar instead of being clipped under it. availTop reflects the

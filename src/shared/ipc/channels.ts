@@ -29,6 +29,7 @@ export const Channels = {
   storeSet: 'store:set',
   setIgnoreMouse: 'window:set-ignore-mouse',
   cursorPos: 'window:cursor-pos',
+  displaysChanged: 'window:displays-changed', // main → renderer: spanning board re-fit (new bounds)
   layoutsList: 'layouts:list',
   layoutsSwitch: 'layouts:switch',
   layoutsCreate: 'layouts:create',
@@ -320,6 +321,8 @@ export interface GarretApi {
     get<T = unknown>(key: string): Promise<T | undefined>
     set(key: string, value: unknown): Promise<void>
   }
+  /** The spanning board re-fit after a display change; payload is the new union bounds. */
+  onDisplaysChanged(cb: (bounds: { x: number; y: number; width: number; height: number }) => void): () => void
   window: {
     setIgnoreMouseEvents(ignore: boolean): void
     /** Subscribe to main-process cursor polling (window-relative px). Returns an unsubscribe fn. */
