@@ -370,12 +370,21 @@ extension's host (UI stays, reconnects) — the two are independent. **Logs:** h
 the widget's DevTools console *and* the terminal, prefixed. **Debugger:** `garret dev --inspect-host`
 forks the host with `--inspect` for chrome://inspect / VS Code attach. v1 SDK deliverable.
 
-### 8. Multi-monitor (macOS) — DECISION: single board on the primary display for v1 *(defer-OK)*
-Today the board uses `screen.getPrimaryDisplay().bounds` — **one board, primary display**,
-`visibleOnAllWorkspaces` so it follows Spaces; grid coords are relative to that display. **Lock the
-layout contract to single-primary-display grid coords** so the placement API doesn't change later —
-a per-display board is then purely additive (each display = another instance of the same grid).
-Multi-monitor is a known v1 limitation (aligns with the Windows one-board-per-monitor note in §7).
+### 8. Multi-monitor (macOS) — DECISION: one **spanning** board across all displays for v1
+Primary-only was a weak call for a multi-monitor audience. **v1 = a single board window sized to the
+union of `screen.getAllDisplays()` bounds**, giving **one global grid / one coordinate space** —
+widgets placeable on any display. This is the smallest change from today (`getPrimaryDisplay().bounds`
+→ union) and keeps the layout contract the SDK freezes trivial (global x/y). The native desktop pin +
+`CanJoinAllSpaces` already apply to the one window regardless of size.
+
+**v1 work beyond the union bounds:** a `screen` change listener (`display-added`/`removed`/`metrics-
+changed`) that re-fits the board to the new union and **clamps orphaned widgets** (on a
+now-disconnected display) back on-screen. **Known caveats (acceptable):** display *gaps* in the union
+rect are dead zones (harmless — click-through, nothing there); mixed-DPI displays are OS-scaled from
+the window's primary scale (may look marginally soft on a differently-scaled secondary). **Deferred
+(additive, not a contract change):** true **per-display boards** (respecting each display's exact
+scale + no dead zones) — the heavier model Windows' WorkerW forces (§7); each per-display board is
+just another instance of the same grid, so switching later doesn't move the coordinate contract.
 
 ### 9. `g.service` connection model — DEFINE *(author-facing; built)*
 **Grounded:** services are **first-party connectors** (Google/Jira/GitHub) with OAuth
