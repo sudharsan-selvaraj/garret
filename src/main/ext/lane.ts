@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url'
 import { Channels } from '@shared/ipc/channels'
 import type { WireMessage } from '@garretapp/sdk'
 import type { ExtRuntimeInfo, ExtInstallPlan } from '@shared/types/ext'
+import { persistence } from '@main/persistence/store'
 import { registerExtProtocol, setUiResolver, resetUiDirs } from '@main/ext/protocol'
 import { launchHost, getHost, killHost } from '@main/ext/host'
 import { platformCall, type Binding } from '@main/ext/broker'
@@ -120,6 +121,23 @@ export function registerExtHandlers(): void {
     if (!binding) throw new Error('widget not bound')
     return platformCall(binding, domain, op, args ?? [])
   })
+
+  // ── per-placement config (settings) ─────────────────────────────────────────────────────────
+  ipcMain.handle(
+    Channels.extConfig,
+    (e, op: string, instanceId: string, value?: unknown, replace?: boolean) => {
+      const key = `ext.config.${instanceId}`
+      if (op === 'get') return persistence.kvGet(key) ?? {}
+      if (op === 'set') {
+        const cur = (persistence.kvGet(key) as Record<string, unknown>) ?? {}
+        const next = replace ? value : { ...cur, ...((value as Record<string, unknown>) ?? {}) }
+        persistence.kvSet(key, next)
+        e.sender.send(Channels.extConfigChange, next)
+        return next
+      }
+      return undefined
+    }
+  )
 
   // ── install / manage ────────────────────────────────────────────────────────────────────────
   ipcMain.handle(Channels.extInstallPlan, (_e, dir: string) => planInstall(dir))

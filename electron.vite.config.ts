@@ -46,7 +46,9 @@ export default defineConfig({
           // Bridge preload injected into sandboxed widget webviews (step 2).
           sandboxBridge: resolve(__dirname, 'src/preload/sandboxBridge.ts'),
           // Bridge preload for native-extension UI webviews (native tier).
-          nativeBridge: resolve(__dirname, 'src/preload/nativeBridge.ts')
+          nativeBridge: resolve(__dirname, 'src/preload/nativeBridge.ts'),
+          // Unified extension bridge (window.__garret) — one preload for web + native.
+          extBridge: resolve(__dirname, 'src/preload/extBridge.ts')
         }
       }
     }

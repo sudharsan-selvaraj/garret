@@ -3,6 +3,7 @@ import { registerBuiltins } from '@renderer/plugins/builtins'
 import { loadExternalWidgets } from '@renderer/plugins/externalLoader'
 import { loadSandboxedWidgets } from '@renderer/sandbox/loader'
 import { loadNativeExtensions } from '@renderer/native/loader'
+import { loadExtensions } from '@renderer/ext/loader'
 import { registerServices } from '@renderer/services/serviceRegistry'
 import { useBoardStore } from '@renderer/canvas/useBoardStore'
 import { useUiStore } from '@renderer/app/useUiStore'
@@ -35,7 +36,8 @@ export default function App(): JSX.Element {
     void Promise.allSettled([
       loadExternalWidgets(),
       loadSandboxedWidgets(),
-      loadNativeExtensions()
+      loadNativeExtensions(),
+      loadExtensions()
     ]).finally(() => void hydrate())
   }, [hydrate])
 

@@ -123,6 +123,16 @@ const api: GarretApi = {
     setEnabled: (id, on) => ipcRenderer.invoke(Channels.nativeExtSetEnabled, id, on),
     remove: (id) => ipcRenderer.invoke(Channels.nativeExtRemove, id)
   },
+  ext: {
+    list: () => ipcRenderer.invoke(Channels.extList),
+    planInstall: (dir) => ipcRenderer.invoke(Channels.extInstallPlan, dir),
+    planInstallFromFile: (p) => ipcRenderer.invoke(Channels.extInstallFromFile, p),
+    commitInstall: (plan) => ipcRenderer.invoke(Channels.extInstallCommit, plan),
+    cleanupInstall: (dir) => ipcRenderer.invoke(Channels.extInstallCleanup, dir),
+    listInstalled: () => ipcRenderer.invoke(Channels.extListInstalled),
+    setEnabled: (id, on) => ipcRenderer.invoke(Channels.extSetEnabled, id, on),
+    remove: (id) => ipcRenderer.invoke(Channels.extRemove, id)
+  },
   wcvSpike: {
     enabled: () => ipcRenderer.invoke(Channels.wcvSpikeEnabled),
     create: (id) => ipcRenderer.invoke(Channels.wcvSpikeCreate, id),

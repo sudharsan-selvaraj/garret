@@ -6,6 +6,7 @@ import type { Preferences } from '../types/preferences'
 import type { ClipItem } from '../types/clipboard'
 import type { InstallPlan, InstalledWidget } from '../types/sandbox'
 import type { NativeInstallPlan, InstalledExtension } from '../types/native'
+import type { ExtRuntimeInfo, ExtInstallPlan, InstalledExtension as ExtInstalled } from '../types/ext'
 import type { WatchOptions } from 'garret-core'
 
 /** A native extension as the renderer needs it to render + place it. */
@@ -69,6 +70,8 @@ export const Channels = {
   extHostFrame: 'ext:host-frame', // main → renderer: a WireMessage from the host
   extPlatform: 'ext:platform', // (domain, op, args) → broker
   extActive: 'ext:active', // main → renderer: board active/idle
+  extConfig: 'ext:config', // (op, instanceId, value?) → per-placement settings
+  extConfigChange: 'ext:config-change', // main → guest: config changed
   extInstallPlan: 'ext:install-plan',
   extInstallFromFile: 'ext:install-from-file',
   extInstallCommit: 'ext:install-commit',
@@ -281,6 +284,17 @@ export interface GarretApi {
     /** Enable/disable. Renderer MUST show the full-access consent before enabling. */
     setEnabled(id: string, on: boolean): Promise<{ ok: boolean; error?: string }>
     /** Uninstall (removes files + record). */
+    remove(id: string): Promise<void>
+  }
+  /** Unified extension system (garret-sdk). Board-side API; guests use window.__garret (extBridge). */
+  ext: {
+    list(): Promise<{ preloadUrl: string; extensions: ExtRuntimeInfo[] }>
+    planInstall(dir: string): Promise<ExtInstallPlan>
+    planInstallFromFile(garretPath: string): Promise<ExtInstallPlan>
+    commitInstall(plan: ExtInstallPlan): Promise<{ ok: boolean; error?: string }>
+    cleanupInstall(dir: string): Promise<void>
+    listInstalled(): Promise<ExtInstalled[]>
+    setEnabled(id: string, on: boolean): Promise<{ ok: boolean; error?: string }>
     remove(id: string): Promise<void>
   }
   /** DEV-ONLY throwaway: WebContentsView geometry spike (gated by GARRET_WCV_SPIKE=1). */

@@ -7,8 +7,12 @@ import type { Transport } from './protocol'
  * capabilities. The concrete implementation is injected by the preload as `window.__garret` (U3);
  * outside Garret (dev in a browser) a fallback reports `inGarret === false` and throws on use.
  */
-export interface ServiceClient {
+export interface ServiceStatus {
   connected: boolean
+}
+export interface ServiceClient {
+  /** Connection state is async (the account is connected in Garret's Settings, brokered by main). */
+  status(): Promise<ServiceStatus>
   query<R = unknown>(req: unknown): Promise<R>
 }
 export interface StorageApi {
@@ -88,7 +92,7 @@ export function getGarret(): GarretPlatform {
     secrets: stubSecrets,
     fetch: (...a: Parameters<typeof fetch>) => fetch(...a),
     service: <T extends ServiceClient = ServiceClient>(): T =>
-      ({ connected: false, query: nope }) as unknown as T,
+      ({ status: nope, query: nope }) as unknown as T,
     notify: () => {},
     openExternal: async () => false,
     clipboard: { readText: nope, writeText: nope },
