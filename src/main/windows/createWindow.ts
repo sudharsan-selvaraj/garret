@@ -156,7 +156,9 @@ export function createWindow(mode: WindowMode): BrowserWindow {
     win.loadFile(join(__dirname, '../renderer/index.html'))
   }
 
-  if (!app.isPackaged && !isDesktop) {
+  // Open the board window's DevTools in dev — detached, so it's a separate window even when the
+  // board is pinned to the desktop layer.
+  if (!app.isPackaged) {
     win.webContents.openDevTools({ mode: 'detach' })
   }
 
