@@ -108,9 +108,15 @@ export class ExtensionHost {
   /** Graceful teardown: ask the host to run onDispose + exit, then hard-kill if it lingers. */
   async dispose(): Promise<void> {
     if (this.killed) return
+    this.killed = true // set first: no frame can be posted to a disposing child
+    this.frameCb = null
+    let timer: NodeJS.Timeout | undefined
     const exited = new Promise<boolean>((resolve) => {
-      this.child.once('exit', () => resolve(true))
-      setTimeout(() => resolve(false), 3000)
+      this.child.once('exit', () => {
+        clearTimeout(timer)
+        resolve(true)
+      })
+      timer = setTimeout(() => resolve(false), 3000)
     })
     try {
       this.child.postMessage({ t: 'dispose' })
@@ -118,8 +124,6 @@ export class ExtensionHost {
       /* already gone */
     }
     if (!(await exited)) this.child.kill()
-    this.killed = true
-    this.frameCb = null
   }
 }
 

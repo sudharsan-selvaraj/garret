@@ -116,12 +116,18 @@ export function defineHost<Api extends Methods, Events extends EventMap = EventM
     emit: (channel, payload) => send({ t: 'event', channel, payload }),
     stream: <Chunk, Result = void>(fn: StreamFn<Chunk, Result>) =>
       ({ [STREAM_RUNTIME]: fn as StreamFn<unknown, unknown> }) as unknown as Stream<Chunk, Result>,
+    // Scrub GARRET_* from the FINAL merged env, always — a caller-supplied opts.env must never
+    // reopen the leak (the vault key would otherwise reach adb/scrcpy/shells the author didn't write).
     spawn: (argv, opts) =>
       track(
-        nodeSpawn(argv[0], argv.slice(1), { ...opts, shell: false, env: opts?.env ?? scrubbedEnv(process.env) })
+        nodeSpawn(argv[0], argv.slice(1), {
+          ...opts,
+          shell: false,
+          env: scrubbedEnv({ ...process.env, ...(opts?.env ?? {}) })
+        })
       ),
     spawnShell: (command, opts) =>
-      track(nodeSpawn(command, { ...opts, shell: true, env: opts?.env ?? scrubbedEnv(process.env) })),
+      track(nodeSpawn(command, { ...opts, shell: true, env: scrubbedEnv({ ...process.env, ...(opts?.env ?? {}) }) })),
     resolveBinary,
     storage: makeStorage(),
     secrets: makeSecrets(),
@@ -165,18 +171,29 @@ export function defineHost<Api extends Methods, Events extends EventMap = EventM
       .catch((err) => out.error(err))
   }
 
-  async function handleCall(id: string, method: string, args: unknown): Promise<void> {
+  async function handleCall(id: string, method: string, args: unknown, streaming: boolean): Promise<void> {
     const methods = ready as Api | undefined
     const fn = methods?.[method]
     if (typeof fn !== 'function') {
-      return send({ t: 'err', id, code: 'BAD_ARGS', message: `unknown method: ${method}` })
+      const e = { code: 'BAD_ARGS', message: `unknown method: ${method}` }
+      return send(streaming ? { t: 'stream_err', id, ...e } : { t: 'err', id, ...e })
     }
     try {
       const result = await fn(args)
-      if (isStream(result)) driveStream(id, result[STREAM_RUNTIME])
+      const streamRet = isStream(result)
+      // Reconcile the client's static stream-list against the runtime return, so a mismatch is a
+      // loud error, not a silent hang (S2).
+      if (streaming && !streamRet) {
+        return send({ t: 'stream_err', id, code: 'BAD_ARGS', message: `method "${method}" did not return a stream` })
+      }
+      if (!streaming && streamRet) {
+        return send({ t: 'err', id, code: 'BAD_ARGS', message: `method "${method}" is streaming — call it as a stream` })
+      }
+      if (streamRet) driveStream(id, result[STREAM_RUNTIME])
       else send({ t: 'res', id, result })
     } catch (err) {
-      send({ t: 'err', id, ...wireError(err) })
+      const e = wireError(err)
+      send(streaming ? { t: 'stream_err', id, code: e.code, message: e.message } : { t: 'err', id, ...e })
     }
   }
 
@@ -187,7 +204,7 @@ export function defineHost<Api extends Methods, Events extends EventMap = EventM
     switch (msg.t) {
       case 'req':
       case 'stream_start':
-        void handleCall(msg.id, msg.method, msg.args)
+        void handleCall(msg.id, msg.method, msg.args, msg.t === 'stream_start')
         break
       case 'cancel':
         streams.get(msg.id)?.abort()
@@ -215,6 +232,7 @@ export function defineHost<Api extends Methods, Events extends EventMap = EventM
 // ── helpers ──────────────────────────────────────────────────────────────────────────────────
 function wireError(err: unknown): { code: string; message: string; hint?: string } {
   if (err instanceof GarretError) return { code: err.code, message: err.message, hint: err.hint }
+  if (err instanceof Error && err.name === 'AbortError') return { code: 'CANCELLED', message: err.message }
   return { code: 'INTERNAL', message: err instanceof Error ? err.message : String(err) }
 }
 

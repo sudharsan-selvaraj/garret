@@ -36,9 +36,20 @@ async function syncUiDirs(): Promise<void> {
   resetUiDirs((await resolveEnabled()).map((e) => ({ id: e.id, dir: e.uiDir, tier: e.tier })))
 }
 
+let currentActive = true
 /** Broadcast board activity to every bound widget (drives useActive / g.active). */
 export function broadcastActive(active: boolean): void {
+  currentActive = active
   for (const wcId of bound.keys()) webContents.fromId(wcId)?.send(Channels.extActive, active)
+}
+
+/** Tear down every live binding + host for an extension (on disable / uninstall). */
+async function revokeExt(extId: string): Promise<void> {
+  for (const [wcId, b] of [...bound]) {
+    if (b.extId !== extId) continue
+    bound.delete(wcId)
+    await killHost(wcId)
+  }
 }
 
 export function registerExtHandlers(): void {
@@ -66,8 +77,19 @@ export function registerExtHandlers(): void {
     )
   }))
 
-  // ── bind a placed widget webview to its extension (launch the host if full tier) ─────────────
-  ipcMain.handle(Channels.extBind, async (_e, extensionId: string, instanceId: string, wcId: number) => {
+  // ── bind: the widget guest binds ITSELF; we key on e.sender (unforgeable) + verify it is really
+  //    running this extension's garret://<id>/ origin. A renderer cannot bind an arbitrary webview
+  //    to another extension's capabilities (B2). Launch the host if full tier.
+  ipcMain.handle(Channels.extBind, async (e, extensionId: string, instanceId: string) => {
+    const wcId = e.sender.id
+    let originOk = false
+    try {
+      const u = new URL(e.sender.getURL())
+      originOk = u.protocol === 'garret:' && u.hostname === extensionId
+    } catch {
+      originOk = false
+    }
+    if (!originOk) return { ok: false, error: 'origin mismatch' }
     const ext = (await resolveEnabled()).find((x) => x.id === extensionId)
     if (!ext) return { ok: false, error: `unknown extension: ${extensionId}` }
     bound.set(wcId, { extId: ext.id, instanceId, tier: ext.tier, capabilities: ext.capabilities })
@@ -79,6 +101,7 @@ export function registerExtHandlers(): void {
         return { ok: false, error: err instanceof Error ? err.message : String(err) }
       }
     }
+    webContents.fromId(wcId)?.send(Channels.extActive, currentActive) // S4: fresh state on bind
     return { ok: true, hasHost: ext.nodeEntry !== undefined }
   })
   ipcMain.handle(Channels.extUnbind, async (_e, wcId: number) => {
@@ -104,16 +127,23 @@ export function registerExtHandlers(): void {
   ipcMain.handle(Channels.extInstallCleanup, (_e, dir: string) => cleanupStaging(dir))
   ipcMain.handle(Channels.extInstallCommit, async (_e, plan: ExtInstallPlan) => {
     const res = await commitInstall(plan)
-    if (res.ok) await syncUiDirs()
+    if (res.ok) {
+      await revokeExt(plan.id) // any running host is the OLD code now — tear it down; U3 rebinds
+      await syncUiDirs()
+    }
     return res
   })
   ipcMain.handle(Channels.extListInstalled, () => listInstalled())
   ipcMain.handle(Channels.extSetEnabled, async (_e, id: string, on: boolean) => {
     const res = await setEnabled(id, on)
-    if (res.ok) await syncUiDirs()
+    if (res.ok) {
+      if (!on) await revokeExt(id) // kill live bindings/hosts so no stale capability ceiling survives
+      await syncUiDirs()
+    }
     return res
   })
   ipcMain.handle(Channels.extRemove, async (_e, id: string) => {
+    await revokeExt(id)
     await removeExtension(id)
     await syncUiDirs()
   })

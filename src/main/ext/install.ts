@@ -352,10 +352,3 @@ export async function resolveEnabled(): Promise<ResolvedExt[]> {
   }
   return out
 }
-
-/** The declared capability ceiling for a running extension (broker reads this, not the manifest). */
-export async function capabilitiesOf(id: string): Promise<{ tier: ExtTier; capabilities: string[] } | null> {
-  const rec = await readRecord(id)
-  if (!rec || !recordMacOk(rec)) return null
-  return { tier: rec.tier, capabilities: rec.capabilities }
-}

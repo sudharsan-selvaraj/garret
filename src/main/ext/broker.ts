@@ -150,8 +150,16 @@ export async function platformCall(
       const url = String(a0)
       if (!fetchAllowed(binding, url)) throw new GarretError('NETWORK', `network to ${url} not allowed`)
       const res = await fetch(url, a1 as RequestInit | undefined)
-      // Return a plain, structured-clone-safe shape (the preload rebuilds a Response-like).
-      return { ok: res.ok, status: res.status, headers: Object.fromEntries(res.headers), body: await res.text() }
+      // Return raw bytes (Uint8Array survives structured clone) so binary/blob responses aren't
+      // text-corrupted; the preload rebuilds a faithful Response from these. (set-cookie collapses
+      // via fromEntries — acceptable; widgets shouldn't read cookies.)
+      return {
+        ok: res.ok,
+        status: res.status,
+        statusText: res.statusText,
+        headers: Object.fromEntries(res.headers),
+        bodyBytes: new Uint8Array(await res.arrayBuffer())
+      }
     }
     case 'service': {
       const id = String(a0)
