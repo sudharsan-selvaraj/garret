@@ -4,9 +4,9 @@ import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 // The scrcpy server (~66KB, Apache-2.0) runs ON the device. Version MUST match SCRCPY_VERSION in
 // host/adb/mirror.ts (the server verifies its launch version arg). Fetched on demand, not vendored.
 const JAR = 'host/assets/scrcpy-server.jar'
-const JAR_URL = 'https://github.com/Genymobile/scrcpy/releases/download/v2.3.1/scrcpy-server-v2.3.1'
+const JAR_URL = 'https://github.com/Genymobile/scrcpy/releases/download/v3.3.1/scrcpy-server-v3.3.1'
 if (!existsSync(JAR)) {
-  console.log('fetching scrcpy-server.jar (v2.3.1)…')
+  console.log('fetching scrcpy-server.jar (v3.3.1)…')
   const res = await fetch(JAR_URL)
   if (!res.ok) throw new Error(`failed to fetch scrcpy-server.jar: ${res.status}`)
   mkdirSync('host/assets', { recursive: true })

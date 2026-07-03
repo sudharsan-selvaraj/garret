@@ -1,14 +1,17 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { Adb, type AdbServerClient } from '@yume-chan/adb'
-import { AdbScrcpyClient, AdbScrcpyOptions2_3 } from '@yume-chan/adb-scrcpy'
+import { AdbScrcpyClient, AdbScrcpyOptions3_3_1 } from '@yume-chan/adb-scrcpy'
 import { DefaultServerPath, type ScrcpyControlMessageWriter, type ScrcpyMediaStreamPacket } from '@yume-chan/scrcpy'
 import { ReadableStream } from '@yume-chan/stream-extra'
 import type { VideoChunk, AudioChunk, MirrorConfig } from '../../shared/api'
 
-// The scrcpy server (a ~66KB .jar) runs ON the device via app_process. It VERIFIES the version arg it's
-// launched with equals its own — so the vendored jar and this string must match exactly.
-const SCRCPY_VERSION = '2.3.1'
+// The scrcpy server (a ~90KB .jar) runs ON the device via app_process. It VERIFIES the version arg it's
+// launched with equals its own — so the vendored jar (see build.mjs) and this string must match.
+// scrcpy 3.3.1 is required for modern Android (2.x fails on Android 14+: SurfaceControl.createDisplay
+// was removed — verified live against an Android 16 device). The option-class family (3_3_1) must also
+// match the server line. See package.json "comment".
+const SCRCPY_VERSION = '3.3.1'
 
 /** The bundled scrcpy-server jar, copied next to the built host (dist/host/) by build.mjs. */
 async function serverJarStream(): Promise<ReadableStream<Uint8Array>> {
@@ -53,7 +56,7 @@ export async function openMirror(
   const adb = new Adb(await serverClient.createTransport({ serial }))
   await AdbScrcpyClient.pushServer(adb, await serverJarStream())
 
-  const options = new AdbScrcpyOptions2_3(
+  const options = new AdbScrcpyOptions3_3_1(
     {
       video: true,
       audio: true,

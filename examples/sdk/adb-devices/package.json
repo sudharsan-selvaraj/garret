@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "description": "List + mirror Android devices via ya-webadb (host connects to the local adb server)",
-  "comment": "scrcpy + adb-scrcpy pinned EXACT: the option class (AdbScrcpyOptions2_3) + SCRCPY_VERSION in host/adb/mirror.ts + the jar URL in build.mjs must move together. A caret float to 2.4+ would break at first mirror, not at install.",
+  "comment": "scrcpy stack pinned EXACT. Three things must move together: the option class (AdbScrcpyOptions3_3_1) in host/adb/mirror.ts, SCRCPY_VERSION='3.3.1' there, and the jar URL (v3.3.1) in build.mjs. scrcpy 3.3.1 is required for modern Android — 2.x fails on Android 14+ (SurfaceControl.createDisplay removed; verified live on Android 16). @yume-chan npm versions are decoupled from scrcpy protocol versions, so 2.3.x packages expose the 3_3_1 option class.",
   "dependencies": {
     "@yume-chan/adb": "^2.6.0",
     "@yume-chan/adb-scrcpy": "2.3.2",

@@ -155,7 +155,7 @@ Needs a small, **generic** extension to the surface primitive (device-agnostic, 
 ## Live verification checklist (needs a device — deferred from Phase C)
 
 Phase C was validated structurally (typecheck + bundle) but not live. Confirm with a device attached:
-1. scrcpy-server accepts launch `version='2.3.1'` against the `v2.3.1` jar (version mismatch = hard fail).
+1. scrcpy-server accepts launch `version='3.3.1'` against the `v3.3.1` jar (version mismatch = hard fail).
 2. Sustained mirror with video **and** audio, and video-only, and audio-only — no stall (the hub drain fix).
 3. `scrcpy-server` on the device is actually killed on window close **and** on stream cancel (`adb shell ps | grep scrcpy`).
 4. cancel → re-subscribe yields a working session (hub reset-on-empty).
