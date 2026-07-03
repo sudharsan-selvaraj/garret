@@ -59,6 +59,10 @@ another author's widget. This single restriction is what makes "a widget opens a
 ```ts
 // Available on the platform: g.surfaces (both tiers; gated by the "windows" capability).
 interface SurfaceApi {
+  // Reload-durable close tracking: a handle's onClose/closed() live in the opener's current context
+  // (a webview reload discards them — the surface itself survives). onClosed re-subscribes fresh on
+  // each mount and still receives closes for surfaces this placement opened before the reload.
+  onClosed(cb: (instanceId: string) => void): () => void
   open(surfaceId: string, opts?: {
     props?: Record<string, unknown>    // initial, immutable, structured-clone
     title?: string

@@ -48,8 +48,14 @@ export interface SurfaceHandle {
   onClose(cb: () => void): () => void
 }
 export interface SurfaceApi {
-  /** Open a sibling surface (declared in this package's manifest) as a floating, focusable window. */
+  /** Open a sibling surface (declared in this package's manifest) as a floating, focusable window.
+   *  Rejects with an Error (message from Garret) if denied — e.g. missing `windows` capability,
+   *  unknown surface, or the concurrent-window limit. */
   open(surfaceId: string, opts?: SurfaceOpenOptions): Promise<SurfaceHandle>
+  /** Observe closes of this opener's surfaces by instanceId. Unlike a handle's `onClose`/`closed()`
+   *  (scoped to the current context), this SURVIVES an opener reload — re-subscribe on mount for
+   *  reload-durable close tracking. */
+  onClosed(cb: (instanceId: string) => void): () => void
 }
 export interface GarretPlatform {
   /** per-extension (shared across placements), atomic + key-merged. */
@@ -128,7 +134,7 @@ export function getGarret(): GarretPlatform {
     clipboard: { readText: nope, writeText: nope },
     active: true,
     onActiveChange: () => () => {},
-    surfaces: { open: nope },
+    surfaces: { open: nope, onClosed: () => () => {} },
     props: {},
     onReady: (cb: () => void) => {
       cb()

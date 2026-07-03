@@ -115,6 +115,13 @@ const surfaces = {
         return () => onCloseCbs.delete(cb)
       }
     }
+  },
+  // Global close observer for THIS opener's surfaces. Unlike a handle's onClose/closed() (scoped to
+  // the current context), this survives an opener reload: the fresh context re-subscribes and main
+  // delivers closes to the re-pointed opener wc. Use it for reload-durable tracking.
+  onClosed(cb: (instanceId: string) => void): () => void {
+    surfaceClosedCbs.add(cb)
+    return () => surfaceClosedCbs.delete(cb)
   }
 }
 
