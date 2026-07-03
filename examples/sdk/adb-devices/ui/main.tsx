@@ -1,45 +1,42 @@
 import { createRoot } from 'react-dom/client'
-import { useCallback, useEffect, useState } from 'react'
-import { useHost } from '@garretapp/sdk/react'
-import type { Api, AdbDevice } from '../shared/api'
+import { useEffect, useState } from 'react'
+import { useHost, useHostEvent } from '@garretapp/sdk/react'
+import type { Api, Events, AdbDevice, AdbStatus } from '../shared/api'
 
 function App(): JSX.Element {
-  const host = useHost<Api>()
-  const [devices, setDevices] = useState<AdbDevice[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  const host = useHost<Api, Events>()
+  const [devices, setDevices] = useState<AdbDevice[]>([])
+  const [status, setStatus] = useState<AdbStatus>({ ok: false, state: 'connecting' })
 
-  const refresh = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      setDevices(await host.listDevices())
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setLoading(false)
-    }
-  }, [host])
-
+  // Live — the host pushes on every device change (no polling) + on adb-status changes.
+  useHostEvent<Events, 'devices:changed'>('devices:changed', setDevices)
+  useHostEvent<Events, 'adb:status'>('adb:status', setStatus)
+  // Initial snapshot (covers state that landed before this UI mounted its listeners).
   useEffect(() => {
-    void refresh()
-  }, [refresh])
+    void host.status().then(setStatus)
+    void host.listDevices().then(setDevices)
+  }, [host])
 
   return (
     <div className="wrap">
       <header>
         <span className="title">Android devices</span>
-        <button onClick={() => void refresh()} disabled={loading}>
-          {loading ? '…' : 'Refresh'}
-        </button>
+        {status.ok && <span className="count">{devices.length}</span>}
       </header>
 
-      {error ? (
-        <p className="msg err">adb server unreachable — {error}</p>
-      ) : devices === null ? (
-        <p className="msg">Loading…</p>
+      {!status.ok ? (
+        <div className="msg">
+          {status.state === 'connecting' ? (
+            'Connecting to adb…'
+          ) : (
+            <>
+              <p className="err">{status.error ?? 'adb unavailable'}</p>
+              <button onClick={() => void host.retry()}>Retry</button>
+            </>
+          )}
+        </div>
       ) : devices.length === 0 ? (
-        <p className="msg">No devices. Connect one over USB and enable USB debugging.</p>
+        <p className="msg">No devices. Connect one over USB and authorize debugging.</p>
       ) : (
         <ul className="list">
           {devices.map((d) => (

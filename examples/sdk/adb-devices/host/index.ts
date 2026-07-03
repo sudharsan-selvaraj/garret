@@ -1,27 +1,44 @@
 import { defineHost } from '@garretapp/sdk/host'
-import { AdbServerClient } from '@yume-chan/adb'
-import { AdbServerNodeTcpConnector } from '@yume-chan/adb-server-node-tcp'
-import type { Api } from '../shared/api'
+import type { AdbServerClient } from '@yume-chan/adb'
+import type { Api, Events, AdbDevice, AdbStatus } from '../shared/api'
+import { getClient, ensureServer } from './adb/connection'
+import { startTracker } from './adb/tracker'
 
-// ya-webadb is pure TypeScript — it bundles into this raw-Node host with esbuild (no native .node
-// addon, which the installer would reject). We talk to the *local adb server* over TCP (the daemon
-// the `adb` CLI / Android Studio starts on 127.0.0.1:5037), so no adb binary needs to be on PATH.
-export default defineHost<Api>((ctx) => {
-  const connector = new AdbServerNodeTcpConnector({ host: '127.0.0.1', port: 5037 })
-  const client = new AdbServerClient(connector)
+// Thin controller: wires the adb connection + live tracker (host/adb/*) to the UI-facing API.
+// ya-webadb is pure TS → bundles into this raw-Node host (no native .node addon).
+export default defineHost<Api, Events>((ctx) => {
+  let observer: AdbServerClient.DeviceObserver | null = null
+  let current: AdbDevice[] = []
+  let status: AdbStatus = { ok: false, state: 'connecting' }
+
+  const setStatus = (s: AdbStatus): void => {
+    status = s
+    ctx.emit('adb:status', s)
+  }
+
+  const start = async (): Promise<void> => {
+    await observer?.stop()
+    observer = null
+    setStatus({ ok: false, state: 'connecting' })
+    const r = await ensureServer(ctx)
+    if (!r.ok) return setStatus({ ok: false, state: 'no-adb', error: r.error })
+    try {
+      observer = await startTracker(getClient(), (devices) => {
+        current = devices
+        ctx.emit('devices:changed', devices)
+      })
+      setStatus({ ok: true, state: 'connected' })
+    } catch (e) {
+      setStatus({ ok: false, state: 'error', error: e instanceof Error ? e.message : String(e) })
+    }
+  }
+
+  void start()
+  ctx.onDispose(() => void observer?.stop())
 
   return {
-    listDevices: async () => {
-      const devices = await client.getDevices()
-      ctx.log(`adb: ${devices.length} device(s)`)
-      return devices.map((d) => ({
-        serial: d.serial,
-        state: d.state,
-        product: d.product,
-        model: d.model,
-        device: d.device,
-        transportId: String(d.transportId) // bigint → string for the wire
-      }))
-    }
+    status: async () => status,
+    listDevices: async () => current,
+    retry: async () => start()
   }
 })

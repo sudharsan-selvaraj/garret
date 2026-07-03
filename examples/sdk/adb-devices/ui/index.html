@@ -8,10 +8,11 @@
       .wrap { padding: 12px 14px; }
       header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
       .title { font-weight: 600; }
-      button { font: inherit; color: #e6e6ea; background: #ffffff1a; border: 0; border-radius: 6px; padding: 4px 10px; }
+      .count { font-size: 12px; opacity: 0.55; background: #ffffff14; border-radius: 10px; padding: 1px 8px; }
+      button { font: inherit; color: #e6e6ea; background: #ffffff1a; border: 0; border-radius: 6px; padding: 4px 10px; cursor: pointer; }
       button:disabled { opacity: 0.5; }
       .msg { opacity: 0.7; }
-      .msg.err { color: #ff8a8a; }
+      .msg .err, .err { color: #ff8a8a; opacity: 1; margin: 0 0 8px; }
       .list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
       .row { display: grid; grid-template-columns: 10px 1fr auto; align-items: center; gap: 8px; }
       .name { font-weight: 500; }
