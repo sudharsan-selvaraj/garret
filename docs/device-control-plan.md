@@ -152,6 +152,17 @@ Needs a small, **generic** extension to the surface primitive (device-agnostic, 
 - **E. UI: audio** — WebCodecs `AudioDecoder` → Web Audio (video-only fallback on <11).
 - **F. UI: control** — pointer/keyboard → scrcpy control; then one-shot actions (screenshot/reboot).
 
+## Live verification checklist (needs a device — deferred from Phase C)
+
+Phase C was validated structurally (typecheck + bundle) but not live. Confirm with a device attached:
+1. scrcpy-server accepts launch `version='2.3.1'` against the `v2.3.1` jar (version mismatch = hard fail).
+2. Sustained mirror with video **and** audio, and video-only, and audio-only — no stall (the hub drain fix).
+3. `scrcpy-server` on the device is actually killed on window close **and** on stream cancel (`adb shell ps | grep scrcpy`).
+4. cancel → re-subscribe yields a working session (hub reset-on-empty).
+5. unauthorized / offline / Android <11 (no audio) devices surface usable errors, not a hang.
+6. `__dirname/scrcpy-server.jar` resolves in a packed/installed `.garret`.
+7. 8 Mbps / 60fps doesn't hit the SDK's no-backpressure drop path (Phase D must attach `.onData` synchronously + decode from the next keyframe on any gap).
+
 ## Confirmed decisions
 
 1. **Control:** full interactive control (touch + keyboard) is v1 scope; **built view-only first (D),

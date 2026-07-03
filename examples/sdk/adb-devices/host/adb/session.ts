@@ -1,0 +1,107 @@
+import type { ReadableStream } from '@yume-chan/stream-extra'
+import type { ScrcpyMediaStreamPacket } from '@yume-chan/scrcpy'
+import { toVideoChunk, toAudioChunk, type MirrorSession } from './mirror'
+import type { VideoChunk, AudioChunk } from '../../shared/api'
+
+/**
+ * A mirror session HUB. scrcpy multiplexes video + audio over one connection and ya-webadb warns that
+ * BOTH parsed streams must be consumed or the shared parser blocks (a video-only UI would stall).
+ * So the hub drains both device streams immediately — independent of whether the UI has subscribed —
+ * and fans packets out to subscribers (dropping when none). It ref-counts subscribers and calls
+ * `onEmpty` when the last one leaves (or on open failure) so the host can close + reset the session,
+ * fixing both the stall and the cancel-leak/poisoned-session bugs.
+ */
+export interface Sink<C> {
+  push(chunk: C): void
+  end(): void
+  error(err: unknown): void
+}
+export interface MirrorHub {
+  subscribeVideo(sink: Sink<VideoChunk>): () => void
+  subscribeAudio(sink: Sink<AudioChunk>): () => void
+  close(): Promise<void>
+}
+
+export function createHub(open: () => Promise<MirrorSession>, onEmpty: () => void): MirrorHub {
+  const videoSinks = new Set<Sink<VideoChunk>>()
+  const audioSinks = new Set<Sink<AudioChunk>>()
+  let meta: (VideoChunk & { kind: 'meta' }) | null = null
+  let failed: unknown = null
+  let closed = false
+
+  const refDroppedToZero = (): void => {
+    if (videoSinks.size === 0 && audioSinks.size === 0) onEmpty()
+  }
+
+  const sessionP = open()
+  void sessionP
+    .then((s) => {
+      meta = { kind: 'meta', ...s.meta }
+      for (const v of videoSinks) v.push(meta)
+      // Drain video (always — even with no sink — to keep the connection flowing).
+      void drain(s.video, toVideoChunk, videoSinks)
+      // Drain audio if present; otherwise end audio sinks immediately (Android <11).
+      if (s.audio) void drain(s.audio, toAudioChunk, audioSinks)
+      else for (const a of audioSinks) a.end()
+    })
+    .catch((e) => {
+      failed = e
+      for (const v of videoSinks) v.error(e)
+      for (const a of audioSinks) a.error(e)
+      onEmpty() // poisoned → host nulls the hub so a later subscribe re-opens
+    })
+
+  async function drain<C>(
+    stream: ReadableStream<ScrcpyMediaStreamPacket>,
+    map: (p: ScrcpyMediaStreamPacket) => C,
+    sinks: Set<Sink<C>>
+  ): Promise<void> {
+    const reader = stream.getReader()
+    try {
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        const chunk = map(value)
+        for (const s of sinks) s.push(chunk)
+      }
+      for (const s of sinks) s.end()
+    } catch (e) {
+      for (const s of sinks) s.error(e)
+    }
+  }
+
+  return {
+    subscribeVideo(sink) {
+      if (failed) {
+        sink.error(failed)
+        return () => {}
+      }
+      if (meta) sink.push(meta)
+      videoSinks.add(sink)
+      return () => {
+        videoSinks.delete(sink)
+        refDroppedToZero()
+      }
+    },
+    subscribeAudio(sink) {
+      if (failed) {
+        sink.error(failed)
+        return () => {}
+      }
+      audioSinks.add(sink)
+      return () => {
+        audioSinks.delete(sink)
+        refDroppedToZero()
+      }
+    },
+    async close() {
+      if (closed) return
+      closed = true
+      try {
+        await (await sessionP).close()
+      } catch {
+        /* already gone / never opened */
+      }
+    }
+  }
+}

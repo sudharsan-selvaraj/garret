@@ -2,11 +2,12 @@
   "name": "garret-example-adb-devices",
   "private": true,
   "version": "0.1.0",
-  "description": "List Android devices via ya-webadb (host connects to the local adb server)",
+  "description": "List + mirror Android devices via ya-webadb (host connects to the local adb server)",
+  "comment": "scrcpy + adb-scrcpy pinned EXACT: the option class (AdbScrcpyOptions2_3) + SCRCPY_VERSION in host/adb/mirror.ts + the jar URL in build.mjs must move together. A caret float to 2.4+ would break at first mirror, not at install.",
   "dependencies": {
     "@yume-chan/adb": "^2.6.0",
-    "@yume-chan/adb-scrcpy": "^2.3.2",
+    "@yume-chan/adb-scrcpy": "2.3.2",
     "@yume-chan/adb-server-node-tcp": "^2.5.2",
-    "@yume-chan/scrcpy": "^2.3.0"
+    "@yume-chan/scrcpy": "2.3.0"
   }
 }
