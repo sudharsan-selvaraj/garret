@@ -85,7 +85,7 @@ ipcRenderer.on(CONFIG_CHANGE, (_e: IpcRendererEvent, c: unknown) => {
 // ── surfaces (floating sibling windows) + launch props + ready ─────────────────────────────────────
 let launchProps: Record<string, unknown> = {}
 let ready = false
-const readyCbs = new Set<() => void>()
+const readyCbs = new Set<(props: Record<string, unknown>) => void>()
 const surfaceClosedCbs = new Set<(id: string) => void>()
 ipcRenderer.on(SURFACE_CLOSED, (_e: IpcRendererEvent, id: string) => surfaceClosedCbs.forEach((cb) => cb(id)))
 
@@ -176,12 +176,12 @@ const runtime = {
     resize: (width: number, height: number): void => ipcRenderer.send(SURFACE_RESIZE, width, height),
     close: (): void => ipcRenderer.send(SURFACE_SELF_CLOSE)
   },
-  get props(): Record<string, unknown> {
-    return launchProps
-  },
-  onReady(cb: () => void): () => void {
+  // Launch props are delivered through onReady's CALLBACK (a getter would be frozen at contextBridge
+  // exposure time — before bind resolves — so `get props()` would always read `{}`). Same reason the
+  // config/active APIs use functions/callbacks, not getters.
+  onReady(cb: (props: Record<string, unknown>) => void): () => void {
     if (ready) {
-      cb()
+      cb(launchProps)
       return () => {}
     }
     readyCbs.add(cb)
@@ -219,7 +219,7 @@ void (async () => {
     /* not bound — host calls will surface UNAVAILABLE via the SDK client */
   } finally {
     ready = true
-    readyCbs.forEach((cb) => cb())
+    readyCbs.forEach((cb) => cb(launchProps))
     readyCbs.clear()
   }
 })()

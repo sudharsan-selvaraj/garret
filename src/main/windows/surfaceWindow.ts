@@ -32,6 +32,8 @@ interface SurfaceRecord {
   props: Record<string, unknown>
   uiUrl: string // garret://<extId>/~<surfaceId>/
   preloadUrl: string // extBridge, for the inner WidgetSurface
+  title: string
+  frame: boolean // false → the host root draws draggable chrome (a webview can't set app-region)
   key?: string // singleton dedup key (per owner+surface)
   ownerExtId: string
   ownerInstanceId: string // the DIRECT opener placement/surface instanceId
@@ -161,6 +163,8 @@ export function openSurface(
     props: p.reqOpts.props && typeof p.reqOpts.props === 'object' ? p.reqOpts.props : {},
     uiUrl: p.uiUrl,
     preloadUrl: p.preloadUrl,
+    title,
+    frame: p.spec.frame,
     key,
     ownerExtId: oExt,
     ownerInstanceId: oInst,
@@ -238,10 +242,10 @@ export function focusSurface(instanceId: string): boolean {
 /** Render config for the surface window's root (keyed on its OWN top-level wcId — unforgeable). */
 export function initForWc(
   surfaceWcId: number
-): { extId: string; instanceId: string; uiUrl: string; preloadUrl: string } | null {
+): { extId: string; instanceId: string; uiUrl: string; preloadUrl: string; title: string; frame: boolean } | null {
   for (const r of records.values()) {
     if (r.surfaceWcId === surfaceWcId) {
-      return { extId: r.extId, instanceId: r.instanceId, uiUrl: r.uiUrl, preloadUrl: r.preloadUrl }
+      return { extId: r.extId, instanceId: r.instanceId, uiUrl: r.uiUrl, preloadUrl: r.preloadUrl, title: r.title, frame: r.frame }
     }
   }
   return null

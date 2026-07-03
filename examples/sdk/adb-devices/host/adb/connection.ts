@@ -1,4 +1,7 @@
 import { connect } from 'node:net'
+import { existsSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 import { AdbServerClient } from '@yume-chan/adb'
 import { AdbServerNodeTcpConnector } from '@yume-chan/adb-server-node-tcp'
 import type { HostContext } from '@garretapp/sdk/host'
@@ -35,13 +38,30 @@ function serverReachable(): Promise<boolean> {
  * Ensure a reachable adb server: use it if already running; else start it via a system `adb`
  * (`process` capability); else fail with an install hint the UI shows the user.
  */
+/** Locate `adb`: PATH first (via the SDK's login-shell probe), then the standard Android SDK dirs
+ *  (Android Studio installs adb there but usually NOT on the shell PATH). */
+async function findAdb(ctx: HostContext): Promise<string | null> {
+  try {
+    return await ctx.resolveBinary('adb', { hint: 'brew install android-platform-tools' })
+  } catch {
+    /* not on PATH — fall through to SDK locations */
+  }
+  const candidates = [
+    process.env.ANDROID_HOME && join(process.env.ANDROID_HOME, 'platform-tools', 'adb'),
+    process.env.ANDROID_SDK_ROOT && join(process.env.ANDROID_SDK_ROOT, 'platform-tools', 'adb'),
+    join(homedir(), 'Library', 'Android', 'sdk', 'platform-tools', 'adb'), // macOS default
+    join(homedir(), 'Android', 'Sdk', 'platform-tools', 'adb'), // linux default
+    '/opt/homebrew/bin/adb',
+    '/usr/local/bin/adb'
+  ].filter((p): p is string => typeof p === 'string')
+  return candidates.find((p) => existsSync(p)) ?? null
+}
+
 export async function ensureServer(ctx: HostContext): Promise<{ ok: true } | { ok: false; error: string }> {
   if (await serverReachable()) return { ok: true }
 
-  let adb: string
-  try {
-    adb = await ctx.resolveBinary('adb', { hint: 'brew install android-platform-tools' })
-  } catch {
+  const adb = await findAdb(ctx)
+  if (!adb) {
     return { ok: false, error: 'adb not found — install Android platform-tools (brew install android-platform-tools), then Retry.' }
   }
 

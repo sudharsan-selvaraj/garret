@@ -14,7 +14,7 @@ import type { Api, VideoChunk } from '../../shared/api'
 function Mirror(): JSX.Element {
   const host = useHost<Api>()
   const g = useGarret()
-  const { serial, model } = useProps<{ serial: string; model?: string }>()
+  const { serial } = useProps<{ serial: string; model?: string }>()
   const screenRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [connecting, setConnecting] = useState(true)
@@ -59,17 +59,14 @@ function Mirror(): JSX.Element {
     }
   }, [serial, host, g])
 
+  // The host (SurfaceWindowRoot) draws the draggable titlebar + close; here we just fill with the screen.
   return (
-    <div className="phone">
-      <div className="bar">
-        <span className="label">{model || serial}</span>
-        <button className="close" title="Close" onClick={() => g.window.close()}>
-          ✕
-        </button>
-      </div>
-      <div className="screen-wrap" ref={screenRef}>
-        {error ? <p className="msg err">{error}</p> : connecting ? <p className="msg">Connecting…</p> : null}
-      </div>
+    <div className="screen-wrap" ref={screenRef}>
+      {error ? (
+        <p className="msg err">{error}</p>
+      ) : connecting ? (
+        <p className="msg">{serial ? `Connecting to ${serial}…` : 'No device (props missing)'}</p>
+      ) : null}
     </div>
   )
 }

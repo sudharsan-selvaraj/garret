@@ -459,15 +459,39 @@ button[disabled],
   display: inline-flex;
   background: #fff;
 }
-/* Floating surface window: the guest fills the whole window. */
+/* Floating surface window: an optional host titlebar (drag/close) + the guest below it. */
 .surface-root {
   position: fixed;
   inset: 0;
   display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 12px; /* transparent windows read as a rounded card */
 }
 .surface-root .widget-webview {
   flex: 1;
 }
+/* Host-drawn chrome for frameless surfaces (a webview guest can't set -webkit-app-region). */
+.surface-titlebar {
+  -webkit-app-region: drag;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 28px;
+  padding: 0 6px 0 12px;
+  font: 11px -apple-system, system-ui, sans-serif;
+  color: #cfcfd4;
+  background: #0d0d0f;
+  flex: none;
+}
+.surface-title { opacity: 0.7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.surface-close {
+  -webkit-app-region: no-drag;
+  width: 18px; height: 18px; line-height: 16px; text-align: center; padding: 0;
+  border: 0; border-radius: 50%; cursor: pointer;
+  background: #ffffff1a; color: #e6e6ea; font-size: 11px;
+}
+.surface-close:hover { background: #ff5f57; color: #fff; }
 .surface-root--msg {
   align-items: center;
   justify-content: center;

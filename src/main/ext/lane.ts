@@ -121,17 +121,18 @@ export function registerExtHandlers(): void {
     const ext = (await resolveEnabled()).find((x) => x.id === extensionId)
     if (!ext) return { ok: false, error: `unknown extension: ${extensionId}` }
     bound.set(wcId, { extId: ext.id, instanceId, tier: ext.tier, capabilities: ext.capabilities })
+    // Launch props for a spawned surface — computed BEFORE the host launch so a launch failure can't
+    // drop them, and delivered on every return path. ONLY if the guest is genuinely hosted inside that
+    // surface's window (embedder check), never by a guessed instanceId (B1).
+    const props = surfacePropsForBind(instanceId, e.sender.hostWebContents?.id) ?? {}
     if (ext.nodeEntry) {
       try {
         const host = await launchHost(wcId, ext.id, ext.nodeEntry)
         host.onFrame((msg) => webContents.fromId(wcId)?.send(Channels.extHostFrame, msg))
       } catch (err) {
-        return { ok: false, error: err instanceof Error ? err.message : String(err) }
+        return { ok: false, error: err instanceof Error ? err.message : String(err), props }
       }
     }
-    // If this guest is a spawned surface, hand it its launch props — but ONLY if it's genuinely
-    // hosted inside that surface's window (embedder check), never by a guessed instanceId (B1).
-    const props = surfacePropsForBind(instanceId, e.sender.hostWebContents?.id) ?? {}
     // (Re)point close-notifications for any surfaces this placement opened, in case it just reloaded
     // (a webview reload rebinds the same {extId, instanceId} under a new wcId).
     repointOwner(ext.id, instanceId, wcId)

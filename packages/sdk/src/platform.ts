@@ -86,10 +86,10 @@ export interface GarretPlatform {
   surfaces: SurfaceApi
   /** Controls for this UI's own surface window (no-op for a board-placed widget). */
   window: WindowControls
-  /** Launch props for a spawned surface; `{}` for the board/primary surface. Available after `onReady`. */
-  props: Record<string, unknown>
-  /** Fires once the runtime has bound (so `props` are populated); fires immediately if already ready. */
-  onReady(cb: () => void): () => void
+  /** Fires once the runtime has bound, with this surface's launch props (`{}` for the board surface).
+   *  Fires immediately if already ready. Props arrive via the callback — NOT a live getter — because
+   *  a getter would be frozen at contextBridge exposure time (before bind). Use `useProps()` in React. */
+  onReady(cb: (props: Record<string, unknown>) => void): () => void
   /** false in a plain browser (dev) — render a "run inside Garret" state instead of a blank UI. */
   inGarret: boolean
 }
@@ -149,9 +149,8 @@ export function getGarret(): GarretPlatform {
     onActiveChange: () => () => {},
     surfaces: { open: nope, onClosed: () => () => {} },
     window: { setAspectRatio: () => {}, resize: () => {}, close: () => {} },
-    props: {},
-    onReady: (cb: () => void) => {
-      cb()
+    onReady: (cb: (props: Record<string, unknown>) => void) => {
+      cb({})
       return () => {}
     }
   }

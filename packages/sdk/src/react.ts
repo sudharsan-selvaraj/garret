@@ -112,13 +112,13 @@ export function useActive(): boolean {
 }
 
 /** Launch props for a spawned surface window (`g.surfaces.open(..., { props })`). `{}` for the board
- *  surface. Re-renders once the runtime is ready so the props are populated on first paint. The `T`
- *  is an unchecked cast — validate the shape yourself if it matters. */
+ *  surface. Delivered via `onReady`'s callback (a contextBridge getter would be frozen at exposure
+ *  time), so this re-renders when the runtime binds. The `T` is an unchecked cast — validate it yourself. */
 export function useProps<T = Record<string, unknown>>(): T {
   const g = getGarret()
-  const [, bump] = useState(0)
-  useEffect(() => g.onReady(() => bump((n) => n + 1)), [g])
-  return g.props as T
+  const [props, setProps] = useState<Record<string, unknown>>({})
+  useEffect(() => g.onReady((p) => setProps(p)), [g])
+  return props as T
 }
 
 export { GarretError } from './errors'

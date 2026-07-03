@@ -113,6 +113,9 @@ export interface SurfaceInit {
   uiUrl: string
   /** file:// URL of the extBridge preload for the guest webview. */
   preloadUrl: string
+  title: string
+  /** false → the root draws a draggable titlebar (a webview guest can't set `-webkit-app-region`). */
+  frame: boolean
 }
 
 /**
