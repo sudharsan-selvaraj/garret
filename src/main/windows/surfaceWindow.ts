@@ -292,8 +292,31 @@ export function setSurfaceAspectRatio(embedderWcId: number | undefined, ratio: n
     return
   }
   rec.win.setAspectRatio(r, { width: 0, height: chrome })
-  const [w] = rec.win.getSize()
-  rec.win.setSize(w, Math.round(w / r) + chrome) // fit the device screen exactly (no crop/letterbox)
+  // Resize NOW to a sensible size for this orientation (setAspectRatio only constrains future
+  // resizes). Aim for a ~700px long edge, clamped to 90% of the display — so portrait is tall and
+  // landscape is wide (a device rotation re-orients the window instead of squashing it).
+  const area = screen.getDisplayMatching(rec.win.getBounds()).workArea
+  const maxW = Math.floor(area.width * 0.9)
+  const maxH = Math.floor(area.height * 0.9) - chrome
+  const PREF = 700
+  let cw: number
+  let ch: number
+  if (r >= 1) {
+    cw = Math.min(PREF, maxW)
+    ch = Math.round(cw / r)
+  } else {
+    ch = Math.min(PREF, maxH)
+    cw = Math.round(ch * r)
+  }
+  if (cw > maxW) {
+    cw = maxW
+    ch = Math.round(cw / r)
+  }
+  if (ch > maxH) {
+    ch = maxH
+    cw = Math.round(ch * r)
+  }
+  rec.win.setSize(cw, ch + chrome)
 }
 export function resizeSurface(embedderWcId: number | undefined, width: number, height: number): void {
   const rec = recordByEmbedder(embedderWcId)

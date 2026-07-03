@@ -29,6 +29,7 @@ function Mirror(): JSX.Element {
     const decoder = new WebCodecsVideoDecoder({ codec: ScrcpyVideoCodecId.H264, renderer })
     const writer = decoder.writable.getWriter()
     decoder.sizeChanged(({ width, height }) => {
+      console.log('[mirror] sizeChanged', width, height) // rotation → new dims → re-aspect the window
       if (width && height) g.window.setAspectRatio(width / height)
     })
 
