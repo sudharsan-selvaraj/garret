@@ -41,6 +41,7 @@ interface SurfaceRecord {
 }
 
 const MAX_PROPS_BYTES = 256_000
+const SURFACE_TITLEBAR_H = 28 // must match .surface-titlebar height in styles.css (host-drawn chrome)
 
 const records = new Map<string, SurfaceRecord>()
 const lastOpenAt = new Map<string, number>() // ownerKey → ts, for the open rate limit
@@ -277,11 +278,22 @@ function winOpThrottled(surfaceWcId: number, op: string, now: number): boolean {
   return false
 }
 
-/** A surface shaping its OWN window (embedder-scoped — a guest can only affect the window it's in). */
+/** A surface shaping its OWN window (embedder-scoped — a guest can only affect the window it's in).
+ *  For a frameless surface the host draws a titlebar, so the ratio applies to the CONTENT below it
+ *  (extraSize) — and we resize NOW so the current window matches (setAspectRatio only constrains
+ *  future resizes), which is what fixes the "content cropped" look. */
 export function setSurfaceAspectRatio(embedderWcId: number | undefined, ratio: number): void {
   const rec = recordByEmbedder(embedderWcId)
   if (!rec || rec.win.isDestroyed() || winOpThrottled(rec.surfaceWcId, 'aspect', Date.now())) return
-  rec.win.setAspectRatio(Number.isFinite(ratio) && ratio > 0 ? ratio : 0) // 0 clears the lock
+  const r = Number.isFinite(ratio) && ratio > 0 ? ratio : 0
+  const chrome = rec.frame ? 0 : SURFACE_TITLEBAR_H
+  if (r <= 0) {
+    rec.win.setAspectRatio(0)
+    return
+  }
+  rec.win.setAspectRatio(r, { width: 0, height: chrome })
+  const [w] = rec.win.getSize()
+  rec.win.setSize(w, Math.round(w / r) + chrome) // fit the device screen exactly (no crop/letterbox)
 }
 export function resizeSurface(embedderWcId: number | undefined, width: number, height: number): void {
   const rec = recordByEmbedder(embedderWcId)

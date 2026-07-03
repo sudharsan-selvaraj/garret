@@ -4,7 +4,8 @@
     <meta charset="utf-8" />
     <style>
       :root { color-scheme: dark; }
-      html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+      /* Transparent — the window has no chrome/background; only the device screen (canvas) is opaque. */
+      html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
       #root { height: 100%; }
       /* The host window (SurfaceWindowRoot) draws the draggable titlebar; the guest fills the rest
          with the device screen. */
