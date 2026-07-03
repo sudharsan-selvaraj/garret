@@ -52,7 +52,10 @@ another author's widget. This single restriction is what makes "a widget opens a
 - `surfaces` — map of `surfaceId → { name, ui (contained path), defaultSize (px), minSize (px),
   resizable, frame (default true), transparent (default false) }`. `frame:false` + `transparent:true`
   give a chromeless, non-rectangular window (e.g. a rounded phone screen); a transparent surface gets
-  no opaque fill or square shadow.
+  no opaque fill or square shadow. **`transparent` forces user-resize off** (unreliable on macOS) —
+  size it with `g.window.resize` instead. **A frameless surface must provide its own move (a
+  `-webkit-app-region: drag` region) and close affordance**; the guaranteed escape hatch is
+  disabling the extension (→ `closeSurfacesForExt`). `g.window.*` ops are throttled per window.
 - Secondary-surface sizes are **pixels** (they're windows), unlike the primary's grid `defaultSize`.
 - Each surface `ui` is validated at install like the primary (contained path, exists), and served over
   the same `garret://<id>/<path>/` scheme with the same per-tier CSP.

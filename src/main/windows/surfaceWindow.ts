@@ -132,7 +132,9 @@ export function openSurface(
     minHeight,
     title,
     show: false,
-    resizable: p.spec.resizable,
+    // Transparent windows don't honor live edge-resize reliably on macOS — disable user resize and
+    // rely on the programmatic g.window.resize path instead (which works regardless of this flag).
+    resizable: p.spec.transparent ? false : p.spec.resizable,
     fullscreenable: false,
     frame: p.spec.frame,
     transparent: p.spec.transparent,
@@ -200,6 +202,8 @@ function onClosed(instanceId: string): void {
   if (!rec) return // idempotent (close() → 'closed' + programmatic paths)
   records.delete(instanceId)
   lastFocusAt.delete(instanceId)
+  lastWinOpAt.delete(`${rec.surfaceWcId}:aspect`)
+  lastWinOpAt.delete(`${rec.surfaceWcId}:resize`)
   // Cascade: close any surfaces this one opened (chained), then tell the opener it's gone.
   closeSurfacesForOwner(rec.extId, rec.instanceId)
   webContents.fromId(rec.openerWcId)?.send(Channels.extSurfaceClosed, instanceId)
@@ -257,18 +261,28 @@ function recordByEmbedder(embedderWcId: number | undefined): SurfaceRecord | nul
   return null
 }
 
+// Per-window, per-op throttle so a guest can't thrash its own window in a tight loop (self-scoped,
+// but avoids main-process churn). Keyed `${surfaceWcId}:${op}` so a legit set-aspect-then-resize pair
+// isn't dropped.
+const WIN_OP_MS = 60
+const lastWinOpAt = new Map<string, number>()
+function winOpThrottled(surfaceWcId: number, op: string, now: number): boolean {
+  const key = `${surfaceWcId}:${op}`
+  if (now - (lastWinOpAt.get(key) ?? 0) < WIN_OP_MS) return true
+  lastWinOpAt.set(key, now)
+  return false
+}
+
 /** A surface shaping its OWN window (embedder-scoped — a guest can only affect the window it's in). */
 export function setSurfaceAspectRatio(embedderWcId: number | undefined, ratio: number): void {
   const rec = recordByEmbedder(embedderWcId)
-  if (!rec || rec.win.isDestroyed()) return
+  if (!rec || rec.win.isDestroyed() || winOpThrottled(rec.surfaceWcId, 'aspect', Date.now())) return
   rec.win.setAspectRatio(Number.isFinite(ratio) && ratio > 0 ? ratio : 0) // 0 clears the lock
 }
 export function resizeSurface(embedderWcId: number | undefined, width: number, height: number): void {
   const rec = recordByEmbedder(embedderWcId)
-  if (!rec || rec.win.isDestroyed()) return
-  const w = clampPx(width, DEFAULT_W)
-  const h = clampPx(height, DEFAULT_H)
-  rec.win.setSize(w, h)
+  if (!rec || rec.win.isDestroyed() || winOpThrottled(rec.surfaceWcId, 'resize', Date.now())) return
+  rec.win.setSize(clampPx(width, DEFAULT_W), clampPx(height, DEFAULT_H))
 }
 
 /** True if `instanceId` is a live surface belonging to `extId` (authorizes close/focus by a sibling). */
