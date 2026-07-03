@@ -37,8 +37,12 @@ interface SurfaceRecord {
   openerWcId: number // where to deliver ext:surface-closed (re-pointed on opener rebind)
 }
 
+const EXT_PARTITION = 'persist:garret-ext' // must match lane.ts EXT_PARTITION
+const MAX_PROPS_BYTES = 256_000
+
 const records = new Map<string, SurfaceRecord>()
-const lastOpenAt = new Map<string, number>() // ownerKey → ts, for the rate limit
+const lastOpenAt = new Map<string, number>() // ownerKey → ts, for the open rate limit
+const lastFocusAt = new Map<string, number>() // instanceId → ts, throttles focus-steal
 
 const ownerKey = (extId: string, instanceId: string): string => `${extId}:${instanceId}`
 
@@ -72,6 +76,18 @@ export function openSurface(
   const oExt = p.opener.extId
   const oInst = p.opener.instanceId
   const key = typeof p.reqOpts.key === 'string' ? p.reqOpts.key : undefined
+
+  // Bound the props payload (held until bind, re-sent on every rebind). Structured clone over IPC
+  // already drops __proto__; this only caps size.
+  if (p.reqOpts.props !== undefined) {
+    let bytes = -1
+    try {
+      bytes = JSON.stringify(p.reqOpts.props)?.length ?? -1
+    } catch {
+      return { ok: false, error: 'props not serializable' }
+    }
+    if (bytes < 0 || bytes > MAX_PROPS_BYTES) return { ok: false, error: 'props too large' }
+  }
 
   // Singleton: a repeat open with the same key focuses the existing window.
   if (key) {
@@ -122,6 +138,7 @@ export function openSurface(
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      webviewTag: true, // the root renders a <webview> guest (WidgetSurface); off by default
       additionalArguments: ['--garret-mode=windowed', '--garret-role=surface', `--garret-surface=${instanceId}`]
     }
   })
@@ -144,12 +161,31 @@ export function openSurface(
   }
   records.set(instanceId, rec)
 
+  // Pin the ONE legitimate guest inside this window: only the intended surface UI, on the ext
+  // partition, isolated. This is what makes the props embedder-check (surfacePropsForBind) sound —
+  // nothing else can attach here and inherit hostWebContents === surfaceWcId.
+  win.webContents.on('will-attach-webview', (e, webPreferences, params) => {
+    if (typeof params.src !== 'string' || !params.src.startsWith(rec.uiUrl) || params.partition !== EXT_PARTITION) {
+      e.preventDefault()
+      return
+    }
+    webPreferences.nodeIntegration = false
+    webPreferences.contextIsolation = true
+  })
+  // The window shell is trusted app code — it must never navigate away or open popups.
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  win.webContents.on('will-navigate', (e) => e.preventDefault())
+  win.webContents.on('will-redirect', (e) => e.preventDefault())
+  // Don't leak a records slot if the shell fails to load or its renderer dies before the user can
+  // close it (would permanently consume a MAX_TOTAL / MAX_PER_OWNER slot).
+  win.webContents.on('did-fail-load', (_e, _code, _desc, _url, isMainFrame) => {
+    if (isMainFrame) closeSurface(instanceId)
+  })
+  win.webContents.on('render-process-gone', () => closeSurface(instanceId))
+  win.on('closed', () => onClosed(instanceId))
+
   if (process.env['ELECTRON_RENDERER_URL']) void win.loadURL(process.env['ELECTRON_RENDERER_URL'])
   else void win.loadFile(join(__dirname, '../renderer/index.html'))
-
-  // The window shell is trusted app code — it must never navigate away from it.
-  win.webContents.on('will-navigate', (e) => e.preventDefault())
-  win.on('closed', () => onClosed(instanceId))
 
   return { ok: true, instanceId }
 }
@@ -158,9 +194,15 @@ function onClosed(instanceId: string): void {
   const rec = records.get(instanceId)
   if (!rec) return // idempotent (close() → 'closed' + programmatic paths)
   records.delete(instanceId)
+  lastFocusAt.delete(instanceId)
   // Cascade: close any surfaces this one opened (chained), then tell the opener it's gone.
   closeSurfacesForOwner(rec.extId, rec.instanceId)
   webContents.fromId(rec.openerWcId)?.send(Channels.extSurfaceClosed, instanceId)
+  // Prune the owner's rate-limit entry once it has no surfaces left (bounds lastOpenAt growth).
+  const ok = ownerKey(rec.ownerExtId, rec.ownerInstanceId)
+  let ownerHasMore = false
+  for (const r of records.values()) if (r.ownerExtId === rec.ownerExtId && r.ownerInstanceId === rec.ownerInstanceId) { ownerHasMore = true; break }
+  if (!ownerHasMore) lastOpenAt.delete(ok)
 }
 
 export function closeSurface(instanceId: string): boolean {
@@ -174,6 +216,10 @@ export function closeSurface(instanceId: string): boolean {
 export function focusSurface(instanceId: string): boolean {
   const rec = records.get(instanceId)
   if (!rec || rec.win.isDestroyed()) return false
+  // Throttle: a widget spamming open({key}) / focus() must not yank OS focus in a tight loop.
+  const now = Date.now()
+  if (now - (lastFocusAt.get(instanceId) ?? 0) < RATE_MS) return true
+  lastFocusAt.set(instanceId, now)
   if (rec.win.isMinimized()) rec.win.restore()
   rec.win.show()
   rec.win.focus()

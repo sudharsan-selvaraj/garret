@@ -212,7 +212,9 @@ export function registerExtHandlers(): void {
   // wcId (unforgeable) — never a guest-supplied id.
   ipcMain.handle(Channels.extSurfaceInit, (e) => initForWc(e.sender.id))
   // A board placement was genuinely removed (not just reloaded). Only the app renderer may call this
-  // (a garret:// guest may not), so a widget can't close another placement's surfaces.
+  // (a garret:// guest may not), so a widget can't close another placement's surfaces. A surface's
+  // own root is also non-garret app code, but closeSurfacesForOwner is keyed on {extId, instanceId}
+  // and surfaces are same-package, so the worst it can do is close its own ext's siblings.
   ipcMain.on(Channels.extInstanceGone, (e, extId: string, instanceId: string) => {
     if (e.sender.getURL().startsWith('garret:')) return
     if (typeof extId === 'string' && typeof instanceId === 'string') closeSurfacesForOwner(extId, instanceId)

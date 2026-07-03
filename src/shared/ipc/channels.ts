@@ -263,7 +263,7 @@ export interface GarretApi {
 }
 
 /** The role a window plays — selects which root UI the renderer mounts. */
-export type WindowRole = 'board' | 'clipboard'
+export type WindowRole = 'board' | 'clipboard' | 'surface'
 
 declare global {
   interface Window {
