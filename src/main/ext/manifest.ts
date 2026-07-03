@@ -63,10 +63,23 @@ interface DiskManifest {
   config?: unknown
 }
 
-/** Parse a `{ w, h }` px size, or undefined. */
+/** Lenient `{ w, h }` numeric size (grid units for the primary widget), or undefined. */
 function pxSize(v: unknown): { w: number; h: number } | undefined {
   const s = v as { w?: unknown; h?: unknown } | undefined
   return s && typeof s.w === 'number' && typeof s.h === 'number' ? { w: s.w, h: s.h } : undefined
+}
+
+const MAX_SURFACES = 16
+const MIN_WIN_PX = 120
+const MAX_WIN_PX = 8000
+
+/** A window size in PX: integers within sane bounds. Returns null if PRESENT but invalid (→ reject). */
+function winSize(v: unknown): { w: number; h: number } | null {
+  const s = v as { w?: unknown; h?: unknown } | undefined
+  if (!s || typeof s.w !== 'number' || typeof s.h !== 'number') return null
+  if (!Number.isInteger(s.w) || !Number.isInteger(s.h)) return null
+  if (s.w < MIN_WIN_PX || s.h < MIN_WIN_PX || s.w > MAX_WIN_PX || s.h > MAX_WIN_PX) return null
+  return { w: s.w, h: s.h }
 }
 
 /** Validate a manifest-relative path is contained (no absolute, no `..`); strips trailing sep. */
@@ -154,24 +167,45 @@ export async function parseManifest(dir: string): Promise<ExtSpec | { error: str
     if (typeof m.surfaces !== 'object' || m.surfaces === null || Array.isArray(m.surfaces)) {
       return { error: 'manifest.surfaces must be an object' }
     }
+    const entries = Object.entries(m.surfaces as Record<string, unknown>)
+    if (entries.length > MAX_SURFACES) return { error: `Too many surfaces (max ${MAX_SURFACES})` }
     const out: Record<string, SurfaceSpec> = {}
-    for (const [sid, raw] of Object.entries(m.surfaces as Record<string, unknown>)) {
+    for (const [sid, raw] of entries) {
       if (!ID_RE.test(sid)) return { error: `Invalid surface id: ${sid}` }
       const s = raw as { name?: unknown; ui?: unknown; defaultSize?: unknown; minSize?: unknown; resizable?: unknown }
       if (typeof s.name !== 'string' || !s.name) return { error: `surface "${sid}" requires a name` }
       const sDir = containedPath(base, s.ui)
       if (!sDir) return { error: `surface "${sid}" ui must be a path inside the extension (no "..")` }
+      // A surface must be its OWN directory — never the ext root or primary ui (would expose the
+      // manifest/host source over garret://), and it must not contain the host entry.
+      if (sDir === base || sDir === uiDir) {
+        return { error: `surface "${sid}" ui must be its own subdirectory, not the extension root or the primary ui` }
+      }
+      if (nodeEntry && (nodeEntry === sDir || nodeEntry.startsWith(sDir + sep))) {
+        return { error: `surface "${sid}" ui must not contain the host entry` }
+      }
       try {
         if (!(await lstat(sDir)).isDirectory()) return { error: `surface "${sid}" ui is not a directory` }
         if (!(await lstat(join(sDir, 'index.html'))).isFile()) return { error: `surface "${sid}" ui must contain index.html` }
       } catch {
         return { error: `surface "${sid}" ui / index.html not found` }
       }
+      const defaultSize = s.defaultSize !== undefined ? winSize(s.defaultSize) : undefined
+      if (s.defaultSize !== undefined && !defaultSize) {
+        return { error: `surface "${sid}" defaultSize must be integer px in [${MIN_WIN_PX}, ${MAX_WIN_PX}]` }
+      }
+      const minSize = s.minSize !== undefined ? winSize(s.minSize) : undefined
+      if (s.minSize !== undefined && !minSize) {
+        return { error: `surface "${sid}" minSize must be integer px in [${MIN_WIN_PX}, ${MAX_WIN_PX}]` }
+      }
+      if (defaultSize && minSize && (minSize.w > defaultSize.w || minSize.h > defaultSize.h)) {
+        return { error: `surface "${sid}" minSize exceeds defaultSize` }
+      }
       out[sid] = {
         name: s.name,
         uiDir: sDir,
-        defaultSize: pxSize(s.defaultSize),
-        minSize: pxSize(s.minSize),
+        defaultSize: defaultSize ?? undefined,
+        minSize: minSize ?? undefined,
         resizable: s.resizable !== false // default true
       }
     }
