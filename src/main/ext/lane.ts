@@ -17,6 +17,7 @@ import {
   surfaceBelongsTo,
   setSurfaceAspectRatio,
   resizeSurface,
+  closeSurfaceByEmbedder,
   repointOwner,
   closeSurfacesForOwner,
   closeSurfacesForExt,
@@ -220,6 +221,7 @@ export function registerExtHandlers(): void {
   ipcMain.on(Channels.extSurfaceResize, (e, w: number, h: number) => {
     if (typeof w === 'number' && typeof h === 'number') resizeSurface(e.sender.hostWebContents?.id, w, h)
   })
+  ipcMain.on(Channels.extSurfaceSelfClose, (e) => closeSurfaceByEmbedder(e.sender.hostWebContents?.id))
   // A board placement was genuinely removed (not just reloaded). Only the app renderer may call this
   // (a garret:// guest may not), so a widget can't close another placement's surfaces. A surface's
   // own root is also non-garret app code, but closeSurfacesForOwner is keyed on {extId, instanceId}

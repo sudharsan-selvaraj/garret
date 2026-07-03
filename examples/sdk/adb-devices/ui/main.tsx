@@ -1,10 +1,11 @@
 import { createRoot } from 'react-dom/client'
 import { useEffect, useState } from 'react'
-import { useHost, useHostEvent } from '@garretapp/sdk/react'
+import { useHost, useHostEvent, useGarret } from '@garretapp/sdk/react'
 import type { Api, Events, AdbDevice, AdbStatus } from '../shared/api'
 
 function App(): JSX.Element {
   const host = useHost<Api, Events>()
+  const g = useGarret()
   const [devices, setDevices] = useState<AdbDevice[]>([])
   const [status, setStatus] = useState<AdbStatus>({ ok: false, state: 'connecting' })
 
@@ -40,11 +41,26 @@ function App(): JSX.Element {
       ) : (
         <ul className="list">
           {devices.map((d) => (
-            <li key={d.transportId} className="row">
-              <span className={`dot ${d.state}`} />
-              <span className="name">{d.model || d.product || d.serial}</span>
-              <span className="serial">{d.serial}</span>
-              <span className="state">{d.state}</span>
+            <li key={d.transportId}>
+              <button
+                className="row"
+                disabled={d.state !== 'device'}
+                title={d.state === 'device' ? 'Open mirror' : `Device is ${d.state}`}
+                // Open a floating mirror window per device; key=serial → one window per device (a
+                // repeat click focuses the existing one instead of spawning another).
+                onClick={() =>
+                  void g.surfaces.open('device-mirror', {
+                    key: d.serial,
+                    title: d.model || d.serial,
+                    props: { serial: d.serial, model: d.model }
+                  })
+                }
+              >
+                <span className={`dot ${d.state}`} />
+                <span className="name">{d.model || d.product || d.serial}</span>
+                <span className="serial">{d.serial}</span>
+                <span className="state">{d.state}</span>
+              </button>
             </li>
           ))}
         </ul>

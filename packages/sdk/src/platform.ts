@@ -55,6 +55,8 @@ export interface WindowControls {
   setAspectRatio(ratio: number): void
   /** Resize the window (px). */
   resize(width: number, height: number): void
+  /** Close this surface window (for a frameless surface's own close button). */
+  close(): void
 }
 export interface SurfaceApi {
   /** Open a sibling surface (declared in this package's manifest) as a floating, focusable window.
@@ -146,7 +148,7 @@ export function getGarret(): GarretPlatform {
     active: true,
     onActiveChange: () => () => {},
     surfaces: { open: nope, onClosed: () => () => {} },
-    window: { setAspectRatio: () => {}, resize: () => {} },
+    window: { setAspectRatio: () => {}, resize: () => {}, close: () => {} },
     props: {},
     onReady: (cb: () => void) => {
       cb()

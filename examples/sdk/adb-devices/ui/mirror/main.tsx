@@ -1,0 +1,77 @@
+import { createRoot } from 'react-dom/client'
+import { useEffect, useRef, useState } from 'react'
+import { useHost, useProps, useGarret } from '@garretapp/sdk/react'
+import { WebCodecsVideoDecoder, WebGLVideoFrameRenderer } from '@yume-chan/scrcpy-decoder-webcodecs'
+import { ScrcpyVideoCodecId, type ScrcpyMediaStreamPacket } from '@yume-chan/scrcpy'
+import type { Api, VideoChunk } from '../../shared/api'
+
+/**
+ * The floating "phone on the desktop" mirror surface. Reads its device serial from g.props, streams
+ * H.264 from the host, decodes with WebCodecs → a WebGL canvas, and locks the window to the device
+ * aspect ratio once known. Frameless + transparent (per the manifest), so it supplies its own drag
+ * region + close button.
+ */
+function Mirror(): JSX.Element {
+  const host = useHost<Api>()
+  const g = useGarret()
+  const { serial, model } = useProps<{ serial: string; model?: string }>()
+  const screenRef = useRef<HTMLDivElement>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [connecting, setConnecting] = useState(true)
+
+  useEffect(() => {
+    if (!serial) return
+    let disposed = false
+    const canvas = document.createElement('canvas')
+    canvas.className = 'screen'
+    screenRef.current?.appendChild(canvas)
+    const renderer = new WebGLVideoFrameRenderer(canvas)
+    const decoder = new WebCodecsVideoDecoder({ codec: ScrcpyVideoCodecId.H264, renderer })
+    const writer = decoder.writable.getWriter()
+    decoder.sizeChanged(({ width, height }) => {
+      if (width && height) g.window.setAspectRatio(width / height)
+    })
+
+    const call = host.mirror({ serial })
+    call.onData((chunk: VideoChunk) => {
+      if (disposed) return
+      if (chunk.kind === 'meta') {
+        setConnecting(false)
+        if (chunk.width && chunk.height) g.window.setAspectRatio(chunk.width / chunk.height)
+        return
+      }
+      const packet: ScrcpyMediaStreamPacket =
+        chunk.kind === 'config'
+          ? { type: 'configuration', data: chunk.data }
+          : { type: 'data', keyframe: chunk.keyframe, data: chunk.data, pts: BigInt(chunk.timestamp) }
+      void writer.write(packet).catch(() => {})
+    })
+    call.onError((e) => {
+      if (!disposed) setError(e instanceof Error ? e.message : String(e))
+    })
+
+    return () => {
+      disposed = true
+      call.cancel()
+      void writer.close().catch(() => {})
+      decoder.dispose()
+      canvas.remove()
+    }
+  }, [serial, host, g])
+
+  return (
+    <div className="phone">
+      <div className="bar">
+        <span className="label">{model || serial}</span>
+        <button className="close" title="Close" onClick={() => g.window.close()}>
+          ✕
+        </button>
+      </div>
+      <div className="screen-wrap" ref={screenRef}>
+        {error ? <p className="msg err">{error}</p> : connecting ? <p className="msg">Connecting…</p> : null}
+      </div>
+    </div>
+  )
+}
+
+createRoot(document.getElementById('root')!).render(<Mirror />)

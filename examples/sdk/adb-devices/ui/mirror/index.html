@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      :root { color-scheme: dark; }
+      html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+      #root, .phone { height: 100%; }
+      .phone {
+        display: flex;
+        flex-direction: column;
+        background: #000;
+        border-radius: 22px;
+        overflow: hidden;
+        box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+      }
+      /* Draggable bezel strip (frameless window has no title bar). */
+      .bar {
+        -webkit-app-region: drag;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 26px;
+        padding: 0 6px 0 12px;
+        font: 11px -apple-system, system-ui, sans-serif;
+        color: #cfcfd4;
+        background: #0d0d0f;
+      }
+      .label { opacity: 0.7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .close {
+        -webkit-app-region: no-drag;
+        width: 18px; height: 18px; line-height: 16px; text-align: center;
+        border: 0; border-radius: 50%; cursor: pointer;
+        background: #ffffff1a; color: #e6e6ea; font-size: 11px; padding: 0;
+      }
+      .close:hover { background: #ff5f57; color: #fff; }
+      .screen-wrap { position: relative; flex: 1; display: flex; align-items: center; justify-content: center; }
+      .screen { width: 100%; height: 100%; display: block; object-fit: contain; }
+      .msg { position: absolute; font: 12px -apple-system, system-ui, sans-serif; color: #e6e6ea; opacity: 0.75; }
+      .msg.err { color: #ff8a8a; padding: 0 16px; text-align: center; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

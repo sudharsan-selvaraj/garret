@@ -285,6 +285,12 @@ export function resizeSurface(embedderWcId: number | undefined, width: number, h
   rec.win.setSize(clampPx(width, DEFAULT_W), clampPx(height, DEFAULT_H))
 }
 
+/** A surface closing its OWN window (frameless surfaces have no native close button). */
+export function closeSurfaceByEmbedder(embedderWcId: number | undefined): void {
+  const rec = recordByEmbedder(embedderWcId)
+  if (rec && !rec.win.isDestroyed()) rec.win.close() // → 'closed' → onClosed (cascade + notify)
+}
+
 /** True if `instanceId` is a live surface belonging to `extId` (authorizes close/focus by a sibling). */
 export function surfaceBelongsTo(instanceId: string, extId: string): boolean {
   return records.get(instanceId)?.extId === extId

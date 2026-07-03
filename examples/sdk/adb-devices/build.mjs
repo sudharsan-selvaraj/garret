@@ -18,19 +18,27 @@ if (!existsSync(JAR)) {
 const PACK = 'pack'
 rmSync(PACK, { recursive: true, force: true })
 mkdirSync(`${PACK}/dist/ui`, { recursive: true })
+mkdirSync(`${PACK}/dist/mirror`, { recursive: true })
 mkdirSync(`${PACK}/dist/host`, { recursive: true })
 
-// UI: React bundled into one self-contained module (CSP script-src 'self').
-await build({
-  entryPoints: ['ui/main.tsx'],
-  bundle: true,
-  format: 'esm',
-  jsx: 'automatic',
-  minify: true,
-  target: ['chrome122'],
-  outfile: `${PACK}/dist/ui/app.js`
-})
+// UI surfaces: the list (primary) + the mirror (floating). Each bundled self-contained (CSP
+// script-src 'self'). The mirror pulls in the WebCodecs scrcpy decoder.
+for (const [entry, dir] of [
+  ['ui/main.tsx', 'ui'],
+  ['ui/mirror/main.tsx', 'mirror']
+]) {
+  await build({
+    entryPoints: [entry],
+    bundle: true,
+    format: 'esm',
+    jsx: 'automatic',
+    minify: true,
+    target: ['chrome122'],
+    outfile: `${PACK}/dist/${dir}/app.js`
+  })
+}
 cpSync('ui/index.html', `${PACK}/dist/ui/index.html`)
+cpSync('ui/mirror/index.html', `${PACK}/dist/mirror/index.html`)
 
 // Host: bundle ya-webadb + our code into a single CJS entry the utilityProcess forks. Node builtins
 // stay external; the ESM @yume-chan packages are transpiled + inlined by esbuild.

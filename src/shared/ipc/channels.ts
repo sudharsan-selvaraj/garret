@@ -56,6 +56,7 @@ export const Channels = {
   extInstanceGone: 'ext:instance-gone', // board → main: (extId, instanceId) a placement was removed
   extSurfaceSetAspect: 'ext:surface-set-aspect', // surface guest → main: set its OWN window aspect ratio
   extSurfaceResize: 'ext:surface-resize', // surface guest → main: resize its OWN window (px)
+  extSurfaceSelfClose: 'ext:surface-self-close', // surface guest → main: close its OWN window (frameless chrome)
   // --- WebContentsView geometry spike (dev-only, throwaway) ---
   wcvSpikeEnabled: 'wcv-spike:enabled',
   wcvSpikeCreate: 'wcv-spike:create',
