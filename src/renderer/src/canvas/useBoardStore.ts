@@ -87,7 +87,16 @@ export const useBoardStore = create<BoardStore>((set, get) => {
       apply([...get().widgets, widget])
     },
 
-    removeWidget: (id) => apply(get().widgets.filter((w) => w.id !== id)),
+    removeWidget: (id) => {
+      // Close-with-opener (B3): a GENUINE removal (not a layout switch / reload / unmount) is the
+      // only place we signal main to close this placement's floating surfaces. Extension disable /
+      // uninstall is handled separately by main's revokeExt → closeSurfacesForExt.
+      const w = get().widgets.find((x) => x.id === id)
+      if (w?.pluginId.startsWith('gx:')) {
+        window.garret.ext.instanceGone(w.pluginId.slice('gx:'.length), id)
+      }
+      apply(get().widgets.filter((x) => x.id !== id))
+    },
 
     updateConfig: (id, patch) =>
       mut(id, (w) => ({ ...w, config: { ...w.config, ...patch } })),

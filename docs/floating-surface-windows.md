@@ -202,10 +202,16 @@ wcId would let the widget's own Retry flow nuke every live mirror. So:
 - **wc `destroyed` alone does nothing to surfaces.** A reload re-binds the same `{extId, instanceId}`
   (from the `?instance=` URL) → main re-points `extSurfaceClosed` delivery to the new wcId; surfaces
   stay up.
-- **True removal is an explicit signal.** The board opener emits `extInstanceGone(instanceId)` from a
-  **mount-scoped** effect cleanup in `WidgetSurface` (empty-dep `useEffect` → fires on component
-  unmount = widget removed from the board, **not** on the nonce/webview remount of Retry). On that
-  signal → `closeSurfacesForOwner({extId, instanceId})`.
+- **True removal is an explicit signal — NOT a React unmount.** (Phase-3 review correction: an
+  unmount-cleanup hook conflated "removed" with "unmounted for another reason" — layout switch and
+  renderer reload both unmount `WidgetSurface` and would wrongly close live surfaces.) The signal is
+  fired from the board store's explicit `removeWidget(id)` action → `extInstanceGone(extId, instanceId)`
+  → `closeSurfacesForOwner`. So a **layout switch keeps** the floating surfaces (the placement still
+  exists; the window is independent of which board is shown) and a **renderer reload keeps** them
+  (rebind → `repointOwner`). Extension disable/uninstall is handled entirely main-side by `revokeExt`
+  → `closeSurfacesForExt` (the renderer signal is not involved). *Known minor gap: deleting a whole
+  layout removes its widgets without emitting per-widget removal, so their surfaces stay open until
+  the user closes them or quit — acceptable for v1.*
 - `revokeExt` (disable/uninstall) → `closeSurfacesForExt(extId)`. App quit closes all.
 
 `handle.close()` (programmatic) and the user closing the window both fire `onClose`/`closed` exactly
