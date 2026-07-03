@@ -29,6 +29,7 @@ export function attachPointerControl(
   getDims: GetDims
 ): { detach: () => void; cancelGesture: () => void } {
   let active = false
+  let detached = false
   let pointerId: number | null = null
   let latest: { x: number; y: number } | null = null // newest un-sent move
   let rafScheduled = false
@@ -47,7 +48,7 @@ export function attachPointerControl(
 
   const flush = (): void => {
     rafScheduled = false
-    if (!active || sending || !latest) return
+    if (detached || !active || sending || !latest) return
     const p = latest
     latest = null
     const dims = getDims()
@@ -134,6 +135,9 @@ export function attachPointerControl(
   return {
     cancelGesture,
     detach: () => {
+      detached = true
+      active = false
+      latest = null
       canvas.removeEventListener('pointerdown', onDown)
       canvas.removeEventListener('pointermove', onMove)
       canvas.removeEventListener('pointerup', onUp)
