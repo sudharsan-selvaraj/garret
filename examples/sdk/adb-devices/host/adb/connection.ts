@@ -26,7 +26,7 @@ function serverReachable(): Promise<boolean> {
       resolve(v)
     }
     sock.once('connect', () => finish(true))
-    sock.once('error', () => resolve(false))
+    sock.once('error', () => finish(false))
     sock.setTimeout(1000, () => finish(false))
   })
 }
@@ -47,8 +47,13 @@ export async function ensureServer(ctx: HostContext): Promise<{ ok: true } | { o
 
   await new Promise<void>((resolve) => {
     const child = ctx.spawn([adb, 'start-server'])
-    child.on('close', () => resolve())
-    child.on('error', () => resolve())
+    const t = setTimeout(resolve, 5000) // don't hang if adb never exits; the re-probe is the real check
+    const done = (): void => {
+      clearTimeout(t)
+      resolve()
+    }
+    child.on('close', done)
+    child.on('error', done)
   })
   resetClient() // reconnect against the freshly-started server
   return (await serverReachable())
