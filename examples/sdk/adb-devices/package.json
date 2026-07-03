@@ -1,0 +1,10 @@
+{
+  "name": "garret-example-adb-devices",
+  "private": true,
+  "version": "0.1.0",
+  "description": "List Android devices via ya-webadb (host connects to the local adb server)",
+  "dependencies": {
+    "@yume-chan/adb": "^2.6.0",
+    "@yume-chan/adb-server-node-tcp": "^2.5.2"
+  }
+}

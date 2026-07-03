@@ -24,3 +24,6 @@ examples/**/*.garret
 # extension build artifacts
 examples/sdk/**/pack/
 examples/sdk/**/*.garret
+
+# Example lockfiles may resolve via a corporate proxy — keep them out of the repo
+examples/**/package-lock.json

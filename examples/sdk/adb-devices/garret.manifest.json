@@ -1,0 +1,11 @@
+{
+  "id": "adb-devices",
+  "name": "Android Devices",
+  "version": "0.1.0",
+  "apiVersion": 1,
+  "description": "List connected Android devices via ya-webadb.",
+  "ui": "dist/ui",
+  "host": "dist/host/index.cjs",
+  "capabilities": ["process"],
+  "defaultSize": { "w": 6, "h": 5 }
+}
