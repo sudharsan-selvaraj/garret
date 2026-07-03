@@ -102,6 +102,17 @@ export interface LayoutsInfo {
   names: string[]
 }
 
+/** Render config for a floating surface window's root (from `ext.surfaceInit`). */
+export interface SurfaceInit {
+  extId: string
+  surfaceId: string
+  instanceId: string
+  /** garret://<extId>/~<surfaceId>/ */
+  uiUrl: string
+  /** file:// URL of the extBridge preload for the guest webview. */
+  preloadUrl: string
+}
+
 /**
  * The typed API surface exposed on `window.garret` by the preload bridge.
  * Renderer code programs against this interface, never against raw ipc.
@@ -225,6 +236,10 @@ export interface GarretApi {
     onOpenFile(cb: (path: string) => void): () => void
     /** Ask main to drain any `.garret` opens queued before the renderer's listener mounted. */
     flushOpenFiles(): void
+    /** A floating surface window's root fetches its render config (keyed on its own wcId in main). */
+    surfaceInit(): Promise<SurfaceInit | null>
+    /** Signal that a board placement was genuinely removed → close-with-opener (its surfaces close). */
+    instanceGone(extId: string, instanceId: string): void
   }
   /** DEV-ONLY throwaway: WebContentsView geometry spike (gated by GARRET_WCV_SPIKE=1). */
   wcvSpike: {

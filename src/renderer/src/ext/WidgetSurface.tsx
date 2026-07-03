@@ -23,6 +23,16 @@ export function WidgetSurface({ extensionId, instanceId, uiUrl, preloadUrl }: Pr
   const [crashed, setCrashed] = useState(false)
   const [nonce, setNonce] = useState(0) // bump to remount the webview on Retry
 
+  // Close-with-opener (B3): on a BOARD placement's true unmount (removed from the board), tell main
+  // so its spawned surface windows close. Fires on component unmount only — NOT on the nonce-bump
+  // webview remount of Retry (the component stays mounted). Surface windows are handled by main's
+  // own window 'closed', so we skip them here.
+  useEffect(() => {
+    if (window.garret.windowRole === 'surface') return
+    return () => window.garret.ext.instanceGone(extensionId, instanceId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   useEffect(() => {
     const wv = ref.current
     if (!wv) return

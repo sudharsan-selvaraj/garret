@@ -459,6 +459,22 @@ button[disabled],
   display: inline-flex;
   background: #fff;
 }
+/* Floating surface window: the guest fills the whole window. */
+.surface-root {
+  position: fixed;
+  inset: 0;
+  display: flex;
+}
+.surface-root .widget-webview {
+  flex: 1;
+}
+.surface-root--msg {
+  align-items: center;
+  justify-content: center;
+  font: 13px -apple-system, system-ui, sans-serif;
+  color: #e6e6ea;
+  opacity: 0.7;
+}
 /* Indeterminate top loading bar for the Web View widget (a <webview> exposes no load %). */
 .webview-progress {
   position: absolute;

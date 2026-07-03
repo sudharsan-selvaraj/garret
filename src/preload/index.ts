@@ -103,7 +103,9 @@ const api: GarretApi = {
       ipcRenderer.on(Channels.extOpenFile, listener)
       return () => ipcRenderer.removeListener(Channels.extOpenFile, listener)
     },
-    flushOpenFiles: () => ipcRenderer.send(Channels.extFlushOpenFiles)
+    flushOpenFiles: () => ipcRenderer.send(Channels.extFlushOpenFiles),
+    surfaceInit: () => ipcRenderer.invoke(Channels.extSurfaceInit),
+    instanceGone: (extId, instanceId) => ipcRenderer.send(Channels.extInstanceGone, extId, instanceId)
   },
   wcvSpike: {
     enabled: () => ipcRenderer.invoke(Channels.wcvSpikeEnabled),
