@@ -27,3 +27,6 @@ examples/sdk/**/*.garret
 
 # Example lockfiles may resolve via a corporate proxy — keep them out of the repo
 examples/**/package-lock.json
+
+# Fetched-on-build scrcpy server binary (not vendored)
+examples/**/host/assets/*.jar
