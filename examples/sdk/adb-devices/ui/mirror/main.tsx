@@ -3,13 +3,14 @@ import { useEffect, useRef, useState } from 'react'
 import { useHost, useProps, useGarret } from '@garretapp/sdk/react'
 import { WebCodecsVideoDecoder, WebGLVideoFrameRenderer } from '@yume-chan/scrcpy-decoder-webcodecs'
 import { ScrcpyVideoCodecId, type ScrcpyMediaStreamPacket } from '@yume-chan/scrcpy'
-import type { Api, VideoChunk } from '../../shared/api'
+import type { Api, VideoChunk, AudioChunk } from '../../shared/api'
+import { MirrorAudio } from './audio'
 
 /**
  * The floating "phone on the desktop" mirror surface. Reads its device serial from g.props, streams
- * H.264 from the host, decodes with WebCodecs → a WebGL canvas, and locks the window to the device
- * aspect ratio once known. Frameless + transparent (per the manifest), so it supplies its own drag
- * region + close button.
+ * H.264 video + Opus audio from the host, decodes with WebCodecs (→ a WebGL canvas / Web Audio), and
+ * locks the window to the device aspect ratio once known. Frameless + transparent (per the manifest),
+ * so it supplies its own drag region + close button.
  */
 function Mirror(): JSX.Element {
   const host = useHost<Api>()
@@ -30,6 +31,7 @@ function Mirror(): JSX.Element {
     const writer = decoder.writable.getWriter()
     decoder.sizeChanged(({ width, height }) => {
       // Rotation / resolution change → new dims → re-lock the window to the device aspect.
+      if (disposed) return
       if (width && height) g.window.setAspectRatio(width / height)
     })
 
@@ -51,10 +53,28 @@ function Mirror(): JSX.Element {
       if (!disposed) setError(e instanceof Error ? e.message : String(e))
     })
 
+    // ── audio (best-effort; a device with no audio just ends the stream, and any decode error is
+    //    swallowed so the mirror keeps running silently) ────────────────────────────────────────
+    const audio = new MirrorAudio()
+    const audioCall = host.audio({ serial })
+    audioCall.onData((chunk: AudioChunk) => {
+      if (disposed) return
+      if (chunk.kind === 'config') audio.configure(chunk.data)
+      else audio.frame(chunk.data, chunk.timestamp)
+    })
+    // Autoplay policy: resume the AudioContext on the first interaction with the window.
+    const resumeAudio = (): void => audio.resume()
+    window.addEventListener('pointerdown', resumeAudio)
+
     return () => {
       disposed = true
+      window.removeEventListener('pointerdown', resumeAudio)
       call.cancel()
-      void writer.close().catch(() => {})
+      audioCall.cancel()
+      audio.close()
+      // abort (not close) so any queued/in-flight write is dropped immediately — closing would await
+      // the queue and can race decoder.dispose() below.
+      void writer.abort().catch(() => {})
       decoder.dispose()
       canvas.remove()
     }

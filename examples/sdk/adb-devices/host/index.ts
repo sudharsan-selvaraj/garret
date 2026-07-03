@@ -43,9 +43,24 @@ export default defineHost<Api, Events>((ctx) => {
   // ── mirror (one scrcpy session hub per host; drains both media streams regardless of subscription,
   //    ref-counted so it closes + resets on the last unsubscribe or on open failure) ───────────────
   let hub: MirrorHub | null = null
-  const getHub = (serial: string, cfg: MirrorConfig): MirrorHub =>
-    (hub ??= createHub(
+  let hubSerial: string | null = null
+  let closingHub: Promise<void> | null = null // in-flight teardown; a re-open must serialize on it
+  const getHub = (serial: string, cfg: MirrorConfig): MirrorHub => {
+    // One host is forked per surface, so serial is stable — but guard anyway so a stray mismatched
+    // call can't silently piggyback on (and mirror) the wrong device.
+    if (hub && hubSerial !== serial) {
+      closingHub = hub.close()
+      hub = null
+      hubSerial = null
+    }
+    if (hub) return hub
+    hubSerial = serial
+    const prevClose = closingHub // teardown of a previous session for this host, if any
+    return (hub = createHub(
       async () => {
+        // Don't overlap a fresh scrcpy session with a still-closing one (two app_process servers +
+        // display contention). onEmpty's close() is async; wait it out before re-opening.
+        await prevClose?.catch(() => {})
         const r = await ensureServer(ctx)
         if (!r.ok) throw new Error(r.error)
         return openMirror(getClient(), serial, cfg)
@@ -53,9 +68,12 @@ export default defineHost<Api, Events>((ctx) => {
       () => {
         const dead = hub
         hub = null // reset so a later subscribe re-opens a fresh session
-        void dead?.close()
+        hubSerial = null
+        closingHub = dead ? dead.close() : null // record teardown so the re-open serializes on it
+        void closingHub
       }
     ))
+  }
 
   ctx.onDispose(async () => {
     await observer?.stop()

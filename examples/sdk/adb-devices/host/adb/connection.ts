@@ -65,18 +65,23 @@ export async function ensureServer(ctx: HostContext): Promise<{ ok: true } | { o
     return { ok: false, error: 'adb not found — install Android platform-tools (brew install android-platform-tools), then Retry.' }
   }
 
-  await new Promise<void>((resolve) => {
+  const { code, stderr } = await new Promise<{ code: number | null; stderr: string }>((resolve) => {
     const child = ctx.spawn([adb, 'start-server'])
-    const t = setTimeout(resolve, 5000) // don't hang if adb never exits; the re-probe is the real check
-    const done = (): void => {
+    let err = ''
+    child.stderr?.on('data', (d: Buffer) => (err += String(d)))
+    const t = setTimeout(() => resolve({ code: null, stderr: err }), 5000) // don't hang if adb never exits
+    child.on('close', (c) => {
       clearTimeout(t)
-      resolve()
-    }
-    child.on('close', done)
-    child.on('error', done)
+      resolve({ code: c, stderr: err })
+    })
+    child.on('error', (e) => {
+      clearTimeout(t)
+      resolve({ code: null, stderr: err || String(e) })
+    })
   })
   resetClient() // reconnect against the freshly-started server
-  return (await serverReachable())
-    ? { ok: true }
-    : { ok: false, error: 'adb is installed but its server could not start. Try `adb start-server` in a terminal.' }
+  if (await serverReachable()) return { ok: true }
+  // Surface adb's own words — a version/port/socket conflict is otherwise invisible to the user.
+  const detail = stderr.trim() || (code != null ? `adb exited with code ${code}` : 'adb start-server timed out')
+  return { ok: false, error: `adb is installed but its server could not start: ${detail}` }
 }

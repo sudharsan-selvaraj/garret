@@ -282,9 +282,30 @@ function winOpThrottled(surfaceWcId: number, op: string, now: number): boolean {
  *  For a frameless surface the host draws a titlebar, so the ratio applies to the CONTENT below it
  *  (extraSize) — and we resize NOW so the current window matches (setAspectRatio only constrains
  *  future resizes), which is what fixes the "content cropped" look. */
+const pendingAspect = new Map<string, ReturnType<typeof setTimeout>>() // surfaceWcId → trailing apply
 export function setSurfaceAspectRatio(embedderWcId: number | undefined, ratio: number): void {
   const rec = recordByEmbedder(embedderWcId)
-  if (!rec || rec.win.isDestroyed() || winOpThrottled(rec.surfaceWcId, 'aspect', Date.now())) return
+  if (!rec || rec.win.isDestroyed()) return
+  if (winOpThrottled(rec.surfaceWcId, 'aspect', Date.now())) {
+    // Coalesce rather than drop: remember the LATEST requested ratio and apply it on a trailing edge.
+    // Otherwise a rotation whose authoritative final ratio lands inside the throttle window is lost,
+    // leaving the window locked to a stale orientation.
+    const key = String(rec.surfaceWcId)
+    const prev = pendingAspect.get(key)
+    if (prev) clearTimeout(prev)
+    pendingAspect.set(
+      key,
+      setTimeout(() => {
+        pendingAspect.delete(key)
+        const r2 = recordByEmbedder(embedderWcId)
+        if (r2 && !r2.win.isDestroyed()) applyAspect(r2, ratio)
+      }, WIN_OP_MS)
+    )
+    return
+  }
+  applyAspect(rec, ratio)
+}
+function applyAspect(rec: SurfaceRecord, ratio: number): void {
   const r = Number.isFinite(ratio) && ratio > 0 ? ratio : 0
   const chrome = rec.frame ? 0 : SURFACE_TITLEBAR_H
   if (r <= 0) {

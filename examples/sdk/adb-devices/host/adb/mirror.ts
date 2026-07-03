@@ -54,40 +54,50 @@ export async function openMirror(
   cfg: MirrorConfig
 ): Promise<MirrorSession> {
   const adb = new Adb(await serverClient.createTransport({ serial }))
-  await AdbScrcpyClient.pushServer(adb, await serverJarStream())
+  // Once the on-device scrcpy server is started, ANY later failure (no video stream, etc.) must tear
+  // it down — otherwise app_process keeps running on the device (holding the display) after we bail.
+  let client: Awaited<ReturnType<typeof AdbScrcpyClient.start>> | undefined
+  try {
+    await AdbScrcpyClient.pushServer(adb, await serverJarStream())
 
-  const options = new AdbScrcpyOptions3_3_1(
-    {
-      video: true,
-      audio: true,
-      control: true,
-      videoCodec: 'h264',
-      audioCodec: 'opus',
-      videoBitRate: cfg.videoBitRate ?? 8_000_000,
-      maxFps: cfg.maxFps ?? 60,
-      maxSize: cfg.maxSize ?? 0
-    },
-    { version: SCRCPY_VERSION }
-  )
+    const options = new AdbScrcpyOptions3_3_1(
+      {
+        video: true,
+        audio: true,
+        control: true,
+        videoCodec: 'h264',
+        audioCodec: 'opus',
+        videoBitRate: cfg.videoBitRate ?? 8_000_000,
+        maxFps: cfg.maxFps ?? 60,
+        maxSize: cfg.maxSize ?? 0
+      },
+      { version: SCRCPY_VERSION }
+    )
 
-  const client = await AdbScrcpyClient.start(adb, DefaultServerPath, options)
-  const videoStream = await client.videoStream
-  if (!videoStream) throw new Error('scrcpy started without a video stream')
+    client = await AdbScrcpyClient.start(adb, DefaultServerPath, options)
+    const videoStream = await client.videoStream
+    if (!videoStream) throw new Error('scrcpy started without a video stream')
 
-  let audio: ReadableStream<ScrcpyMediaStreamPacket> | null = null
-  const audioMeta = await client.audioStream // undefined on <2.0; disabled/errored otherwise
-  if (audioMeta && audioMeta.type === 'success') audio = audioMeta.stream
+    let audio: ReadableStream<ScrcpyMediaStreamPacket> | null = null
+    const audioMeta = await client.audioStream // undefined on <2.0; disabled/errored otherwise
+    if (audioMeta && audioMeta.type === 'success') audio = audioMeta.stream
 
-  // We request h264 + opus explicitly, so the codecs are known (avoids mapping ya-webadb's codec enums).
-  return {
-    meta: { width: videoStream.width, height: videoStream.height, videoCodec: 'h264', audioCodec: audio ? 'opus' : null },
-    video: videoStream.stream,
-    audio,
-    controller: client.controller,
-    close: async () => {
-      await client.close()
-      await adb.close()
+    const started = client
+    // We request h264 + opus explicitly, so the codecs are known (avoids mapping ya-webadb's enums).
+    return {
+      meta: { width: videoStream.width, height: videoStream.height, videoCodec: 'h264', audioCodec: audio ? 'opus' : null },
+      video: videoStream.stream,
+      audio,
+      controller: started.controller,
+      close: async () => {
+        await started.close()
+        await adb.close()
+      }
     }
+  } catch (e) {
+    await client?.close().catch(() => {})
+    await adb.close().catch(() => {})
+    throw e
   }
 }
 
