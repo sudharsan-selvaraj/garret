@@ -9,6 +9,18 @@ import { registerExtProtocol, setUiResolver, resetUiDirs } from '@main/ext/proto
 import { launchHost, getHost, killHost } from '@main/ext/host'
 import { platformCall, type Binding } from '@main/ext/broker'
 import {
+  openSurface,
+  closeSurface,
+  focusSurface,
+  initForWc,
+  surfacePropsForBind,
+  surfaceBelongsTo,
+  repointOwner,
+  closeSurfacesForOwner,
+  closeSurfacesForExt,
+  type SurfaceOpenOpts
+} from '@main/windows/surfaceWindow'
+import {
   resolveEnabled,
   planInstall,
   planInstallFromFile,
@@ -58,6 +70,7 @@ export function broadcastActive(active: boolean): void {
 
 /** Tear down every live binding + host for an extension (on disable / uninstall). */
 async function revokeExt(extId: string): Promise<void> {
+  closeSurfacesForExt(extId) // close its floating surface windows too (no stale capability ceiling)
   for (const [wcId, b] of [...bound]) {
     if (b.extId !== extId) continue
     bound.delete(wcId)
@@ -114,8 +127,14 @@ export function registerExtHandlers(): void {
         return { ok: false, error: err instanceof Error ? err.message : String(err) }
       }
     }
+    // If this guest is a spawned surface, hand it its launch props — but ONLY if it's genuinely
+    // hosted inside that surface's window (embedder check), never by a guessed instanceId (B1).
+    const props = surfacePropsForBind(instanceId, e.sender.hostWebContents?.id) ?? {}
+    // (Re)point close-notifications for any surfaces this placement opened, in case it just reloaded
+    // (a webview reload rebinds the same {extId, instanceId} under a new wcId).
+    repointOwner(ext.id, instanceId, wcId)
     webContents.fromId(wcId)?.send(Channels.extActive, currentActive) // S4: fresh state on bind
-    return { ok: true, hasHost: ext.nodeEntry !== undefined }
+    return { ok: true, hasHost: ext.nodeEntry !== undefined, props }
   })
   ipcMain.handle(Channels.extUnbind, async (_e, wcId: number) => {
     bound.delete(wcId)
@@ -150,6 +169,53 @@ export function registerExtHandlers(): void {
       return next
     }
     return undefined
+  })
+
+  // ── floating surface windows ──────────────────────────────────────────────────────────────────
+  // A bound guest opens a sibling surface (same package) as a floating window. Gates: bound opener +
+  // `windows` capability + the surfaceId must exist in the opener's OWN trusted spec. See
+  // docs/floating-surface-windows.md §5.
+  ipcMain.handle(Channels.extSurfaceOpen, async (e, surfaceId: string, reqOpts: unknown) => {
+    const opener = bound.get(e.sender.id)
+    if (!opener) return { ok: false, error: 'not bound' }
+    if (opener.tier !== 'full' && !opener.capabilities.includes('windows')) {
+      return { ok: false, error: 'missing "windows" capability' }
+    }
+    if (typeof surfaceId !== 'string') return { ok: false, error: 'bad surfaceId' }
+    const ext = (await resolveEnabled()).find((x) => x.id === opener.extId)
+    const spec = ext?.spec.surfaces?.[surfaceId]
+    if (!spec) return { ok: false, error: `unknown surface: ${surfaceId}` }
+    return openSurface(
+      {
+        opener,
+        openerWcId: e.sender.id,
+        surfaceId,
+        spec,
+        uiUrl: `garret://${opener.extId}/~${surfaceId}/`,
+        preloadUrl: extPreloadUrl(),
+        reqOpts: (reqOpts as SurfaceOpenOpts) ?? {}
+      },
+      Date.now()
+    )
+  })
+  ipcMain.handle(Channels.extSurfaceClose, (e, instanceId: string) => {
+    const opener = bound.get(e.sender.id)
+    if (!opener || !surfaceBelongsTo(instanceId, opener.extId)) return false
+    return closeSurface(instanceId)
+  })
+  ipcMain.handle(Channels.extSurfaceFocus, (e, instanceId: string) => {
+    const opener = bound.get(e.sender.id)
+    if (!opener || !surfaceBelongsTo(instanceId, opener.extId)) return false
+    return focusSurface(instanceId)
+  })
+  // The surface window's OWN root (board app code) fetches its render config, keyed on its top-level
+  // wcId (unforgeable) — never a guest-supplied id.
+  ipcMain.handle(Channels.extSurfaceInit, (e) => initForWc(e.sender.id))
+  // A board placement was genuinely removed (not just reloaded). Only the app renderer may call this
+  // (a garret:// guest may not), so a widget can't close another placement's surfaces.
+  ipcMain.on(Channels.extInstanceGone, (e, extId: string, instanceId: string) => {
+    if (e.sender.getURL().startsWith('garret:')) return
+    if (typeof extId === 'string' && typeof instanceId === 'string') closeSurfacesForOwner(extId, instanceId)
   })
 
   // ── install / manage ────────────────────────────────────────────────────────────────────────

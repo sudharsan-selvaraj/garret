@@ -47,6 +47,13 @@ export const Channels = {
   extRemove: 'ext:remove',
   extOpenFile: 'ext:open-file', // main → renderer: a .garret was opened from Finder
   extFlushOpenFiles: 'ext:flush-open-files', // renderer → main: drain opens queued before mount
+  // --- floating surface windows (docs/floating-surface-windows.md) ---
+  extSurfaceOpen: 'ext:surface-open', // guest → main: open a same-package surface as a floating window
+  extSurfaceClose: 'ext:surface-close', // guest → main: (instanceId)
+  extSurfaceFocus: 'ext:surface-focus', // guest → main: (instanceId)
+  extSurfaceInit: 'ext:surface-init', // surface window root → main: () → render config (by e.sender.id)
+  extSurfaceClosed: 'ext:surface-closed', // main → opener: (instanceId) a spawned window closed
+  extInstanceGone: 'ext:instance-gone', // board → main: (extId, instanceId) a placement was removed
   // --- WebContentsView geometry spike (dev-only, throwaway) ---
   wcvSpikeEnabled: 'wcv-spike:enabled',
   wcvSpikeCreate: 'wcv-spike:create',
