@@ -29,7 +29,8 @@ export interface SecretsApi {
 }
 /** Options for opening a floating sibling surface. All fields optional; sizes in px. */
 export interface SurfaceOpenOptions {
-  /** initial, immutable props delivered to the opened surface as `g.props`. */
+  /** initial props delivered to the opened surface as `g.props`; structured-cloned, so each surface
+   *  gets its own isolated copy (mutations are local). Must be structured-cloneable (no functions). */
   props?: Record<string, unknown>
   title?: string
   size?: { w: number; h: number }

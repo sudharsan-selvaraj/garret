@@ -64,7 +64,7 @@ interface SurfaceApi {
   // each mount and still receives closes for surfaces this placement opened before the reload.
   onClosed(cb: (instanceId: string) => void): () => void
   open(surfaceId: string, opts?: {
-    props?: Record<string, unknown>    // initial, immutable, structured-clone
+    props?: Record<string, unknown>    // structured-clone → isolated per surface (mutations local)
     title?: string
     size?: { w: number; h: number }    // px; overrides manifest defaultSize
     alwaysOnTop?: boolean              // default true — a mirror stays visible while you work
@@ -104,21 +104,23 @@ New channels (`src/shared/ipc/channels.ts`):
   **bound** `e.sender.id`; see §5 for the full gate.
 - `extSurfaceClose` (invoke): `(instanceId)`.
 - `extSurfaceFocus` (invoke): `(instanceId)`.
-- `extSurfaceInit` (invoke): `() → { extId, surfaceId, uiUrl, preloadUrl, props }`. Called by the
+- `extSurfaceInit` (invoke): `() → { extId, instanceId, uiUrl, preloadUrl }` (render config; props go
+  via `extBind`). Called by the
   spawned surface's renderer; main reads **`e.sender.id`** and returns that window's record. This is
   the props channel — see below.
 - `extSurfaceClosed` (event → opener): fired to the opener's webContents when a spawned window
   closes, so its handle's `onClose`/`closed` resolve **exactly once** (idempotent drop from the
   record map, guarded like `killHost`'s `hosts.has`).
 
-**Props delivery (revised — B1 fix).** Props are **never** looked up by a guest-supplied instanceId.
-When main creates the surface window it knows the window's `webContents.id`; it records
-`surfaceWcId → { extId, surfaceId, instanceId, props, ownerKey }`. `extSurfaceInit` returns props
-keyed on the **unforgeable `e.sender.id`** of the surface window only — so no other guest (not even a
-second placement of the same ext) can harvest another window's props. `instanceId` is a
-`randomUUID()` (unguessable), so the derived config key `ext.config.<extId>.<instanceId>` isn't
-guessable either. `extSurfaceInit` returns `{ props: {} }` for any wc with no surface record (board
-widgets reading `g.props` get `{}`, never an error).
+**Props delivery (shipped — B1 fix).** Props are **never** looked up by a guest-supplied instanceId.
+When main creates the surface window it knows the window's top-level `webContents.id` (`surfaceWcId`).
+Props reach the guest through the guest's **`extBind`**, returned only when the binding webview is
+genuinely hosted inside that surface window — `surfacePropsForBind` checks
+`e.sender.hostWebContents?.id === surfaceWcId` (the embedder relationship is unforgeable). So no other
+guest (not even a second placement of the same ext) can harvest another window's props, and a board
+widget's bind gets `{}`. `instanceId` is a `randomUUID()` (unguessable), so the derived config key
+`ext.config.<extId>.<instanceId>` isn't guessable either. (`extSurfaceInit`, keyed on the surface
+window's own top-level `e.sender.id`, returns only render config — never props.)
 
 ## 5. Main — the SurfaceWindow manager (`src/main/windows/surfaceWindow.ts`)
 
@@ -137,8 +139,9 @@ The `extSurfaceOpen` handler (in the ext lane, so it shares `bound`), then `open
 5. **Ownership (B3):** the owner is `ownerKey = ${opener.extId}:${opener.rootInstanceId}` — the
    **stable board-placement identity**, not a wcId. A surface opening a surface (chained) inherits the
    opener's `rootInstanceId`, so the whole tree is owned by the root board placement and closes with it.
-6. Generate `instanceId = randomUUID()`; record `surfaceWcId → { extId, surfaceId, instanceId, props,
-   ownerKey }` once the window's `webContents.id` exists.
+6. Generate `instanceId = randomUUID()`; store a record **keyed by `instanceId`** (with `surfaceWcId`,
+   `extId`, `surfaceId`, `props`, `ownerExtId`, `ownerInstanceId`, `openerWcId` as fields) once the
+   window's `webContents.id` exists.
 7. Create a **focusable, movable, resizable** `BrowserWindow` (NOT `makePanel` — we *want* activation
    for keyboard; the opposite of the HUD/clipboard picker). `alwaysOnTop` at the `floating` level by
    default (above normal windows, still focusable). preload = `index.js` with
@@ -169,13 +172,13 @@ Lifecycle hooks:
   CSP (that partition has no `onHeadersReceived` override, so the ext protocol's CSP applies
   untouched), same origin-verified self-bind, same broker ceiling. The existing `web-contents-created`
   window-open deny (`index.ts`, keyed on `type === 'webview'`) carries over. Plus the §5 nav-lock.
-- Props are structured-clone + immutable.
+- Props are structured-clone → each surface gets its own isolated copy (not frozen; mutations are local).
 
 ## 7. Renderer + multi-surface serving
 
 - `main.tsx`: add `else if (windowRole === 'surface')` → mount `SurfaceWindowRoot`.
-- `SurfaceWindowRoot` calls `extSurfaceInit()` (main reads `e.sender.id`) → `{ extId, surfaceId,
-  uiUrl, preloadUrl, props }`, and renders a single full-window `<WidgetSurface>` — reused as-is
+- `SurfaceWindowRoot` calls `extSurfaceInit()` (main reads `e.sender.id`) → `{ extId, instanceId,
+  uiUrl, preloadUrl }`, and renders a single full-window `<WidgetSurface>` — reused as-is
   (crash isolation, retry included).
 
 **Serving a second UI dir (should-fix — the resolver only maps one dir per ext today).**
@@ -220,6 +223,8 @@ wcId would let the widget's own Retry flow nuke every live mirror. So:
   the user closes them or quit — acceptable for v1.*
 - `revokeExt` (disable/uninstall) → `closeSurfacesForExt(extId)`. App quit closes all.
 
+A closing surface also closes any surfaces **it** opened (chained children): `onClosed` →
+`closeSurfacesForOwner(extId, thisInstanceId)`, so a subtree tears down with its root.
 `handle.close()` (programmatic) and the user closing the window both fire `onClose`/`closed` exactly
 once (idempotent record drop). (Relaxing to "independent/detached" later is additive: a
 `detached: true` open option, no contract change.)

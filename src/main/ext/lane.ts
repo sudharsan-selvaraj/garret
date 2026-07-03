@@ -5,7 +5,7 @@ import { Channels } from '@shared/ipc/channels'
 import type { WireMessage } from '@garretapp/sdk'
 import type { ExtRuntimeInfo, ExtInstallPlan } from '@shared/types/ext'
 import { persistence } from '@main/persistence/store'
-import { registerExtProtocol, setUiResolver, resetUiDirs } from '@main/ext/protocol'
+import { registerExtProtocol, setUiResolver, resetUiDirs, EXT_PARTITION } from '@main/ext/protocol'
 import { launchHost, getHost, killHost } from '@main/ext/host'
 import { platformCall, type Binding } from '@main/ext/broker'
 import {
@@ -37,7 +37,6 @@ import {
  * board loader, and install/manage. One host per placed instance (keyed by the UI webview's
  * webContents id). See docs/architecture.md § 2 + § 5.
  */
-export const EXT_PARTITION = 'persist:garret-ext'
 
 // webContents id → the extension bound to that widget webview (for the broker + host routing).
 const bound = new Map<number, Binding>()

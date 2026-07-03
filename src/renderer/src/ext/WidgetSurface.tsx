@@ -65,6 +65,8 @@ export function WidgetSurface({ extensionId, instanceId, uiUrl, preloadUrl }: Pr
       ref={ref as unknown as Ref<HTMLWebViewElement>}
       src={`${uiUrl}?instance=${encodeURIComponent(instanceId)}`}
       preload={preloadUrl}
+      // Source of truth: EXT_PARTITION in @main/ext/protocol (a main-side const the renderer can't
+      // import). Must stay in sync — the surface window's will-attach-webview check pins this value.
       partition="persist:garret-ext"
       // eslint-disable-next-line react/no-unknown-property
       webpreferences="contextIsolation=yes,nodeIntegration=no,sandbox=no"

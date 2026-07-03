@@ -30,13 +30,13 @@ export const Channels = {
   pluginsOpenExternal: 'plugins:open-external',
   // --- unified extension system (garret-sdk) ---
   extList: 'ext:list', // board loader → { preloadUrl, extensions: ExtRuntimeInfo[] }
-  extBind: 'ext:bind', // (extensionId, instanceId, wcId) → { ok, hasHost }
+  extBind: 'ext:bind', // guest self-binds: (extensionId, instanceId) → { ok, hasHost, props }
   extUnbind: 'ext:unbind', // (wcId)
   extHostSend: 'ext:host-send', // renderer → main: a WireMessage for the bound host
   extHostFrame: 'ext:host-frame', // main → renderer: a WireMessage from the host
   extPlatform: 'ext:platform', // (domain, op, args) → broker
   extActive: 'ext:active', // main → renderer: board active/idle
-  extConfig: 'ext:config', // (op, instanceId, value?) → per-placement settings
+  extConfig: 'ext:config', // (op, value?, replace?) → per-placement settings (instance from binding)
   extConfigChange: 'ext:config-change', // main → guest: config changed
   extInstallPlan: 'ext:install-plan',
   extInstallFromFile: 'ext:install-from-file',
@@ -105,7 +105,6 @@ export interface LayoutsInfo {
 /** Render config for a floating surface window's root (from `ext.surfaceInit`). */
 export interface SurfaceInit {
   extId: string
-  surfaceId: string
   instanceId: string
   /** garret://<extId>/~<surfaceId>/ */
   uiUrl: string

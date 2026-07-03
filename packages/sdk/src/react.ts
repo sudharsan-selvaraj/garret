@@ -112,7 +112,8 @@ export function useActive(): boolean {
 }
 
 /** Launch props for a spawned surface window (`g.surfaces.open(..., { props })`). `{}` for the board
- *  surface. Re-renders once the runtime is ready so the props are populated on first paint. */
+ *  surface. Re-renders once the runtime is ready so the props are populated on first paint. The `T`
+ *  is an unchecked cast — validate the shape yourself if it matters. */
 export function useProps<T = Record<string, unknown>>(): T {
   const g = getGarret()
   const [, bump] = useState(0)

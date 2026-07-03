@@ -10,6 +10,9 @@ import type { ExtTier } from '@shared/types/ext'
  * broker (`g.fetch`) or the host, never the UI directly.
  */
 export const EXT_SCHEME = 'garret'
+/** The session partition every extension guest webview loads under (board + surface windows). The
+ *  single source of truth — imported by the lane + surface-window manager (renderer hardcodes it). */
+export const EXT_PARTITION = 'persist:garret-ext'
 export const extSchemePrivilege = {
   scheme: EXT_SCHEME,
   privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: false }

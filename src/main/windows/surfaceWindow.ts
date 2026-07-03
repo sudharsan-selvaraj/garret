@@ -4,6 +4,7 @@ import { BrowserWindow, screen, webContents } from 'electron'
 import { Channels } from '@shared/ipc/channels'
 import type { Binding } from '@main/ext/broker'
 import type { SurfaceSpec } from '@main/ext/manifest'
+import { EXT_PARTITION } from '@main/ext/protocol'
 
 /**
  * Floating surface windows — a widget opens a sibling surface (same package) as a focusable,
@@ -37,7 +38,6 @@ interface SurfaceRecord {
   openerWcId: number // where to deliver ext:surface-closed (re-pointed on opener rebind)
 }
 
-const EXT_PARTITION = 'persist:garret-ext' // must match lane.ts EXT_PARTITION
 const MAX_PROPS_BYTES = 256_000
 
 const records = new Map<string, SurfaceRecord>()
@@ -229,10 +229,10 @@ export function focusSurface(instanceId: string): boolean {
 /** Render config for the surface window's root (keyed on its OWN top-level wcId — unforgeable). */
 export function initForWc(
   surfaceWcId: number
-): { extId: string; surfaceId: string; instanceId: string; uiUrl: string; preloadUrl: string } | null {
+): { extId: string; instanceId: string; uiUrl: string; preloadUrl: string } | null {
   for (const r of records.values()) {
     if (r.surfaceWcId === surfaceWcId) {
-      return { extId: r.extId, surfaceId: r.surfaceId, instanceId: r.instanceId, uiUrl: r.uiUrl, preloadUrl: r.preloadUrl }
+      return { extId: r.extId, instanceId: r.instanceId, uiUrl: r.uiUrl, preloadUrl: r.preloadUrl }
     }
   }
   return null
