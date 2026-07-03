@@ -9,8 +9,10 @@
       #root { height: 100%; }
       /* The host window (SurfaceWindowRoot) draws the draggable titlebar; the guest fills the rest
          with the device screen. */
-      .screen-wrap { position: relative; height: 100%; display: flex; align-items: center; justify-content: center; }
-      .screen { width: 100%; height: 100%; display: block; object-fit: contain; }
+      .screen-wrap { position: relative; height: 100%; }
+      /* The window is aspect-matched to the device (host resize), so the canvas fills exactly — no
+         object-fit letterbox (which would expose the transparent window as bands). */
+      .screen { width: 100%; height: 100%; display: block; }
       .msg { position: absolute; font: 12px -apple-system, system-ui, sans-serif; color: #e6e6ea; opacity: 0.75; }
       .msg.err { color: #ff8a8a; padding: 0 16px; text-align: center; }
     </style>

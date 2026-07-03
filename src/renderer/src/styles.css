@@ -470,6 +470,7 @@ button[disabled],
 }
 .surface-root .widget-webview {
   flex: 1;
+  background: transparent; /* the guest paints its own content (e.g. a video canvas); no white fill */
 }
 /* Host-drawn chrome for frameless surfaces (a webview guest can't set -webkit-app-region). */
 .surface-titlebar {
