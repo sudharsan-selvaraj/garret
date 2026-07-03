@@ -5,6 +5,14 @@
  * never break because audio hiccuped) and it no-ops on devices with no audio (Android <11 / emulator,
  * where the audio stream ends before any config arrives — so we never even open an AudioContext).
  */
+// A/V sync: the video decoder draws frames immediately (and drops to stay realtime), so video is
+// ~live. Audio must track it. We keep a small scheduling lead to absorb IPC/decode jitter, but if the
+// lead grows past MAX_LEAD — a startup burst or buffered packets — audio is lagging the video, so we
+// DROP frames to catch up (a one-time content skip, seamless in the schedule timeline) rather than
+// queue them further into the future.
+const LEAD = 0.05 // seconds ahead of the audio clock we aim to schedule
+const MAX_LEAD = 0.15 // seconds; beyond this the audio is backed up behind the (realtime) video
+
 export class MirrorAudio {
   #ctx: AudioContext | null = null
   #decoder: AudioDecoder | null = null
@@ -81,6 +89,10 @@ export class MirrorAudio {
       return
     }
     try {
+      const now = ctx.currentTime
+      // Backed up behind the realtime video → drop this frame to catch up (don't advance the cursor,
+      // so the already-scheduled audio plays out seamlessly and new frames resume once we're in range).
+      if (this.#playAt > now + MAX_LEAD) return
       const channels = data.numberOfChannels
       const frames = data.numberOfFrames
       const buffer = ctx.createBuffer(channels, frames, data.sampleRate)
@@ -93,9 +105,8 @@ export class MirrorAudio {
       const src = ctx.createBufferSource()
       src.buffer = buffer
       src.connect(ctx.destination)
-      const now = ctx.currentTime
-      // If we've drifted behind real time (underrun / tab throttling), resync with a small lead.
-      if (this.#playAt < now) this.#playAt = now + 0.05
+      // Underrun / first packet → resync with a small lead.
+      if (this.#playAt < now) this.#playAt = now + LEAD
       src.start(this.#playAt)
       this.#playAt += buffer.duration
     } catch {
