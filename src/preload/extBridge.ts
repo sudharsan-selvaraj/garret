@@ -20,6 +20,8 @@ const SURFACE_OPEN = 'ext:surface-open'
 const SURFACE_CLOSE = 'ext:surface-close'
 const SURFACE_FOCUS = 'ext:surface-focus'
 const SURFACE_CLOSED = 'ext:surface-closed'
+const SURFACE_SET_ASPECT = 'ext:surface-set-aspect'
+const SURFACE_RESIZE = 'ext:surface-resize'
 
 const extId = location.hostname
 const instanceId = new URLSearchParams(location.search).get('instance') || 'unknown'
@@ -166,6 +168,12 @@ const runtime = {
     return () => activeCbs.delete(cb)
   },
   surfaces,
+  // Controls for THIS UI's own surface window (no-op for board widgets — main scopes it to the
+  // embedder). A surface uses this once it knows its content size (e.g. the device resolution).
+  window: {
+    setAspectRatio: (ratio: number): void => ipcRenderer.send(SURFACE_SET_ASPECT, ratio),
+    resize: (width: number, height: number): void => ipcRenderer.send(SURFACE_RESIZE, width, height)
+  },
   get props(): Record<string, unknown> {
     return launchProps
   },

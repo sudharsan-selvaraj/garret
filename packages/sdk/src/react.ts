@@ -122,4 +122,4 @@ export function useProps<T = Record<string, unknown>>(): T {
 }
 
 export { GarretError } from './errors'
-export type { GarretPlatform, SurfaceApi, SurfaceHandle, SurfaceOpenOptions } from './platform'
+export type { GarretPlatform, SurfaceApi, SurfaceHandle, SurfaceOpenOptions, WindowControls } from './platform'

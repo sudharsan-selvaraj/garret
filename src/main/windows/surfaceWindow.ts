@@ -134,6 +134,11 @@ export function openSurface(
     show: false,
     resizable: p.spec.resizable,
     fullscreenable: false,
+    frame: p.spec.frame,
+    transparent: p.spec.transparent,
+    // A transparent surface (e.g. a rounded phone screen) wants no opaque fill or square shadow.
+    backgroundColor: p.spec.transparent ? '#00000000' : undefined,
+    hasShadow: !p.spec.transparent,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -243,6 +248,27 @@ export function surfacePropsForBind(instanceId: string, embedderWcId: number | u
   const rec = records.get(instanceId)
   if (!rec) return null
   return embedderWcId !== undefined && embedderWcId === rec.surfaceWcId ? rec.props : null
+}
+
+/** The surface record whose window hosts this guest webview (the unforgeable embedder), or null. */
+function recordByEmbedder(embedderWcId: number | undefined): SurfaceRecord | null {
+  if (embedderWcId === undefined) return null
+  for (const r of records.values()) if (r.surfaceWcId === embedderWcId) return r
+  return null
+}
+
+/** A surface shaping its OWN window (embedder-scoped — a guest can only affect the window it's in). */
+export function setSurfaceAspectRatio(embedderWcId: number | undefined, ratio: number): void {
+  const rec = recordByEmbedder(embedderWcId)
+  if (!rec || rec.win.isDestroyed()) return
+  rec.win.setAspectRatio(Number.isFinite(ratio) && ratio > 0 ? ratio : 0) // 0 clears the lock
+}
+export function resizeSurface(embedderWcId: number | undefined, width: number, height: number): void {
+  const rec = recordByEmbedder(embedderWcId)
+  if (!rec || rec.win.isDestroyed()) return
+  const w = clampPx(width, DEFAULT_W)
+  const h = clampPx(height, DEFAULT_H)
+  rec.win.setSize(w, h)
 }
 
 /** True if `instanceId` is a live surface belonging to `extId` (authorizes close/focus by a sibling). */

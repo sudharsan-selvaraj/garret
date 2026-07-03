@@ -28,6 +28,10 @@ export interface SurfaceSpec {
   defaultSize?: { w: number; h: number }
   minSize?: { w: number; h: number }
   resizable: boolean
+  /** native window chrome (title bar); default true. */
+  frame: boolean
+  /** transparent background — for non-rectangular UIs (e.g. a phone screen); default false. */
+  transparent: boolean
 }
 
 export interface ExtSpec {
@@ -206,7 +210,9 @@ export async function parseManifest(dir: string): Promise<ExtSpec | { error: str
         uiDir: sDir,
         defaultSize: defaultSize ?? undefined,
         minSize: minSize ?? undefined,
-        resizable: s.resizable !== false // default true
+        resizable: s.resizable !== false, // default true
+        frame: (s as { frame?: unknown }).frame !== false, // default true
+        transparent: (s as { transparent?: unknown }).transparent === true // default false
       }
     }
     if (Object.keys(out).length > 0) {

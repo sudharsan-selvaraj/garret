@@ -49,7 +49,10 @@ another author's widget. This single restriction is what makes "a widget opens a
 }
 ```
 
-- `surfaces` — map of `surfaceId → { name, ui (contained path), defaultSize (px), minSize (px), resizable }`.
+- `surfaces` — map of `surfaceId → { name, ui (contained path), defaultSize (px), minSize (px),
+  resizable, frame (default true), transparent (default false) }`. `frame:false` + `transparent:true`
+  give a chromeless, non-rectangular window (e.g. a rounded phone screen); a transparent surface gets
+  no opaque fill or square shadow.
 - Secondary-surface sizes are **pixels** (they're windows), unlike the primary's grid `defaultSize`.
 - Each surface `ui` is validated at install like the primary (contained path, exists), and served over
   the same `garret://<id>/<path>/` scheme with the same per-tier CSP.
@@ -86,6 +89,11 @@ interface SurfaceHandle {
 // Inside a spawned surface, read its launch props. `{}` until the runtime binds; use the React
 // `useProps<T>()` hook (re-renders on ready) or await `g.onReady(...)` for non-React.
 g.props: Record<string, unknown>       // {} for the primary/board surface
+
+// A surface shapes its OWN window (no-op for a board widget) — e.g. lock the aspect ratio once you
+// know your content size. Scoped in main to the window that embeds the caller.
+g.window.setAspectRatio(ratio: number): void   // w/h; 0 clears
+g.window.resize(width: number, height: number): void
 ```
 
 Usage (the device list opening a mirror per click):

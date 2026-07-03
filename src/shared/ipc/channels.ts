@@ -54,6 +54,8 @@ export const Channels = {
   extSurfaceInit: 'ext:surface-init', // surface window root → main: () → render config (by e.sender.id)
   extSurfaceClosed: 'ext:surface-closed', // main → opener: (instanceId) a spawned window closed
   extInstanceGone: 'ext:instance-gone', // board → main: (extId, instanceId) a placement was removed
+  extSurfaceSetAspect: 'ext:surface-set-aspect', // surface guest → main: set its OWN window aspect ratio
+  extSurfaceResize: 'ext:surface-resize', // surface guest → main: resize its OWN window (px)
   // --- WebContentsView geometry spike (dev-only, throwaway) ---
   wcvSpikeEnabled: 'wcv-spike:enabled',
   wcvSpikeCreate: 'wcv-spike:create',

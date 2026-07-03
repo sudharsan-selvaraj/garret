@@ -48,6 +48,14 @@ export interface SurfaceHandle {
   closed(): Promise<void>
   onClose(cb: () => void): () => void
 }
+/** Controls for the surface window THIS UI runs in (no-op for a board-placed widget). */
+export interface WindowControls {
+  /** Lock the window's aspect ratio (width/height); `0` clears it. Use once you know your content
+   *  size — e.g. a mirror sets the device's ratio after the first video frame. */
+  setAspectRatio(ratio: number): void
+  /** Resize the window (px). */
+  resize(width: number, height: number): void
+}
 export interface SurfaceApi {
   /** Open a sibling surface (declared in this package's manifest) as a floating, focusable window.
    *  Rejects with an Error (message from Garret) if denied — e.g. missing `windows` capability,
@@ -74,6 +82,8 @@ export interface GarretPlatform {
   onActiveChange(cb: (active: boolean) => void): () => void
   /** Open sibling surfaces (same package) as floating windows. Requires the `windows` capability. */
   surfaces: SurfaceApi
+  /** Controls for this UI's own surface window (no-op for a board-placed widget). */
+  window: WindowControls
   /** Launch props for a spawned surface; `{}` for the board/primary surface. Available after `onReady`. */
   props: Record<string, unknown>
   /** Fires once the runtime has bound (so `props` are populated); fires immediately if already ready. */
@@ -136,6 +146,7 @@ export function getGarret(): GarretPlatform {
     active: true,
     onActiveChange: () => () => {},
     surfaces: { open: nope, onClosed: () => () => {} },
+    window: { setAspectRatio: () => {}, resize: () => {} },
     props: {},
     onReady: (cb: () => void) => {
       cb()

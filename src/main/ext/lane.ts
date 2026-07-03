@@ -15,6 +15,8 @@ import {
   initForWc,
   surfacePropsForBind,
   surfaceBelongsTo,
+  setSurfaceAspectRatio,
+  resizeSurface,
   repointOwner,
   closeSurfacesForOwner,
   closeSurfacesForExt,
@@ -210,6 +212,14 @@ export function registerExtHandlers(): void {
   // The surface window's OWN root (board app code) fetches its render config, keyed on its top-level
   // wcId (unforgeable) — never a guest-supplied id.
   ipcMain.handle(Channels.extSurfaceInit, (e) => initForWc(e.sender.id))
+  // A surface guest shapes its OWN window — scoped to the window that embeds it (e.sender is the guest
+  // webview; hostWebContents is its surface window). Board widgets have no surface record → no-op.
+  ipcMain.on(Channels.extSurfaceSetAspect, (e, ratio: number) => {
+    if (typeof ratio === 'number') setSurfaceAspectRatio(e.sender.hostWebContents?.id, ratio)
+  })
+  ipcMain.on(Channels.extSurfaceResize, (e, w: number, h: number) => {
+    if (typeof w === 'number' && typeof h === 'number') resizeSurface(e.sender.hostWebContents?.id, w, h)
+  })
   // A board placement was genuinely removed (not just reloaded). Only the app renderer may call this
   // (a garret:// guest may not), so a widget can't close another placement's surfaces. A surface's
   // own root is also non-garret app code, but closeSurfacesForOwner is keyed on {extId, instanceId}

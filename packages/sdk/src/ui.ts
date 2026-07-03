@@ -16,7 +16,8 @@ export type {
   SecretsApi,
   SurfaceApi,
   SurfaceHandle,
-  SurfaceOpenOptions
+  SurfaceOpenOptions,
+  WindowControls
 } from './platform'
 export { GarretError } from './errors'
 export { defineManifest, defineConfig } from './types'
