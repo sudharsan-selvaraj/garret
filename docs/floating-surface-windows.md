@@ -72,14 +72,16 @@ interface SurfaceApi {
 
 interface SurfaceHandle {
   readonly id: string                  // the spawned instanceId
-  close(): Promise<void>
-  focus(): Promise<void>
-  readonly closed: Promise<void>       // resolves when the window closes (user OR programmatic)
+  close(): Promise<boolean>
+  focus(): Promise<boolean>
+  closed(): Promise<void>              // resolves when the window closes (method, not a property —
+                                       // contextBridge-safe). onClose is the callback form.
   onClose(cb: () => void): () => void
 }
 
-// Inside a spawned surface, read its launch props (immutable, available before first render):
-g.props: Readonly<Record<string, unknown>>   // {} for the primary/board surface
+// Inside a spawned surface, read its launch props. `{}` until the runtime binds; use the React
+// `useProps<T>()` hook (re-renders on ready) or await `g.onReady(...)` for non-React.
+g.props: Record<string, unknown>       // {} for the primary/board surface
 ```
 
 Usage (the device list opening a mirror per click):

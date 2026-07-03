@@ -16,6 +16,10 @@ const PLATFORM = 'ext:platform'
 const ACTIVE = 'ext:active'
 const CONFIG = 'ext:config'
 const CONFIG_CHANGE = 'ext:config-change'
+const SURFACE_OPEN = 'ext:surface-open'
+const SURFACE_CLOSE = 'ext:surface-close'
+const SURFACE_FOCUS = 'ext:surface-focus'
+const SURFACE_CLOSED = 'ext:surface-closed'
 
 const extId = location.hostname
 const instanceId = new URLSearchParams(location.search).get('instance') || 'unknown'
@@ -75,6 +79,45 @@ ipcRenderer.on(CONFIG_CHANGE, (_e: IpcRendererEvent, c: unknown) => {
   configCbs.forEach((cb) => cb(c))
 })
 
+// ── surfaces (floating sibling windows) + launch props + ready ─────────────────────────────────────
+let launchProps: Record<string, unknown> = {}
+let ready = false
+const readyCbs = new Set<() => void>()
+const surfaceClosedCbs = new Set<(id: string) => void>()
+ipcRenderer.on(SURFACE_CLOSED, (_e: IpcRendererEvent, id: string) => surfaceClosedCbs.forEach((cb) => cb(id)))
+
+const surfaces = {
+  async open(surfaceId: string, opts?: unknown): Promise<unknown> {
+    const res = (await ipcRenderer.invoke(SURFACE_OPEN, surfaceId, opts)) as {
+      ok: boolean
+      instanceId?: string
+      error?: string
+    }
+    if (!res?.ok || !res.instanceId) throw new Error(res?.error || 'could not open surface')
+    const id = res.instanceId
+    const onCloseCbs = new Set<() => void>()
+    let resolveClosed = (): void => {}
+    const closedP = new Promise<void>((r) => (resolveClosed = r))
+    const route = (closedId: string): void => {
+      if (closedId !== id) return
+      onCloseCbs.forEach((cb) => cb())
+      resolveClosed()
+      surfaceClosedCbs.delete(route)
+    }
+    surfaceClosedCbs.add(route)
+    return {
+      id,
+      close: () => ipcRenderer.invoke(SURFACE_CLOSE, id) as Promise<boolean>,
+      focus: () => ipcRenderer.invoke(SURFACE_FOCUS, id) as Promise<boolean>,
+      closed: () => closedP,
+      onClose: (cb: () => void): (() => void) => {
+        onCloseCbs.add(cb)
+        return () => onCloseCbs.delete(cb)
+      }
+    }
+  }
+}
+
 const runtime = {
   instanceId,
   hostTransport,
@@ -115,6 +158,18 @@ const runtime = {
     activeCbs.add(cb)
     return () => activeCbs.delete(cb)
   },
+  surfaces,
+  get props(): Record<string, unknown> {
+    return launchProps
+  },
+  onReady(cb: () => void): () => void {
+    if (ready) {
+      cb()
+      return () => {}
+    }
+    readyCbs.add(cb)
+    return () => readyCbs.delete(cb)
+  },
   inGarret: true,
   config: {
     get: () => config,
@@ -131,7 +186,12 @@ contextBridge.exposeInMainWorld('__garret', runtime)
 // Bind (and fetch initial config) after exposing, then flush any queued host frames.
 void (async () => {
   try {
-    const res = (await ipcRenderer.invoke(BIND, extId, instanceId)) as { ok: boolean; hasHost?: boolean }
+    const res = (await ipcRenderer.invoke(BIND, extId, instanceId)) as {
+      ok: boolean
+      hasHost?: boolean
+      props?: Record<string, unknown>
+    }
+    launchProps = res?.props && typeof res.props === 'object' ? res.props : {}
     config = await ipcRenderer.invoke(CONFIG, 'get')
     configCbs.forEach((cb) => cb(config))
     if (res?.ok) {
@@ -140,5 +200,9 @@ void (async () => {
     }
   } catch {
     /* not bound — host calls will surface UNAVAILABLE via the SDK client */
+  } finally {
+    ready = true
+    readyCbs.forEach((cb) => cb())
+    readyCbs.clear()
   }
 })()

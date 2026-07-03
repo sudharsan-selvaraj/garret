@@ -27,6 +27,30 @@ export interface SecretsApi {
   set(key: string, value: string): Promise<void>
   delete(key: string): Promise<void>
 }
+/** Options for opening a floating sibling surface. All fields optional; sizes in px. */
+export interface SurfaceOpenOptions {
+  /** initial, immutable props delivered to the opened surface as `g.props`. */
+  props?: Record<string, unknown>
+  title?: string
+  size?: { w: number; h: number }
+  /** default true — the window stays above normal windows while you work. */
+  alwaysOnTop?: boolean
+  /** singleton: a repeat open with the same key focuses the existing window instead of spawning. */
+  key?: string
+}
+/** A handle to a floating surface window opened via `g.surfaces.open`. */
+export interface SurfaceHandle {
+  readonly id: string
+  close(): Promise<boolean>
+  focus(): Promise<boolean>
+  /** Resolves when the window closes — by the user, `close()`, or its opener being removed. */
+  closed(): Promise<void>
+  onClose(cb: () => void): () => void
+}
+export interface SurfaceApi {
+  /** Open a sibling surface (declared in this package's manifest) as a floating, focusable window. */
+  open(surfaceId: string, opts?: SurfaceOpenOptions): Promise<SurfaceHandle>
+}
 export interface GarretPlatform {
   /** per-extension (shared across placements), atomic + key-merged. */
   storage: StorageApi
@@ -41,6 +65,12 @@ export interface GarretPlatform {
   /** false when the board is ambient/idle — pause rAF/animations, throttle polling. */
   active: boolean
   onActiveChange(cb: (active: boolean) => void): () => void
+  /** Open sibling surfaces (same package) as floating windows. Requires the `windows` capability. */
+  surfaces: SurfaceApi
+  /** Launch props for a spawned surface; `{}` for the board/primary surface. Available after `onReady`. */
+  props: Record<string, unknown>
+  /** Fires once the runtime has bound (so `props` are populated); fires immediately if already ready. */
+  onReady(cb: () => void): () => void
   /** false in a plain browser (dev) — render a "run inside Garret" state instead of a blank UI. */
   inGarret: boolean
 }
@@ -97,6 +127,12 @@ export function getGarret(): GarretPlatform {
     openExternal: async () => false,
     clipboard: { readText: nope, writeText: nope },
     active: true,
-    onActiveChange: () => () => {}
+    onActiveChange: () => () => {},
+    surfaces: { open: nope },
+    props: {},
+    onReady: (cb: () => void) => {
+      cb()
+      return () => {}
+    }
   }
 }

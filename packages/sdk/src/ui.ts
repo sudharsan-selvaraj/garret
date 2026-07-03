@@ -8,7 +8,16 @@ export {
   getHostTransport,
   getInstanceId
 } from './platform'
-export type { GarretPlatform, GarretRuntime, ServiceClient, StorageApi, SecretsApi } from './platform'
+export type {
+  GarretPlatform,
+  GarretRuntime,
+  ServiceClient,
+  StorageApi,
+  SecretsApi,
+  SurfaceApi,
+  SurfaceHandle,
+  SurfaceOpenOptions
+} from './platform'
 export { GarretError } from './errors'
 export { defineManifest, defineConfig } from './types'
 export type { Stream, StreamCall, HostClient, EventMap, Manifest, Capability } from './types'

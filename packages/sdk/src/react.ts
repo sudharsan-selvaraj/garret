@@ -111,5 +111,14 @@ export function useActive(): boolean {
   return active
 }
 
+/** Launch props for a spawned surface window (`g.surfaces.open(..., { props })`). `{}` for the board
+ *  surface. Re-renders once the runtime is ready so the props are populated on first paint. */
+export function useProps<T = Record<string, unknown>>(): T {
+  const g = getGarret()
+  const [, bump] = useState(0)
+  useEffect(() => g.onReady(() => bump((n) => n + 1)), [g])
+  return g.props as T
+}
+
 export { GarretError } from './errors'
-export type { GarretPlatform } from './platform'
+export type { GarretPlatform, SurfaceApi, SurfaceHandle, SurfaceOpenOptions } from './platform'
