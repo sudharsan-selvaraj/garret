@@ -53,13 +53,17 @@ const MIME: Record<string, string> = {
 interface UiEntry {
   dir: string
   tier: ExtTier
+  /** surfaceId → that surface's ui dir, served at `garret://<id>/~<surfaceId>/`. */
+  surfaces?: Record<string, string>
 }
 const uiDirs = new Map<string, UiEntry>()
 let resolver: ((id: string) => Promise<UiEntry | null>) | null = null
 
-export function resetUiDirs(entries: Array<{ id: string; dir: string; tier: ExtTier }>): void {
+export function resetUiDirs(
+  entries: Array<{ id: string; dir: string; tier: ExtTier; surfaces?: Record<string, string> }>
+): void {
   uiDirs.clear()
-  for (const e of entries) uiDirs.set(e.id, { dir: e.dir, tier: e.tier })
+  for (const e of entries) uiDirs.set(e.id, { dir: e.dir, tier: e.tier, surfaces: e.surfaces })
 }
 export function setUiResolver(fn: (id: string) => Promise<UiEntry | null>): void {
   resolver = fn
@@ -84,9 +88,20 @@ async function serve(request: Request): Promise<Response> {
   if (!entry) return notFound()
 
   const pathname = decodeURIComponent(url.pathname)
-  const rel = pathname === '/' ? '/index.html' : pathname
-  const resolved = normalize(join(entry.dir, rel))
-  if (resolved !== entry.dir && !resolved.startsWith(entry.dir + sep)) return notFound()
+  // `garret://<id>/~<surfaceId>/...` serves a secondary surface's own dir; else the primary ui dir.
+  let baseDir = entry.dir
+  let rel: string
+  const surfaceMatch = /^\/~([a-z0-9][a-z0-9._-]*)(\/.*)?$/.exec(pathname)
+  if (surfaceMatch) {
+    const sDir = entry.surfaces?.[surfaceMatch[1]]
+    if (!sDir) return notFound()
+    baseDir = sDir
+    rel = surfaceMatch[2] && surfaceMatch[2] !== '/' ? surfaceMatch[2] : '/index.html'
+  } else {
+    rel = pathname === '/' ? '/index.html' : pathname
+  }
+  const resolved = normalize(join(baseDir, rel))
+  if (resolved !== baseDir && !resolved.startsWith(baseDir + sep)) return notFound()
   try {
     const body = await readFile(resolved)
     const ext = resolved.slice(resolved.lastIndexOf('.'))

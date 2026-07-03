@@ -16,7 +16,8 @@ import {
   cleanupStaging,
   listInstalled,
   setEnabled,
-  removeExtension
+  removeExtension,
+  type ResolvedExt
 } from '@main/ext/install'
 
 /**
@@ -33,8 +34,19 @@ function extPreloadUrl(): string {
   return pathToFileURL(join(app.getAppPath(), 'out', 'preload', 'extBridge.js')).toString()
 }
 
+/** surfaceId → ui dir, for serving `garret://<id>/~<surfaceId>/` (undefined if the ext has none). */
+function surfaceDirs(e: ResolvedExt): Record<string, string> | undefined {
+  const s = e.spec.surfaces
+  if (!s) return undefined
+  const out: Record<string, string> = {}
+  for (const [sid, spec] of Object.entries(s)) out[sid] = spec.uiDir
+  return out
+}
+
 async function syncUiDirs(): Promise<void> {
-  resetUiDirs((await resolveEnabled()).map((e) => ({ id: e.id, dir: e.uiDir, tier: e.tier })))
+  resetUiDirs(
+    (await resolveEnabled()).map((e) => ({ id: e.id, dir: e.uiDir, tier: e.tier, surfaces: surfaceDirs(e) }))
+  )
 }
 
 let currentActive = true
@@ -58,7 +70,7 @@ export function registerExtHandlers(): void {
   registerExtProtocol(session.fromPartition(EXT_PARTITION).protocol)
   setUiResolver(async (id) => {
     const ext = (await resolveEnabled()).find((e) => e.id === id)
-    return ext ? { dir: ext.uiDir, tier: ext.tier } : null
+    return ext ? { dir: ext.uiDir, tier: ext.tier, surfaces: surfaceDirs(ext) } : null
   })
   void syncUiDirs()
 

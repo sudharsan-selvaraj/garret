@@ -12,10 +12,23 @@ export const MANIFEST_FILE = 'garret.manifest.json'
 const ID_RE = /^[a-z0-9][a-z0-9._-]*$/
 const SUPPORTED_API_VERSION = 1
 
-/** Capabilities Garret actually implements. Anything else (e.g. `window`) is rejected at install. */
-const SIMPLE_CAPS = new Set(['storage', 'secrets', 'notify', 'clipboard', 'openExternal', 'process', 'fs', 'native'])
+/** Capabilities Garret actually implements. Anything else (e.g. `window`) is rejected at install.
+ *  `windows` (open floating sibling surfaces) is a SIMPLE cap — it does not force the full tier, so a
+ *  web-tier widget may open a pure-UI floating surface. See docs/floating-surface-windows.md. */
+const SIMPLE_CAPS = new Set(['storage', 'secrets', 'notify', 'clipboard', 'openExternal', 'process', 'fs', 'native', 'windows'])
 /** Caps that require a host process (full-access tier). */
 const SYSTEM_CAPS = new Set(['process', 'fs', 'native'])
+
+/** A secondary, non-placeable UI surface a widget can open as a floating window (same package only). */
+export interface SurfaceSpec {
+  name: string
+  /** absolute, contained. */
+  uiDir: string
+  /** window size in PX (not grid units). */
+  defaultSize?: { w: number; h: number }
+  minSize?: { w: number; h: number }
+  resizable: boolean
+}
 
 export interface ExtSpec {
   id: string
@@ -30,6 +43,8 @@ export interface ExtSpec {
   capabilities: string[]
   tier: ExtTier
   defaultSize?: { w: number; h: number }
+  /** Secondary openable surfaces, keyed by surfaceId. Requires the `windows` capability. */
+  surfaces?: Record<string, SurfaceSpec>
   config?: Record<string, unknown>
 }
 
@@ -44,7 +59,14 @@ interface DiskManifest {
   host?: unknown
   capabilities?: unknown
   defaultSize?: unknown
+  surfaces?: unknown
   config?: unknown
+}
+
+/** Parse a `{ w, h }` px size, or undefined. */
+function pxSize(v: unknown): { w: number; h: number } | undefined {
+  const s = v as { w?: unknown; h?: unknown } | undefined
+  return s && typeof s.w === 'number' && typeof s.h === 'number' ? { w: s.w, h: s.h } : undefined
 }
 
 /** Validate a manifest-relative path is contained (no absolute, no `..`); strips trailing sep. */
@@ -123,9 +145,43 @@ export async function parseManifest(dir: string): Promise<ExtSpec | { error: str
   }
   const tier: ExtTier = hasHost && hasSystemCap ? 'full' : 'web'
 
-  const ds = m.defaultSize as { w?: unknown; h?: unknown } | undefined
-  const defaultSize =
-    ds && typeof ds.w === 'number' && typeof ds.h === 'number' ? { w: ds.w, h: ds.h } : undefined
+  const defaultSize = pxSize(m.defaultSize)
+
+  // Secondary surfaces (openable as floating windows). Each is validated like the primary ui
+  // (contained path + dir + index.html); declaring any requires the `windows` capability.
+  let surfaces: Record<string, SurfaceSpec> | undefined
+  if (m.surfaces !== undefined) {
+    if (typeof m.surfaces !== 'object' || m.surfaces === null || Array.isArray(m.surfaces)) {
+      return { error: 'manifest.surfaces must be an object' }
+    }
+    const out: Record<string, SurfaceSpec> = {}
+    for (const [sid, raw] of Object.entries(m.surfaces as Record<string, unknown>)) {
+      if (!ID_RE.test(sid)) return { error: `Invalid surface id: ${sid}` }
+      const s = raw as { name?: unknown; ui?: unknown; defaultSize?: unknown; minSize?: unknown; resizable?: unknown }
+      if (typeof s.name !== 'string' || !s.name) return { error: `surface "${sid}" requires a name` }
+      const sDir = containedPath(base, s.ui)
+      if (!sDir) return { error: `surface "${sid}" ui must be a path inside the extension (no "..")` }
+      try {
+        if (!(await lstat(sDir)).isDirectory()) return { error: `surface "${sid}" ui is not a directory` }
+        if (!(await lstat(join(sDir, 'index.html'))).isFile()) return { error: `surface "${sid}" ui must contain index.html` }
+      } catch {
+        return { error: `surface "${sid}" ui / index.html not found` }
+      }
+      out[sid] = {
+        name: s.name,
+        uiDir: sDir,
+        defaultSize: pxSize(s.defaultSize),
+        minSize: pxSize(s.minSize),
+        resizable: s.resizable !== false // default true
+      }
+    }
+    if (Object.keys(out).length > 0) {
+      if (!capabilities.includes('windows')) {
+        return { error: 'Declaring surfaces requires the "windows" capability.' }
+      }
+      surfaces = out
+    }
+  }
 
   return {
     id,
@@ -138,6 +194,7 @@ export async function parseManifest(dir: string): Promise<ExtSpec | { error: str
     capabilities,
     tier,
     defaultSize,
+    surfaces,
     config: m.config && typeof m.config === 'object' ? (m.config as Record<string, unknown>) : undefined
   }
 }
