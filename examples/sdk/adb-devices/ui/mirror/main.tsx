@@ -5,6 +5,7 @@ import { WebCodecsVideoDecoder, WebGLVideoFrameRenderer } from '@yume-chan/scrcp
 import { ScrcpyVideoCodecId, type ScrcpyMediaStreamPacket } from '@yume-chan/scrcpy'
 import type { Api, VideoChunk, AudioChunk } from '../../shared/api'
 import { MirrorAudio } from './audio'
+import { attachPointerControl } from './pointer'
 
 /**
  * The floating "phone on the desktop" mirror surface. Reads its device serial from g.props, streams
@@ -29,10 +30,21 @@ function Mirror(): JSX.Element {
     const renderer = new WebGLVideoFrameRenderer(canvas)
     const decoder = new WebCodecsVideoDecoder({ codec: ScrcpyVideoCodecId.H264, renderer })
     const writer = decoder.writable.getWriter()
+
+    // Current frame dims drive both the aspect lock and touch-coordinate mapping (kept in a ref so the
+    // pointer handlers always read the latest across rotation).
+    let dims: { w: number; h: number } | null = null
+    const control = attachPointerControl(canvas, host, serial, () => dims)
+
     decoder.sizeChanged(({ width, height }) => {
-      // Rotation / resolution change → new dims → re-lock the window to the device aspect.
+      // Rotation / resolution change → new dims → re-lock the window + re-map touch, cancelling any
+      // gesture in flight (its old coordinates are meaningless in the new orientation).
       if (disposed) return
-      if (width && height) g.window.setAspectRatio(width / height)
+      if (width && height) {
+        control.cancelGesture()
+        dims = { w: width, h: height }
+        g.window.setAspectRatio(width / height)
+      }
     })
 
     const call = host.mirror({ serial })
@@ -40,7 +52,10 @@ function Mirror(): JSX.Element {
       if (disposed) return
       if (chunk.kind === 'meta') {
         setConnecting(false)
-        if (chunk.width && chunk.height) g.window.setAspectRatio(chunk.width / chunk.height)
+        if (chunk.width && chunk.height) {
+          dims = { w: chunk.width, h: chunk.height }
+          g.window.setAspectRatio(chunk.width / chunk.height)
+        }
         return
       }
       const packet: ScrcpyMediaStreamPacket =
@@ -69,6 +84,7 @@ function Mirror(): JSX.Element {
     return () => {
       disposed = true
       window.removeEventListener('pointerdown', resumeAudio)
+      control.detach()
       call.cancel()
       audioCall.cancel()
       audio.close()

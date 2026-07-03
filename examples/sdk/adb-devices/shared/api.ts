@@ -37,6 +37,31 @@ export type AudioChunk =
   | { kind: 'config'; data: Uint8Array }
   | { kind: 'frame'; data: Uint8Array; timestamp: number }
 
+/** A pointer/touch phase. `cancel` aborts a gesture (e.g. a rotation mid-drag) without a tap-release. */
+export type PointerAction = 'down' | 'move' | 'up' | 'cancel'
+
+/** A one-shot hardware/nav/system action. */
+export type DeviceAction =
+  | 'back'
+  | 'home'
+  | 'appSwitch'
+  | 'power'
+  | 'volumeUp'
+  | 'volumeDown'
+  | 'rotate'
+  | 'notifications'
+
+/** A pointer event. `x`/`y` are normalized [0,1] against the currently displayed frame; `w`/`h` are
+ *  that frame's pixel dims (from the decoder) — so mapping stays correct across rotation. */
+export interface PointerInput {
+  serial: string
+  action: PointerAction
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
 /** Host methods the UI calls (the controller boundary). Import Stream from '@garretapp/sdk'. */
 export interface Api {
   status(): Promise<AdbStatus>
@@ -48,6 +73,18 @@ export interface Api {
   mirror(args: { serial: string } & MirrorConfig): import('@garretapp/sdk').Stream<VideoChunk>
   /** Live Opus audio for a device; the stream ends immediately on Android <11. */
   audio(args: { serial: string }): import('@garretapp/sdk').Stream<AudioChunk>
+
+  // ── control (best-effort; no-op if the device isn't being mirrored) ─────────────────────────────
+  /** Inject a touch/drag event at a normalized point on the current frame. */
+  pointer(a: PointerInput): Promise<void>
+  /** Inject a wheel scroll at a normalized point (`dx`/`dy` in wheel steps). */
+  scroll(a: { serial: string; x: number; y: number; w: number; h: number; dx: number; dy: number }): Promise<void>
+  /** Inject a key event (Android keyCode + optional meta/repeat). */
+  key(a: { serial: string; action: 'down' | 'up'; keyCode: number; metaState?: number; repeat?: number }): Promise<void>
+  /** Inject unicode text into the focused field (respects the device's IME/layout). */
+  text(a: { serial: string; text: string }): Promise<void>
+  /** A one-shot nav/system action (back/home/recents/power/volume/rotate/notifications). */
+  action(a: { serial: string; kind: DeviceAction }): Promise<void>
 }
 
 /** Host → UI events (live, event-driven — no polling). A `type` (not `interface`) so it satisfies the

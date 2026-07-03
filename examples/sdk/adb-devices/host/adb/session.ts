@@ -1,5 +1,5 @@
 import type { ReadableStream } from '@yume-chan/stream-extra'
-import type { ScrcpyMediaStreamPacket } from '@yume-chan/scrcpy'
+import type { ScrcpyControlMessageWriter, ScrcpyMediaStreamPacket } from '@yume-chan/scrcpy'
 import { toVideoChunk, toAudioChunk, type MirrorSession } from './mirror'
 import type { VideoChunk, AudioChunk } from '../../shared/api'
 
@@ -19,6 +19,10 @@ export interface Sink<C> {
 export interface MirrorHub {
   subscribeVideo(sink: Sink<VideoChunk>): () => void
   subscribeAudio(sink: Sink<AudioChunk>): () => void
+  /** Run `fn` against the live control writer (input injection). Best-effort: no-ops if the session
+   *  isn't open / has no control channel / is closed, and swallows write errors (the writer is
+   *  released when the hub closes, so a racing input must never throw or tear anything down). */
+  control(fn: (c: ScrcpyControlMessageWriter) => Promise<void>): Promise<void>
   close(): Promise<void>
 }
 
@@ -92,6 +96,22 @@ export function createHub(open: () => Promise<MirrorSession>, onEmpty: () => voi
       return () => {
         audioSinks.delete(sink)
         refDroppedToZero()
+      }
+    },
+    async control(fn) {
+      if (closed || failed) return
+      let session: MirrorSession
+      try {
+        session = await sessionP
+      } catch {
+        return // open failed
+      }
+      // Re-check after the await: the hub can close (writer released) or the open can have failed.
+      if (closed || !session.controller) return
+      try {
+        await fn(session.controller)
+      } catch {
+        /* best-effort — the writer may have been released by a concurrent close */
       }
     },
     async close() {

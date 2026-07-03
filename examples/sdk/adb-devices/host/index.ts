@@ -1,10 +1,37 @@
 import { defineHost } from '@garretapp/sdk/host'
 import type { AdbServerClient } from '@yume-chan/adb'
-import type { Api, Events, AdbDevice, AdbStatus, MirrorConfig } from '../shared/api'
+import {
+  AndroidKeyCode,
+  AndroidKeyEventAction,
+  type AndroidKeyEventMeta,
+  AndroidMotionEventAction,
+  ScrcpyPointerId,
+  type ScrcpyControlMessageWriter
+} from '@yume-chan/scrcpy'
+import type { Api, Events, AdbDevice, AdbStatus, MirrorConfig, DeviceAction, PointerAction } from '../shared/api'
 import { getClient, ensureServer } from './adb/connection'
 import { startTracker } from './adb/tracker'
 import { openMirror } from './adb/mirror'
 import { createHub, type MirrorHub } from './adb/session'
+
+const clamp01 = (n: number): number => (n < 0 ? 0 : n > 1 ? 1 : n)
+
+const MOTION: Record<PointerAction, AndroidMotionEventAction> = {
+  down: AndroidMotionEventAction.Down,
+  move: AndroidMotionEventAction.Move,
+  up: AndroidMotionEventAction.Up,
+  cancel: AndroidMotionEventAction.Cancel
+}
+
+// Nav/system actions that are just a key down+up.
+const ACTION_KEY: Partial<Record<DeviceAction, AndroidKeyCode>> = {
+  back: AndroidKeyCode.AndroidBack,
+  home: AndroidKeyCode.AndroidHome,
+  appSwitch: AndroidKeyCode.AndroidAppSwitch,
+  power: AndroidKeyCode.Power,
+  volumeUp: AndroidKeyCode.VolumeUp,
+  volumeDown: AndroidKeyCode.VolumeDown
+}
 
 // One host is forked per placed surface: a LIST surface calls status()/listDevices() (→ the tracker);
 // a MIRROR surface calls mirror()/audio() (→ one scrcpy session hub). Both start LAZILY, so a mirror
@@ -75,6 +102,14 @@ export default defineHost<Api, Events>((ctx) => {
     ))
   }
 
+  // ── control (input injection) ───────────────────────────────────────────────────────────────────
+  // Runs `fn` against the EXISTING hub's controller only — never getHub (a control call must not spin
+  // up a subscriber-less zombie scrcpy session). No-ops unless this host is actively mirroring `serial`.
+  const withControl = (
+    serial: string,
+    fn: (c: ScrcpyControlMessageWriter) => Promise<void>
+  ): Promise<void> => (hub && hubSerial === serial ? hub.control(fn) : Promise.resolve())
+
   ctx.onDispose(async () => {
     await observer?.stop()
     await hub?.close()
@@ -110,6 +145,56 @@ export default defineHost<Api, Events>((ctx) => {
           error: (e) => out.error(e)
         })
         signal.addEventListener('abort', off)
+      }),
+
+    pointer: ({ serial, action, x, y, w, h }) =>
+      withControl(serial, (c) =>
+        c.injectTouch({
+          pointerId: ScrcpyPointerId.Finger,
+          action: MOTION[action],
+          pointerX: clamp01(x) * w,
+          pointerY: clamp01(y) * h,
+          videoWidth: w,
+          videoHeight: h,
+          pressure: action === 'up' || action === 'cancel' ? 0 : 1,
+          actionButton: 0,
+          buttons: 0
+        })
+      ),
+
+    scroll: ({ serial, x, y, w, h, dx, dy }) =>
+      withControl(serial, (c) =>
+        c.injectScroll({
+          pointerX: clamp01(x) * w,
+          pointerY: clamp01(y) * h,
+          videoWidth: w,
+          videoHeight: h,
+          scrollX: dx,
+          scrollY: dy,
+          buttons: 0
+        })
+      ),
+
+    key: ({ serial, action, keyCode, metaState, repeat }) =>
+      withControl(serial, (c) =>
+        c.injectKeyCode({
+          action: action === 'up' ? AndroidKeyEventAction.Up : AndroidKeyEventAction.Down,
+          keyCode: keyCode as AndroidKeyCode,
+          repeat: repeat ?? 0,
+          metaState: (metaState ?? 0) as AndroidKeyEventMeta
+        })
+      ),
+
+    text: ({ serial, text }) => withControl(serial, (c) => c.injectText(text)),
+
+    action: ({ serial, kind }) =>
+      withControl(serial, async (c) => {
+        if (kind === 'rotate') return c.rotateDevice()
+        if (kind === 'notifications') return c.expandNotificationPanel()
+        const keyCode = ACTION_KEY[kind]
+        if (keyCode === undefined) return
+        await c.injectKeyCode({ action: AndroidKeyEventAction.Down, keyCode, repeat: 0, metaState: 0 })
+        await c.injectKeyCode({ action: AndroidKeyEventAction.Up, keyCode, repeat: 0, metaState: 0 })
       })
   }
 })
