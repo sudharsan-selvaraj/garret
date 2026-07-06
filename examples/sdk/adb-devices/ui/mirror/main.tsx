@@ -37,14 +37,15 @@ function Mirror(): JSX.Element {
     const control = attachPointerControl(canvas, host, serial, () => dims)
 
     decoder.sizeChanged(({ width, height }) => {
-      // Rotation / resolution change → new dims → re-lock the window + re-map touch, cancelling any
-      // gesture in flight (its old coordinates are meaningless in the new orientation).
-      if (disposed) return
-      if (width && height) {
-        control.cancelGesture()
-        dims = { w: width, h: height }
-        g.window.setAspectRatio(width / height)
-      }
+      // sizeChanged fires on every scrcpy config/keyframe, NOT only on rotation — so act ONLY when the
+      // dimensions actually change. Otherwise a keyframe landing mid-tap would spuriously cancel the
+      // gesture (the tap never gets its `up`). On a REAL change, re-lock the window + re-map touch and
+      // cancel any in-flight gesture (its old coordinates are meaningless in the new orientation).
+      if (disposed || !width || !height) return
+      if (dims && dims.w === width && dims.h === height) return
+      control.cancelGesture()
+      dims = { w: width, h: height }
+      g.window.setAspectRatio(width / height)
     })
 
     const call = host.mirror({ serial })

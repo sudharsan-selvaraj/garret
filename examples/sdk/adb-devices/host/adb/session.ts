@@ -32,6 +32,7 @@ export function createHub(open: () => Promise<MirrorSession>, onEmpty: () => voi
   let meta: (VideoChunk & { kind: 'meta' }) | null = null
   let failed: unknown = null
   let closed = false
+  let controlChain: Promise<void> = Promise.resolve() // serializes control writes (ordering + no interleave)
 
   const refDroppedToZero = (): void => {
     if (videoSinks.size === 0 && audioSinks.size === 0) onEmpty()
@@ -98,21 +99,27 @@ export function createHub(open: () => Promise<MirrorSession>, onEmpty: () => voi
         refDroppedToZero()
       }
     },
-    async control(fn) {
-      if (closed || failed) return
-      let session: MirrorSession
-      try {
-        session = await sessionP
-      } catch {
-        return // open failed
-      }
-      // Re-check after the await: the hub can close (writer released) or the open can have failed.
-      if (closed || !session.controller) return
-      try {
-        await fn(session.controller)
-      } catch {
-        /* best-effort — the writer may have been released by a concurrent close */
-      }
+    control(fn) {
+      // Serialize ALL control writes: down/up (and moves) arrive as separate async host calls, so
+      // without a mutex their injectTouch writes can interleave/reorder on the shared control stream —
+      // Android then sees up-before-down and the tap lands a click late. Chain each fn after the last.
+      const run = controlChain.then(async () => {
+        if (closed || failed) return
+        let session: MirrorSession
+        try {
+          session = await sessionP
+        } catch {
+          return // open failed
+        }
+        if (closed || !session.controller) return
+        try {
+          await fn(session.controller)
+        } catch {
+          /* best-effort — the writer may have been released by a concurrent close */
+        }
+      })
+      controlChain = run.catch(() => {}) // keep the chain alive even if one fn rejects
+      return run
     },
     async close() {
       if (closed) return

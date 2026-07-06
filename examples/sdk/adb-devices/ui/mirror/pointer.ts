@@ -19,8 +19,10 @@ const SCROLL_STEP = 8
  * - `down`/`up`/`cancel` are sent immediately (ordering matters); `move` is coalesced to one send per
  *   animation frame with a single request in flight — control must never build a backlog (same lesson
  *   as audio). A stale move is never sent after `up`/`cancel` (guarded by `active`).
- * - `setPointerCapture` keeps the drag alive outside the window; `lostpointercapture` still delivers a
- *   release, so the device can't get stuck pressed. Coords are normalized; the host clamps to [0,1].
+ * - While a gesture is active, `move`/`up`/`cancel` are listened for on `window` (NOT the canvas):
+ *   `setPointerCapture` is unreliable inside an Electron <webview> (a release near the canvas edge is
+ *   delivered to another element, so the canvas never sees `pointerup` and the device stays pressed).
+ *   `window` always sees the release. Coords are normalized; the host clamps to [0,1].
  */
 export function attachPointerControl(
   canvas: HTMLCanvasElement,
@@ -66,15 +68,25 @@ export function attachPointerControl(
       })
   }
 
+  // While a gesture is live, move/up/cancel come from `window` so a release anywhere (incl. off the
+  // canvas / outside the window) still ends the gesture.
+  const addGestureListeners = (): void => {
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onCancel)
+  }
+  const removeGestureListeners = (): void => {
+    window.removeEventListener('pointermove', onMove)
+    window.removeEventListener('pointerup', onUp)
+    window.removeEventListener('pointercancel', onCancel)
+  }
+
   const onDown = (e: PointerEvent): void => {
-    if (active) return // single-touch: ignore extra pointers
+    // A prior gesture whose `up` was somehow missed must never permanently block input — cancel it.
+    if (active) end(e, 'cancel')
     active = true
     pointerId = e.pointerId
-    try {
-      canvas.setPointerCapture(e.pointerId)
-    } catch {
-      /* capture is best-effort */
-    }
+    addGestureListeners()
     send('down', norm(e))
   }
 
@@ -91,6 +103,7 @@ export function attachPointerControl(
     if (!active || e.pointerId !== pointerId) return
     active = false
     latest = null
+    removeGestureListeners()
     send(action, norm(e))
     pointerId = null
   }
@@ -121,15 +134,12 @@ export function attachPointerControl(
     const dims = getDims()
     active = false
     latest = null
+    removeGestureListeners()
     if (dims) void client.pointer({ serial, action: 'cancel', x: 0, y: 0, w: dims.w, h: dims.h }).catch(() => {})
     pointerId = null
   }
 
   canvas.addEventListener('pointerdown', onDown)
-  canvas.addEventListener('pointermove', onMove)
-  canvas.addEventListener('pointerup', onUp)
-  canvas.addEventListener('pointercancel', onCancel)
-  canvas.addEventListener('lostpointercapture', onCancel)
   canvas.addEventListener('wheel', onWheel, { passive: false })
 
   return {
@@ -138,11 +148,8 @@ export function attachPointerControl(
       detached = true
       active = false
       latest = null
+      removeGestureListeners()
       canvas.removeEventListener('pointerdown', onDown)
-      canvas.removeEventListener('pointermove', onMove)
-      canvas.removeEventListener('pointerup', onUp)
-      canvas.removeEventListener('pointercancel', onCancel)
-      canvas.removeEventListener('lostpointercapture', onCancel)
       canvas.removeEventListener('wheel', onWheel)
     }
   }
