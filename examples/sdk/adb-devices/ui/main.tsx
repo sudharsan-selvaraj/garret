@@ -63,7 +63,7 @@ function App(): JSX.Element {
                   </span>
                   {online ? (
                     <span className="play" aria-hidden="true">
-                      <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
+                      <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
                         <path d="M8 5v14l11-7z" />
                       </svg>
                     </span>
