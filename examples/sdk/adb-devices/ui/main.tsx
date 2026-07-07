@@ -40,29 +40,43 @@ function App(): JSX.Element {
         <p className="msg">No devices. Connect one over USB and authorize debugging.</p>
       ) : (
         <ul className="list">
-          {devices.map((d) => (
-            <li key={d.transportId}>
-              <button
-                className="row"
-                disabled={d.state !== 'device'}
-                title={d.state === 'device' ? 'Open mirror' : `Device is ${d.state}`}
-                // Open a floating mirror window per device; key=serial → one window per device (a
-                // repeat click focuses the existing one instead of spawning another).
-                onClick={() =>
-                  void g.surfaces.open('device-mirror', {
-                    key: d.serial,
-                    title: d.model || d.serial,
-                    props: { serial: d.serial, model: d.model }
-                  })
-                }
-              >
-                <span className={`dot ${d.state}`} />
-                <span className="name">{d.model || d.product || d.serial}</span>
-                <span className="serial">{d.serial}</span>
-                <span className="state">{d.state}</span>
-              </button>
-            </li>
-          ))}
+          {devices.map((d) => {
+            const label = d.name || d.model || d.product || d.serial
+            const online = d.state === 'device'
+            return (
+              <li key={d.transportId}>
+                <button
+                  className="row"
+                  disabled={!online}
+                  title={online ? `Mirror ${label}` : `Device is ${d.state}`}
+                  // Open a floating mirror window per device; key=serial → one window per device (a
+                  // repeat click focuses the existing one instead of spawning another).
+                  onClick={() =>
+                    void g.surfaces.open('device-mirror', {
+                      key: d.serial,
+                      title: label,
+                      props: { serial: d.serial, model: label }
+                    })
+                  }
+                >
+                  <span className={`dot ${d.state}`} />
+                  <span className="info">
+                    <span className="name">{label}</span>
+                    <span className="serial">{d.serial}</span>
+                  </span>
+                  {online ? (
+                    <span className="play" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    </span>
+                  ) : (
+                    <span className="state">{d.state}</span>
+                  )}
+                </button>
+              </li>
+            )
+          })}
         </ul>
       )}
     </div>

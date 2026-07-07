@@ -13,21 +13,29 @@
       button:disabled { opacity: 0.5; }
       .msg { opacity: 0.7; }
       .msg .err, .err { color: #ff8a8a; opacity: 1; margin: 0 0 8px; }
-      .list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+      .list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
       .row {
-        width: 100%; display: grid; grid-template-columns: 10px 1fr auto; align-items: center; gap: 8px;
+        width: 100%; display: flex; align-items: center; gap: 10px;
         font: inherit; color: inherit; text-align: left; border: 0; border-radius: 8px;
-        background: transparent; padding: 7px 8px; cursor: pointer;
+        background: transparent; padding: 8px; cursor: pointer;
       }
       .row:hover:not(:disabled) { background: #ffffff12; }
-      .row:disabled { opacity: 0.5; cursor: default; }
-      .name { font-weight: 500; }
-      .serial { grid-column: 2; font-size: 11px; opacity: 0.55; }
-      .state { font-size: 11px; opacity: 0.7; }
-      .dot { width: 8px; height: 8px; border-radius: 50%; background: #888; grid-row: span 2; }
+      .row:disabled { opacity: 0.55; cursor: default; }
+      .dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #888; }
       .dot.device { background: #48d16a; }
       .dot.unauthorized { background: #e6b23a; }
       .dot.offline { background: #ff6b6b; }
+      .info { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
+      .name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .serial { font-size: 11px; opacity: 0.5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .state { flex: none; font-size: 11px; opacity: 0.7; text-transform: capitalize; }
+      /* Play button — the affordance to open the mirror; brightens with the row on hover. */
+      .play {
+        flex: none; display: inline-flex; align-items: center; justify-content: center;
+        width: 26px; height: 26px; border-radius: 50%;
+        background: #ffffff14; color: #e6e6ea;
+      }
+      .row:hover:not(:disabled) .play { background: #0a84ff; color: #fff; }
     </style>
   </head>
   <body>

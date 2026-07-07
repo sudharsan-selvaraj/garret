@@ -11,6 +11,7 @@ import {
 import type { Api, Events, AdbDevice, AdbStatus, MirrorConfig, DeviceAction, PointerAction } from '../shared/api'
 import { getClient, ensureServer } from './adb/connection'
 import { startTracker } from './adb/tracker'
+import { resolveDeviceName } from './adb/deviceName'
 import { openMirror } from './adb/mirror'
 import { createHub, type MirrorHub } from './adb/session'
 
@@ -43,9 +44,30 @@ export default defineHost<Api, Events>((ctx) => {
   let status: AdbStatus = { ok: false, state: 'connecting' }
   let tracking: Promise<void> | null = null
 
+  const nameCache = new Map<string, string>() // serial → resolved marketing name (stable per device)
+  let rawDevices: AdbDevice[] = [] // latest un-enriched list from the tracker
+
   const setStatus = (s: AdbStatus): void => {
     status = s
     ctx.emit('adb:status', s)
+  }
+  // Overlay cached marketing names onto the raw list, publish, and remember as `current`.
+  const emitDevices = (): void => {
+    current = rawDevices.map((d) => ({ ...d, name: nameCache.get(d.serial) ?? d.name }))
+    ctx.emit('devices:changed', current)
+  }
+  // Resolve names for newly-seen online devices (async getprop), then re-emit — cached so a device is
+  // looked up once. Best-effort: a failed lookup just leaves the UI on the adb model fallback.
+  const resolveNames = (list: AdbDevice[]): void => {
+    for (const d of list) {
+      if (d.state !== 'device' || nameCache.has(d.serial)) continue
+      void resolveDeviceName(getClient(), d.serial).then((name) => {
+        if (name) {
+          nameCache.set(d.serial, name)
+          emitDevices()
+        }
+      })
+    }
   }
   const runTracker = async (): Promise<void> => {
     await observer?.stop()
@@ -56,8 +78,9 @@ export default defineHost<Api, Events>((ctx) => {
     if (!r.ok) return setStatus({ ok: false, state: 'no-adb', error: r.error })
     try {
       observer = await startTracker(getClient(), (devices) => {
-        current = devices
-        ctx.emit('devices:changed', devices)
+        rawDevices = devices
+        emitDevices()
+        resolveNames(devices)
       })
       observer.onError((e) => setStatus({ ok: false, state: 'error', error: e.message }))
       setStatus({ ok: true, state: 'connected' })

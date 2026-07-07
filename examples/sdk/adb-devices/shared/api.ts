@@ -6,6 +6,9 @@ export interface AdbDevice {
   model?: string
   device?: string
   transportId: string
+  /** Human marketing name resolved from device props (e.g. "OnePlus Nord 5", "Galaxy S21"). Arrives
+   *  asynchronously after the initial list (a getprop round-trip), so it may be absent at first. */
+  name?: string
 }
 
 export type AdbConnState = 'connecting' | 'connected' | 'no-adb' | 'error'
