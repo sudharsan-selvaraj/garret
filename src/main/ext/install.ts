@@ -6,7 +6,7 @@ import { app } from 'electron'
 import { unpackZip, NATIVE_POLICY } from '@main/ext/unpack'
 import { recordMacKey, deleteExtSecretKey } from '@main/ext/keys'
 import { parseManifest, MANIFEST_FILE, type ExtSpec } from '@main/ext/manifest'
-import type { ExtInstallPlan, InstalledExtension, ExtTier } from '@shared/types/ext'
+import type { ExtInstallPlan, InstalledExtension, ExtTier, PackRecord } from '@shared/types/ext'
 
 /**
  * The ONE install lifecycle for both tiers. `.garret` is a slip-safe zip; the local record
@@ -66,6 +66,84 @@ export function recordMacOk(r: ExtRecord): boolean {
   const a = Buffer.from(r.mac, 'hex')
   const b = Buffer.from(expected, 'hex')
   return a.length === b.length && timingSafeEqual(a, b)
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// v2 PACK storage (additive; consumers migrate in the next slice). Layout:
+//   code:  <userData>/ext/<packId>/            (RECORD_FILE at root; whole pack unpacked once)
+//   state: <userData>/ext-data/<packId>/<widgetId>/   + /_shared/ (opt-in pack-shared)
+// packId is a single dir segment (dotted, no "/"), widgetId a single segment — validated before use.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+const PACK_ID_RE = /^[a-z0-9-]+(?:\.[a-z0-9-]+)+$/
+const WIDGET_ID_RE = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/
+
+export function packDir(packId: string): string {
+  return join(extDir(), packId)
+}
+export function widgetDataDir(packId: string, widgetId: string): string {
+  return join(app.getPath('userData'), 'ext-data', packId, widgetId)
+}
+export function sharedDataDir(packId: string): string {
+  return join(app.getPath('userData'), 'ext-data', packId, '_shared')
+}
+export async function ensureWidgetDataDir(packId: string, widgetId: string): Promise<string> {
+  if (!PACK_ID_RE.test(packId) || !WIDGET_ID_RE.test(widgetId)) throw new Error('bad pack/widget id')
+  const dir = widgetDataDir(packId, widgetId)
+  await mkdir(dir, { recursive: true }).catch(() => {})
+  return dir
+}
+export async function ensureSharedDataDir(packId: string): Promise<string> {
+  if (!PACK_ID_RE.test(packId)) throw new Error('bad pack id')
+  const dir = sharedDataDir(packId)
+  await mkdir(dir, { recursive: true }).catch(() => {})
+  return dir
+}
+
+// Pack record: same HMAC-anti-tamper scheme as the v1 record, but the signed payload also binds the
+// per-widget tier/host/caps so a local edit can't silently re-scope a widget.
+function packMacPayload(r: PackRecord): string {
+  return JSON.stringify({
+    id: r.id,
+    publisher: r.publisher,
+    version: r.version,
+    sha256: r.sha256,
+    capabilities: [...r.capabilities].sort(),
+    tier: r.tier,
+    enabled: r.enabled,
+    installedAt: r.installedAt,
+    widgets: [...r.widgets]
+      .map((w) => ({ fullId: w.fullId, tier: w.tier, hasHost: w.hasHost, capabilities: [...w.capabilities].sort() }))
+      .sort((a, b) => a.fullId.localeCompare(b.fullId))
+  })
+}
+export function signPackRecord(r: PackRecord): string | null {
+  const key = recordMacKey()
+  return key ? createHmac('sha256', key).update(packMacPayload(r)).digest('hex') : null
+}
+export function packRecordMacOk(r: PackRecord): boolean {
+  const key = recordMacKey()
+  if (!key || !r.mac) return false
+  const expected = createHmac('sha256', key).update(packMacPayload(r)).digest('hex')
+  const a = Buffer.from(r.mac, 'hex')
+  const b = Buffer.from(expected, 'hex')
+  return a.length === b.length && timingSafeEqual(a, b)
+}
+function packRecordPath(packId: string): string {
+  return join(packDir(packId), RECORD_FILE)
+}
+export async function readPackRecord(packId: string): Promise<PackRecord | null> {
+  if (!PACK_ID_RE.test(packId)) return null
+  try {
+    return JSON.parse(await readFile(packRecordPath(packId), 'utf8')) as PackRecord
+  } catch {
+    return null
+  }
+}
+export async function writePackRecordAtomic(packId: string, rec: PackRecord): Promise<void> {
+  const path = packRecordPath(packId)
+  const tmp = `${path}.${randomUUID().slice(0, 8)}.tmp`
+  await writeFile(tmp, JSON.stringify(rec, null, 2))
+  await rename(tmp, path)
 }
 
 // ── file collection + hashing (every file; reject symlink/.node; skip our record) ────────────────

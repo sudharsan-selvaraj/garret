@@ -6,6 +6,38 @@
 /** web = sandboxed/limited (no host); full = raw-Node host + full system access (consent, default-OFF). */
 export type ExtTier = 'web' | 'full'
 
+// ── v2 packs (multiple widgets per package; see docs/widget-packs-and-distribution.md) ───────────
+
+/** Per-widget summary in the pack's install record. Capability ENFORCEMENT is per widget (each host
+ *  gets only its own widget's caps), even though consent is shown once per pack. */
+export interface WidgetMeta {
+  /** widget key, unique within the pack. */
+  id: string
+  /** the permanent identity `${packId}/${id}`. */
+  fullId: string
+  name: string
+  tier: ExtTier
+  capabilities: string[]
+  hasHost: boolean
+  defaultSize?: { w: number; h: number }
+}
+
+/** HMAC-signed install record — ONE per installed pack. Pack-level version/source/enabled; the
+ *  per-widget caps live in `widgets[]`. `capabilities` is the union, for display/consent only. */
+export interface PackRecord {
+  id: string
+  publisher: string
+  version: string
+  source: string
+  sha256: string
+  tier: ExtTier
+  capabilities: string[]
+  enabled: boolean
+  installedAt: number
+  widgets: WidgetMeta[]
+  mac?: string
+}
+
 /** A validated install proposal shown before any files are written. */
 export interface ExtInstallPlan {
   ok: boolean
