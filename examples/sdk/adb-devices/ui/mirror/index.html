@@ -10,12 +10,46 @@
       /* The host window (SurfaceWindowRoot) draws the draggable titlebar; the guest fills the rest
          with the device screen. */
       .screen-wrap { position: relative; height: 100%; }
+      .screen-holder { position: absolute; inset: 0; }
       /* The window is aspect-matched to the device (host resize), so the canvas fills exactly — no
          object-fit letterbox (which would expose the transparent window as bands). `touch-action:none`
          + `user-select:none` so the webview doesn't hijack drags/gestures we forward to the device. */
       .screen { width: 100%; height: 100%; display: block; touch-action: none; user-select: none; }
-      .msg { position: absolute; font: 12px -apple-system, system-ui, sans-serif; color: #e6e6ea; opacity: 0.75; }
-      .msg.err { color: #ff8a8a; padding: 0 16px; text-align: center; }
+      .msg {
+        position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+        font: 12px -apple-system, system-ui, sans-serif; color: #e6e6ea; opacity: 0.75; text-align: center;
+      }
+      .msg.err { color: #ff8a8a; padding: 0 16px; }
+
+      /* Auto-hiding device control bar (Back / Home / Recents + overflow), bottom-center. */
+      .navbar {
+        position: absolute; left: 0; right: 0; bottom: 0;
+        display: flex; flex-direction: column; align-items: center; gap: 8px;
+        padding-bottom: 14px;
+        pointer-events: none; /* never blocks device taps; only the pill (when shown) is interactive */
+        opacity: 0; transform: translateY(10px);
+        transition: opacity 0.16s ease, transform 0.16s ease;
+      }
+      .navbar.is-visible { opacity: 1; transform: translateY(0); }
+      .navbar.is-visible .nav-pill { pointer-events: auto; }
+      .nav-pill {
+        display: flex; align-items: center; gap: 2px;
+        padding: 5px; border-radius: 15px;
+        background: rgba(28, 28, 30, 0.68);
+        backdrop-filter: blur(24px) saturate(1.5);
+        -webkit-backdrop-filter: blur(24px) saturate(1.5);
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.38), inset 0 0 0 0.5px rgba(255, 255, 255, 0.14);
+      }
+      .nav-btn {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 36px; height: 36px; padding: 0;
+        border: 0; border-radius: 11px; background: transparent;
+        color: #e6e6ea; cursor: pointer;
+        transition: background 0.12s ease;
+      }
+      .nav-btn:hover { background: rgba(255, 255, 255, 0.12); }
+      .nav-btn:active { background: rgba(255, 255, 255, 0.22); }
+      .nav-btn.is-on { background: rgba(255, 255, 255, 0.16); }
     </style>
   </head>
   <body>

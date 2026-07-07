@@ -7,6 +7,7 @@ import type { Api, VideoChunk, AudioChunk } from '../../shared/api'
 import { MirrorAudio } from './audio'
 import { attachPointerControl } from './pointer'
 import { attachKeyboardControl } from './keyboard'
+import { NavBar } from './NavBar'
 
 /**
  * The floating "phone on the desktop" mirror surface. Reads its device serial from g.props, streams
@@ -100,14 +101,18 @@ function Mirror(): JSX.Element {
     }
   }, [serial, host, g])
 
-  // The host (SurfaceWindowRoot) draws the draggable titlebar + close; here we just fill with the screen.
+  // The host (SurfaceWindowRoot) draws the draggable titlebar + close; here we fill with the device
+  // screen (canvas appended into screen-holder, which React leaves alone) + React overlays on top.
   return (
-    <div className="screen-wrap" ref={screenRef}>
+    <div className="screen-wrap">
+      <div className="screen-holder" ref={screenRef} />
       {error ? (
         <p className="msg err">{error}</p>
       ) : connecting ? (
         <p className="msg">{serial ? `Connecting to ${serial}…` : 'No device (props missing)'}</p>
-      ) : null}
+      ) : (
+        <NavBar client={host} serial={serial} />
+      )}
     </div>
   )
 }
