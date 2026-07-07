@@ -51,8 +51,12 @@ export interface SurfaceHandle {
 /** Controls for the surface window THIS UI runs in (no-op for a board-placed widget). */
 export interface WindowControls {
   /** Lock the window's aspect ratio (width/height); `0` clears it. Use once you know your content
-   *  size — e.g. a mirror sets the device's ratio after the first video frame. */
-  setAspectRatio(ratio: number): void
+   *  size — e.g. a mirror sets the device's ratio after the first video frame.
+   *
+   *  `inset` reserves guest-drawn chrome (px) that is EXCLUDED from the aspect-locked area, so the
+   *  ratio applies to your content, not the whole window — e.g. a fixed 48px side toolbar passes
+   *  `{ width: 48 }` and the remaining area keeps `ratio`. Combined with the host's own titlebar. */
+  setAspectRatio(ratio: number, inset?: { width?: number; height?: number }): void
   /** Resize the window (px). */
   resize(width: number, height: number): void
   /** Close this surface window (for a frameless surface's own close button). */

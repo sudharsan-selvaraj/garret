@@ -7,7 +7,11 @@ import type { Api, VideoChunk, AudioChunk } from '../../shared/api'
 import { MirrorAudio } from './audio'
 import { attachPointerControl } from './pointer'
 import { attachKeyboardControl } from './keyboard'
-import { NavBar } from './NavBar'
+import { NavBar, NAVBAR_W } from './NavBar'
+
+// The vertical control column occupies NAVBAR_W px to the right of the device; reserve it in the
+// aspect lock so the host sizes the DEVICE area (canvas) to the video ratio, not the whole window.
+const ASPECT_INSET = { width: NAVBAR_W }
 
 /**
  * The floating "phone on the desktop" mirror surface. Reads its device serial from g.props, streams
@@ -48,7 +52,7 @@ function Mirror(): JSX.Element {
       if (dims && dims.w === width && dims.h === height) return
       control.cancelGesture()
       dims = { w: width, h: height }
-      g.window.setAspectRatio(width / height)
+      g.window.setAspectRatio(width / height, ASPECT_INSET)
     })
 
     const call = host.mirror({ serial })
@@ -58,7 +62,7 @@ function Mirror(): JSX.Element {
         setConnecting(false)
         if (chunk.width && chunk.height) {
           dims = { w: chunk.width, h: chunk.height }
-          g.window.setAspectRatio(chunk.width / chunk.height)
+          g.window.setAspectRatio(chunk.width / chunk.height, ASPECT_INSET)
         }
         return
       }

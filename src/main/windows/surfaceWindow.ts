@@ -283,13 +283,17 @@ function winOpThrottled(surfaceWcId: number, op: string, now: number): boolean {
  *  (extraSize) — and we resize NOW so the current window matches (setAspectRatio only constrains
  *  future resizes), which is what fixes the "content cropped" look. */
 const pendingAspect = new Map<string, ReturnType<typeof setTimeout>>() // surfaceWcId → trailing apply
-export function setSurfaceAspectRatio(embedderWcId: number | undefined, ratio: number): void {
+export function setSurfaceAspectRatio(
+  embedderWcId: number | undefined,
+  ratio: number,
+  inset?: { width?: number; height?: number }
+): void {
   const rec = recordByEmbedder(embedderWcId)
   if (!rec || rec.win.isDestroyed()) return
   if (winOpThrottled(rec.surfaceWcId, 'aspect', Date.now())) {
-    // Coalesce rather than drop: remember the LATEST requested ratio and apply it on a trailing edge.
-    // Otherwise a rotation whose authoritative final ratio lands inside the throttle window is lost,
-    // leaving the window locked to a stale orientation.
+    // Coalesce rather than drop: remember the LATEST requested ratio+inset and apply on a trailing
+    // edge. Otherwise a rotation whose authoritative final ratio lands inside the throttle window is
+    // lost, leaving the window locked to a stale orientation.
     const key = String(rec.surfaceWcId)
     const prev = pendingAspect.get(key)
     if (prev) clearTimeout(prev)
@@ -298,27 +302,30 @@ export function setSurfaceAspectRatio(embedderWcId: number | undefined, ratio: n
       setTimeout(() => {
         pendingAspect.delete(key)
         const r2 = recordByEmbedder(embedderWcId)
-        if (r2 && !r2.win.isDestroyed()) applyAspect(r2, ratio)
+        if (r2 && !r2.win.isDestroyed()) applyAspect(r2, ratio, inset)
       }, WIN_OP_MS)
     )
     return
   }
-  applyAspect(rec, ratio)
+  applyAspect(rec, ratio, inset)
 }
-function applyAspect(rec: SurfaceRecord, ratio: number): void {
+function applyAspect(rec: SurfaceRecord, ratio: number, inset?: { width?: number; height?: number }): void {
   const r = Number.isFinite(ratio) && ratio > 0 ? ratio : 0
-  const chrome = rec.frame ? 0 : SURFACE_TITLEBAR_H
+  // Chrome EXCLUDED from the aspect-locked area: the host titlebar (vertical) + any guest-declared
+  // inset (e.g. a fixed side toolbar → extra width). The ratio applies to what's left (the content).
+  const chromeW = inset?.width ?? 0
+  const chromeH = (rec.frame ? 0 : SURFACE_TITLEBAR_H) + (inset?.height ?? 0)
   if (r <= 0) {
     rec.win.setAspectRatio(0)
     return
   }
-  rec.win.setAspectRatio(r, { width: 0, height: chrome })
+  rec.win.setAspectRatio(r, { width: chromeW, height: chromeH })
   // Resize NOW to a sensible size for this orientation (setAspectRatio only constrains future
-  // resizes). Aim for a ~700px long edge, clamped to 90% of the display — so portrait is tall and
-  // landscape is wide (a device rotation re-orients the window instead of squashing it).
+  // resizes). Aim for a ~700px long edge on the CONTENT area, clamped to 90% of the display — so
+  // portrait is tall and landscape is wide (a device rotation re-orients rather than squashing).
   const area = screen.getDisplayMatching(rec.win.getBounds()).workArea
-  const maxW = Math.floor(area.width * 0.9)
-  const maxH = Math.floor(area.height * 0.9) - chrome
+  const maxW = Math.floor(area.width * 0.9) - chromeW
+  const maxH = Math.floor(area.height * 0.9) - chromeH
   const PREF = 700
   let cw: number
   let ch: number
@@ -337,7 +344,7 @@ function applyAspect(rec: SurfaceRecord, ratio: number): void {
     ch = maxH
     cw = Math.round(ch * r)
   }
-  rec.win.setSize(cw, ch + chrome)
+  rec.win.setSize(cw + chromeW, ch + chromeH)
 }
 export function resizeSurface(embedderWcId: number | undefined, width: number, height: number): void {
   const rec = recordByEmbedder(embedderWcId)

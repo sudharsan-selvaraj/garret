@@ -216,8 +216,15 @@ export function registerExtHandlers(): void {
   ipcMain.handle(Channels.extSurfaceInit, (e) => initForWc(e.sender.id))
   // A surface guest shapes its OWN window — scoped to the window that embeds it (e.sender is the guest
   // webview; hostWebContents is its surface window). Board widgets have no surface record → no-op.
-  ipcMain.on(Channels.extSurfaceSetAspect, (e, ratio: number) => {
-    if (typeof ratio === 'number') setSurfaceAspectRatio(e.sender.hostWebContents?.id, ratio)
+  ipcMain.on(Channels.extSurfaceSetAspect, (e, ratio: number, inset?: unknown) => {
+    if (typeof ratio !== 'number') return
+    // Sanitize guest-supplied chrome inset (px, clamped) before it influences window sizing.
+    const clampInset = (n: unknown): number => (typeof n === 'number' && n > 0 ? Math.min(n, 2000) : 0)
+    const i = inset && typeof inset === 'object' ? (inset as { width?: unknown; height?: unknown }) : {}
+    setSurfaceAspectRatio(e.sender.hostWebContents?.id, ratio, {
+      width: clampInset(i.width),
+      height: clampInset(i.height)
+    })
   })
   ipcMain.on(Channels.extSurfaceResize, (e, w: number, h: number) => {
     if (typeof w === 'number' && typeof h === 'number') resizeSurface(e.sender.hostWebContents?.id, w, h)

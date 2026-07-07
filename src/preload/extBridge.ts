@@ -172,7 +172,8 @@ const runtime = {
   // Controls for THIS UI's own surface window (no-op for board widgets — main scopes it to the
   // embedder). A surface uses this once it knows its content size (e.g. the device resolution).
   window: {
-    setAspectRatio: (ratio: number): void => ipcRenderer.send(SURFACE_SET_ASPECT, ratio),
+    setAspectRatio: (ratio: number, inset?: { width?: number; height?: number }): void =>
+      ipcRenderer.send(SURFACE_SET_ASPECT, ratio, inset),
     resize: (width: number, height: number): void => ipcRenderer.send(SURFACE_RESIZE, width, height),
     close: (): void => ipcRenderer.send(SURFACE_SELF_CLOSE)
   },
