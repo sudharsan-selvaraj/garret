@@ -5,8 +5,18 @@ import { lstat, readdir, readFile, writeFile, rm, mkdir, rename, copyFile } from
 import { app } from 'electron'
 import { unpackZip, NATIVE_POLICY } from '@main/ext/unpack'
 import { recordMacKey, deleteExtSecretKey } from '@main/ext/keys'
-import { parseManifest, MANIFEST_FILE, type ExtSpec } from '@main/ext/manifest'
-import type { ExtInstallPlan, InstalledExtension, ExtTier, PackRecord } from '@shared/types/ext'
+import { parseManifest, parsePack, MANIFEST_FILE, type ExtSpec, type PackSpec } from '@main/ext/manifest'
+import type {
+  ExtInstallPlan,
+  InstalledExtension,
+  ExtTier,
+  PackRecord,
+  PackInstallPlan,
+  PackSourceKind,
+  InstalledPack,
+  WidgetRuntimeInfo,
+  WidgetMeta
+} from '@shared/types/ext'
 
 /**
  * The ONE install lifecycle for both tiers. `.garret` is a slip-safe zip; the local record
@@ -427,6 +437,257 @@ export async function resolveEnabled(): Promise<ResolvedExt[]> {
       defaultSize: ext.defaultSize,
       spec
     })
+  }
+  return out
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// v2 PACK install flow (additive; mirrors the v1 plan/commit/list/resolve but per pack + per widget).
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+/** A widget's own origin — widgetId is the FIRST host label (has no dots), packId the rest, so
+ *  `host.split('.', 1)` resolves it unambiguously. Per-widget origin ⇒ per-widget storage partition. */
+export const widgetOrigin = (packId: string, widgetId: string): string => `garret://${widgetId}.${packId}/`
+
+const widgetMetaFrom = (spec: PackSpec): WidgetMeta[] =>
+  spec.widgets.map((w) => ({
+    id: w.id,
+    fullId: w.fullId,
+    name: w.name,
+    tier: w.tier,
+    capabilities: w.capabilities,
+    hasHost: w.nodeEntry !== undefined,
+    defaultSize: w.defaultSize
+  }))
+
+function failPack(msg: string): PackInstallPlan {
+  return {
+    ok: false,
+    error: msg,
+    id: '',
+    publisher: '',
+    name: '',
+    version: '',
+    source: '',
+    sourceKind: 'local',
+    tier: 'web',
+    capabilities: [],
+    widgets: [],
+    isUpdate: false,
+    codeChanged: false,
+    addedCapabilities: [],
+    sourceHash: ''
+  }
+}
+
+export async function planPackInstall(srcDir: string, sourceKind: PackSourceKind = 'local'): Promise<PackInstallPlan> {
+  const spec = await parsePack(srcDir)
+  if ('error' in spec) return failPack(spec.error)
+  let sourceHash: string
+  try {
+    sourceHash = await hashFiles(await collectFiles(srcDir))
+  } catch (e) {
+    return failPack(e instanceof Error ? e.message : String(e))
+  }
+  const prior = await readPackRecord(spec.id)
+  const priorCaps = new Set(prior?.capabilities ?? [])
+  return {
+    ok: true,
+    id: spec.id,
+    publisher: spec.publisher,
+    name: spec.name,
+    description: spec.description,
+    version: spec.version,
+    source: srcDir,
+    sourceKind,
+    tier: spec.tier,
+    capabilities: spec.capabilities,
+    widgets: widgetMetaFrom(spec),
+    isUpdate: prior !== null,
+    codeChanged: !prior || prior.sha256 !== sourceHash,
+    addedCapabilities: spec.capabilities.filter((c) => !priorCaps.has(c)),
+    sourceHash
+  }
+}
+
+export async function commitPackInstall(plan: PackInstallPlan): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const files = await collectFiles(plan.source)
+    const hash = await hashFiles(files)
+    if (hash !== plan.sourceHash) return { ok: false, error: 'Source changed since consent — aborted' }
+    const spec = await parsePack(plan.source)
+    if ('error' in spec) return { ok: false, error: spec.error }
+
+    const prior = await readPackRecord(spec.id)
+    const codeChanged = !prior || prior.sha256 !== hash
+    const addedCaps = spec.capabilities.filter((c) => !(prior?.capabilities ?? []).includes(c))
+    // Same policy as v1, per pack: full default-OFF; any added cap or (full + code change) → re-consent.
+    let enabled: boolean
+    if (!prior) enabled = spec.tier === 'web'
+    else if (addedCaps.length > 0 || (spec.tier === 'full' && codeChanged)) enabled = false
+    else enabled = packRecordMacOk(prior) ? prior.enabled : spec.tier === 'web'
+
+    const dest = packDir(spec.id)
+    const tmp = join(extDir(), `.tmp-${spec.id}-${randomUUID().slice(0, 8)}`)
+    await rm(tmp, { recursive: true, force: true })
+    await mkdir(tmp, { recursive: true })
+    for (const f of files) {
+      const target = join(tmp, f.rel)
+      await mkdir(join(target, '..'), { recursive: true })
+      await copyFile(f.abs, target)
+    }
+    const record: PackRecord = {
+      id: spec.id,
+      publisher: spec.publisher,
+      version: spec.version,
+      source: plan.source,
+      sha256: hash,
+      tier: spec.tier,
+      capabilities: spec.capabilities,
+      enabled,
+      installedAt: Date.now(),
+      widgets: widgetMetaFrom(spec)
+    }
+    record.mac = signPackRecord(record) ?? undefined
+    await writeFile(join(tmp, RECORD_FILE), JSON.stringify(record, null, 2))
+    await rm(dest, { recursive: true, force: true })
+    await rename(tmp, dest)
+    for (const w of spec.widgets) await ensureWidgetDataDir(spec.id, w.id)
+    if (spec.shared) await ensureSharedDataDir(spec.id)
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+const packStaging = new Set<string>()
+export async function planPackInstallFromFile(garretPath: string): Promise<PackInstallPlan> {
+  const dir = join(tmpdir(), `garret-pack-${randomUUID()}`)
+  try {
+    await mkdir(dir, { recursive: true })
+    packStaging.add(dir)
+    await unpackZip(garretPath, dir, NATIVE_POLICY)
+  } catch (e) {
+    await cleanupPackStaging(dir)
+    return failPack(e instanceof Error ? e.message : 'Could not open .garret file')
+  }
+  const plan = await planPackInstall(dir, 'local')
+  if (!plan.ok) {
+    await cleanupPackStaging(dir)
+    return plan
+  }
+  plan.staged = true
+  return plan
+}
+export async function cleanupPackStaging(dir: string): Promise<void> {
+  if (!packStaging.has(dir)) return
+  packStaging.delete(dir)
+  await rm(dir, { recursive: true, force: true }).catch(() => {})
+}
+
+export async function setPackEnabled(packId: string, on: boolean): Promise<{ ok: boolean; error?: string }> {
+  if (!PACK_ID_RE.test(packId)) return { ok: false, error: 'bad id' }
+  return queue(async () => {
+    const rec = await readPackRecord(packId)
+    if (!rec || rec.id !== packId) return { ok: false, error: 'not installed' }
+    if (!packRecordMacOk(rec)) return { ok: false, error: 'Integrity check failed — reinstall this pack' }
+    if ((await currentHash(packId)) !== rec.sha256) return { ok: false, error: 'Files changed since install — reinstall' }
+    const next: PackRecord = { ...rec, enabled: on }
+    const mac = signPackRecord(next)
+    if (!mac) return { ok: false, error: 'Integrity protection unavailable on this platform' }
+    next.mac = mac
+    await writePackRecordAtomic(packId, next)
+    return { ok: true }
+  })
+}
+
+export async function removePack(packId: string): Promise<void> {
+  if (!PACK_ID_RE.test(packId)) return
+  const rec = await readPackRecord(packId)
+  // Secret keys (per widget + shared) before code/data, so a crash never orphans a decryptable secret.
+  if (rec) {
+    for (const w of rec.widgets) deleteExtSecretKey(w.fullId)
+    deleteExtSecretKey(`${packId}/_shared`)
+  }
+  await rm(packDir(packId), { recursive: true, force: true })
+  await rm(join(app.getPath('userData'), 'ext-data', packId), { recursive: true, force: true })
+}
+
+export async function listInstalledPacks(): Promise<InstalledPack[]> {
+  let entries: string[]
+  try {
+    entries = await readdir(extDir())
+  } catch {
+    return []
+  }
+  const out: InstalledPack[] = []
+  for (const packId of entries) {
+    if (!PACK_ID_RE.test(packId)) continue
+    const dir = packDir(packId)
+    try {
+      if (!(await lstat(dir)).isDirectory()) continue
+    } catch {
+      continue
+    }
+    const spec = await parsePack(dir)
+    if ('error' in spec || spec.id !== packId) continue
+    const rec = await readPackRecord(packId)
+    if (!rec) continue
+    const integrityOk = rec.id === packId && packRecordMacOk(rec)
+    const tampered = (await currentHash(packId)) !== rec.sha256
+    out.push({
+      id: packId,
+      publisher: spec.publisher,
+      name: spec.name,
+      version: rec.version,
+      description: spec.description,
+      icon: spec.icon,
+      source: rec.source,
+      tier: rec.tier,
+      capabilities: rec.capabilities,
+      enabled: rec.enabled && integrityOk && !tampered,
+      tampered,
+      integrityOk,
+      widgets: spec.widgets.map((w) => ({
+        fullId: w.fullId,
+        id: w.id,
+        name: w.name,
+        tier: w.tier,
+        capabilities: rec.widgets.find((x) => x.id === w.id)?.capabilities ?? w.capabilities,
+        defaultSize: w.defaultSize
+      }))
+    })
+  }
+  return out
+}
+
+/** The widgets the board may load + run: from enabled + authentic + untampered packs. Per-widget
+ *  caps come from the signed record (authoritative ceiling). The only function the loader/host trusts. */
+export async function resolveEnabledWidgets(): Promise<WidgetRuntimeInfo[]> {
+  const packs = await listInstalledPacks()
+  const out: WidgetRuntimeInfo[] = []
+  for (const pack of packs) {
+    if (!pack.enabled) continue
+    const spec = await parsePack(packDir(pack.id))
+    if ('error' in spec) continue
+    const rec = await readPackRecord(pack.id)
+    if (!rec) continue
+    const hasShared = spec.shared !== undefined
+    for (const w of spec.widgets) {
+      out.push({
+        fullId: w.fullId,
+        packId: pack.id,
+        widgetId: w.id,
+        name: w.name,
+        tier: w.tier,
+        uiOrigin: widgetOrigin(pack.id, w.id),
+        uiDir: w.uiDir,
+        nodeEntry: w.nodeEntry,
+        capabilities: rec.widgets.find((x) => x.id === w.id)?.capabilities ?? w.capabilities,
+        defaultSize: w.defaultSize,
+        hasShared
+      })
+    }
   }
   return out
 }

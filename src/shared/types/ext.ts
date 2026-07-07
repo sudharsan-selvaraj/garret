@@ -38,6 +38,75 @@ export interface PackRecord {
   mac?: string
 }
 
+/** Where a pack came from — drives the danger wall (git/npm full-tier) + update checks (P2). */
+export type PackSourceKind = 'local' | 'git' | 'npm' | 'registry'
+
+/** A validated pack-install proposal shown before any files are written (consent is per pack; the
+ *  per-widget caps in `widgets[]` are what actually gets enforced at each host launch). */
+export interface PackInstallPlan {
+  ok: boolean
+  error?: string
+  id: string
+  publisher: string
+  name: string
+  description?: string
+  version: string
+  source: string
+  sourceKind: PackSourceKind
+  tier: ExtTier
+  capabilities: string[]
+  widgets: WidgetMeta[]
+  isUpdate: boolean
+  codeChanged: boolean
+  addedCapabilities: string[]
+  sourceHash: string
+  staged?: boolean
+}
+
+/** A widget within an installed pack, as the manager/catalog sees it. */
+export interface InstalledPackWidget {
+  fullId: string
+  id: string
+  name: string
+  tier: ExtTier
+  capabilities: string[]
+  defaultSize?: { w: number; h: number }
+}
+
+/** An installed pack as the manager sees it. */
+export interface InstalledPack {
+  id: string
+  publisher: string
+  name: string
+  version: string
+  description?: string
+  icon?: string
+  source: string
+  tier: ExtTier
+  capabilities: string[]
+  enabled: boolean
+  tampered: boolean
+  integrityOk: boolean
+  widgets: InstalledPackWidget[]
+}
+
+/** What the board loader + host launch need for ONE placeable widget of an enabled pack. */
+export interface WidgetRuntimeInfo {
+  fullId: string
+  packId: string
+  widgetId: string
+  name: string
+  tier: ExtTier
+  /** garret://<widgetId>.<packId>/ — this widget's own origin (per-widget storage partition). */
+  uiOrigin: string
+  uiDir: string
+  nodeEntry?: string
+  capabilities: string[]
+  defaultSize?: { w: number; h: number }
+  /** the pack declares a shared settings namespace → this widget's host gets GARRET_PACK_SHARED_DIR. */
+  hasShared: boolean
+}
+
 /** A validated install proposal shown before any files are written. */
 export interface ExtInstallPlan {
   ok: boolean
