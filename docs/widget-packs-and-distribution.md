@@ -167,25 +167,27 @@ claim any `packId`.** So the trust root differs by source:
   publisher key) is the eventual end state — the manifest carries `publisher` now so signatures can
   bind to it later without a format change.
 
-### Full-tier from the internet — the real RCE surface (PIVOTAL, decide now)
+### Full-tier from the internet — the real RCE surface (LOCKED)
 
 "No build/install scripts" is hygiene, not the actual protection. A **full-tier widget's host runs as
 raw Node with `process` / network / fs at RUNTIME**, however it was built. So for an internet-sourced
-(git/npm) full-tier pack, **consent is the ONLY thing between install and arbitrary code execution** —
-and users click through consent. There is no sandbox yet (separate backlog).
+(git/npm) full-tier pack, **consent is the ONLY thing between install and arbitrary code execution**
+until the sandbox lands (separate backlog).
 
-The honest options for full-tier (web-tier — UI-only, no host — is low-risk from any source):
+**Locked policy** (web-tier — UI-only, no host — is low-risk and installs frictionlessly from ANY
+source):
 
-- **A. Full-tier only from `local` + (signed) `registry`.** git/npm may install web-tier packs only;
-  a git/npm pack that declares host capabilities is refused with "install this from the registry or a
-  local file." Safest; but our own device-control pack (full-tier) couldn't ship via git/npm until the
-  registry exists. **Recommended default.**
-- **B. Allow git/npm full-tier behind an explicit "runs unrestricted code on your machine" wall**,
-  default-off, source shown. Enables the ecosystem now; leans entirely on the user reading the wall.
-- **C. Disable git/npm entirely for full-tier** (local only) until sandboxed. Most conservative.
+- **Full-tier from `local`** → normal consent (today's flow).
+- **Full-tier from `git` / `npm`** → an explicit **high-friction confirmation** ("danger wall"),
+  **default-OFF**: states in plain language that it runs unrestricted code with no sandbox, shows the
+  exact source + requested capabilities, defaults to *Cancel*, and requires a deliberate acknowledgement
+  ("I understand and trust this source") before *Install* enables. Friction is proportional to risk —
+  the goal is that no one installs internet full-tier code by clicking through on autopilot.
+- **Full-tier from `registry`** (later) → softer consent, because the curated/signed registry vouches
+  for the artifact + publisher.
 
-Whichever we pick, the capability model + per-widget enforcement above is built so the future sandbox
-can turn consent into *enforcement*. This is the one call that most needs to be made explicitly now.
+The capability model + per-widget enforcement above is built so the future sandbox can turn this
+consent into *enforcement*.
 
 ### Versioning & updates
 
