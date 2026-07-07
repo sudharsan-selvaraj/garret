@@ -154,8 +154,9 @@ export function registerExtHandlers(): void {
   //    to another extension's capabilities (B2). Launch the host if full tier.
   ipcMain.handle(Channels.extBind, async (e, extensionId: string, instanceId: string) => {
     const wcId = e.sender.id
-    // extensionId is the widget's fullId; verify the guest really runs its own per-widget origin.
-    const w = (await resolveEnabledWidgetSpecs()).find((x) => x.fullId === extensionId)
+    // The guest binds with its OWN origin host (`location.hostname` = `<widgetId>.<packId>`), so resolve
+    // the widget by that host, then verify the sender's real origin matches (unforgeable).
+    const w = (await resolveEnabledWidgetSpecs()).find((x) => originHost(x) === extensionId)
     if (!w) return { ok: false, error: `unknown widget: ${extensionId}` }
     let originOk = false
     try {
