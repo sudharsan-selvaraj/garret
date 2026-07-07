@@ -24,12 +24,17 @@ function Mirror(): JSX.Element {
   const g = useGarret()
   const { serial } = useProps<{ serial: string; model?: string }>()
   const screenRef = useRef<HTMLDivElement>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [connecting, setConnecting] = useState(true)
+  // connecting → live → lost (device unplugged / adb or scrcpy died). `attempt` re-runs the effect
+  // to reconnect; `reason` is the user-facing cause on `lost`.
+  const [phase, setPhase] = useState<'connecting' | 'live' | 'lost'>('connecting')
+  const [reason, setReason] = useState<string | null>(null)
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     if (!serial) return
     let disposed = false
+    setPhase('connecting')
+    setReason(null)
     const canvas = document.createElement('canvas')
     canvas.className = 'screen'
     screenRef.current?.appendChild(canvas)
@@ -55,11 +60,20 @@ function Mirror(): JSX.Element {
       g.window.setAspectRatio(width / height, ASPECT_INSET)
     })
 
+    // The device disconnected / adb/scrcpy died: unlock the reserved control-column width so the
+    // "connection lost" card fills the window (no empty strip), then surface it.
+    const lost = (why: string): void => {
+      if (disposed) return
+      if (dims) g.window.setAspectRatio(dims.w / dims.h) // drop ASPECT_INSET — no column while lost
+      setReason(why)
+      setPhase('lost')
+    }
+
     const call = host.mirror({ serial })
     call.onData((chunk: VideoChunk) => {
       if (disposed) return
       if (chunk.kind === 'meta') {
-        setConnecting(false)
+        setPhase('live')
         if (chunk.width && chunk.height) {
           dims = { w: chunk.width, h: chunk.height }
           g.window.setAspectRatio(chunk.width / chunk.height, ASPECT_INSET)
@@ -72,9 +86,9 @@ function Mirror(): JSX.Element {
           : { type: 'data', keyframe: chunk.keyframe, data: chunk.data, pts: BigInt(chunk.timestamp) }
       void writer.write(packet).catch(() => {})
     })
-    call.onError((e) => {
-      if (!disposed) setError(e instanceof Error ? e.message : String(e))
-    })
+    // Video stream ending = the session closed (device unplugged / server stopped); errors likewise.
+    call.onEnd(() => lost('Device disconnected'))
+    call.onError((e) => lost(e instanceof Error ? e.message : String(e)))
 
     // ── audio (best-effort; a device with no audio just ends the stream, and any decode error is
     //    swallowed so the mirror keeps running silently) ────────────────────────────────────────
@@ -103,17 +117,24 @@ function Mirror(): JSX.Element {
       decoder.dispose()
       canvas.remove()
     }
-  }, [serial, host, g])
+  }, [serial, host, g, attempt])
 
   // The host (SurfaceWindowRoot) draws the draggable titlebar + close; here we fill with the device
   // screen (canvas appended into screen-holder, which React leaves alone) + React overlays on top.
   return (
     <div className="screen-wrap">
       <div className="screen-holder" ref={screenRef} />
-      {error ? (
-        <p className="msg err">{error}</p>
-      ) : connecting ? (
-        <p className="msg">{serial ? `Connecting to ${serial}…` : 'No device (props missing)'}</p>
+      {!serial ? (
+        <p className="msg">No device (props missing)</p>
+      ) : phase === 'connecting' ? (
+        <p className="msg">Connecting to {serial}…</p>
+      ) : phase === 'lost' ? (
+        <div className="lost">
+          <p className="lost-reason">{reason ?? 'Connection lost'}</p>
+          <button className="lost-retry" onClick={() => setAttempt((a) => a + 1)}>
+            Reconnect
+          </button>
+        </div>
       ) : (
         <NavBar client={host} serial={serial} />
       )}
