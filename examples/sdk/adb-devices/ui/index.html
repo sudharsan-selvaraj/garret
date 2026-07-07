@@ -3,39 +3,54 @@
   <head>
     <meta charset="utf-8" />
     <style>
-      :root { color-scheme: dark; }
-      body { margin: 0; font: 13px/1.4 -apple-system, system-ui, sans-serif; color: #e6e6ea; }
-      .wrap { padding: 12px 14px; }
-      header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-      .title { font-weight: 600; }
-      .count { font-size: 12px; opacity: 0.55; background: #ffffff14; border-radius: 10px; padding: 1px 8px; }
-      button { font: inherit; color: #e6e6ea; background: #ffffff1a; border: 0; border-radius: 6px; padding: 4px 10px; cursor: pointer; }
-      button:disabled { opacity: 0.5; }
-      .msg { opacity: 0.7; }
-      .msg .err, .err { color: #ff8a8a; opacity: 1; margin: 0 0 8px; }
-      .list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
-      .row {
-        width: 100%; display: flex; align-items: center; gap: 10px;
-        font: inherit; color: inherit; text-align: left; border: 0; border-radius: 8px;
-        background: transparent; padding: 8px; cursor: pointer;
+      /* Match the app's native widget look (see design tokens in src/renderer/src/styles.css): a dark
+         card, SF Pro, system-blue accent, iOS green for the online state. The board embeds this widget
+         in a white webview, so the body paints its own opaque dark surface. The board frame draws the
+         "Android Devices" title + ⋯ menu — no in-widget header (would duplicate it). */
+      :root {
+        color-scheme: dark;
+        --text: rgba(255, 255, 255, 0.92);
+        --text-2: rgba(235, 235, 245, 0.6);
+        --text-3: rgba(235, 235, 245, 0.3);
+        --hover: rgba(255, 255, 255, 0.06);
+        --green: #30d158;
+        --danger: #ff453a;
       }
-      .row:hover:not(:disabled) { background: #ffffff12; }
-      .row:disabled { opacity: 0.55; cursor: default; }
-      .dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: #888; }
-      .dot.device { background: #48d16a; }
+      html, body { margin: 0; height: 100%; }
+      body {
+        background: #1c1c1e; color: var(--text);
+        font: 13px/1.4 -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+      }
+      .wrap { padding: 5px; }
+      .msg { padding: 12px 10px; color: var(--text-2); font-size: 12px; }
+      .msg .err, .err { color: #ff6b6b; margin: 0 0 8px; }
+      .retry {
+        font: inherit; font-size: 12px; color: var(--text); background: var(--hover);
+        border: 0; border-radius: 6px; padding: 5px 12px; cursor: pointer;
+      }
+      .retry:hover { background: rgba(255, 255, 255, 0.12); }
+      .list { list-style: none; margin: 0; padding: 0; }
+      .row {
+        width: 100%; display: flex; align-items: center; gap: 9px;
+        font: inherit; color: inherit; text-align: left; border: 0; border-radius: 7px;
+        background: transparent; padding: 7px 8px; cursor: pointer;
+      }
+      .row:hover:not(:disabled) { background: var(--hover); }
+      .row:disabled { cursor: default; }
+      .dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); }
+      .dot.device { background: var(--green); }
       .dot.unauthorized { background: #e6b23a; }
-      .dot.offline { background: #ff6b6b; }
+      .dot.offline { background: var(--danger); }
       .info { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
       .name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .serial { font-size: 11px; opacity: 0.5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .state { flex: none; font-size: 11px; opacity: 0.7; text-transform: capitalize; }
-      /* Play button — the affordance to open the mirror; brightens with the row on hover. */
+      .serial { font-size: 11px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .state { flex: none; font-size: 11px; color: var(--text-2); text-transform: capitalize; }
+      /* Small always-on green run glyph (IDE-style) — the affordance to open the mirror. */
       .play {
         flex: none; display: inline-flex; align-items: center; justify-content: center;
-        width: 26px; height: 26px; border-radius: 50%;
-        background: #ffffff14; color: #e6e6ea;
+        width: 22px; height: 22px; border-radius: 6px; background: transparent; color: var(--green);
       }
-      .row:hover:not(:disabled) .play { background: #0a84ff; color: #fff; }
+      .row:hover:not(:disabled) .play { background: rgba(48, 209, 88, 0.16); }
     </style>
   </head>
   <body>

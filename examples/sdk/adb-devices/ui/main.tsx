@@ -20,11 +20,6 @@ function App(): JSX.Element {
 
   return (
     <div className="wrap">
-      <header>
-        <span className="title">Android devices</span>
-        {status.ok && <span className="count">{devices.length}</span>}
-      </header>
-
       {!status.ok ? (
         <div className="msg">
           {status.state === 'connecting' ? (
@@ -32,12 +27,14 @@ function App(): JSX.Element {
           ) : (
             <>
               <p className="err">{status.error ?? 'adb unavailable'}</p>
-              <button onClick={() => void host.retry()}>Retry</button>
+              <button className="retry" onClick={() => void host.retry()}>
+                Retry
+              </button>
             </>
           )}
         </div>
       ) : devices.length === 0 ? (
-        <p className="msg">No devices. Connect one over USB and authorize debugging.</p>
+        <p className="msg">No devices connected. Connect over USB and enable debugging.</p>
       ) : (
         <ul className="list">
           {devices.map((d) => {
@@ -66,7 +63,7 @@ function App(): JSX.Element {
                   </span>
                   {online ? (
                     <span className="play" aria-hidden="true">
-                      <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                      <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
                         <path d="M8 5v14l11-7z" />
                       </svg>
                     </span>

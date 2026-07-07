@@ -43,6 +43,10 @@ export default defineHost<Api, Events>((ctx) => {
   let current: AdbDevice[] = []
   let status: AdbStatus = { ok: false, state: 'connecting' }
   let tracking: Promise<void> | null = null
+  let disposed = false
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  let backoff = 0 // consecutive auto-reconnect attempts (drives the delay; reset on a clean connect)
+  const MAX_AUTO = 5
 
   const nameCache = new Map<string, string>() // serial → resolved marketing name (stable per device)
   let rawDevices: AdbDevice[] = [] // latest un-enriched list from the tracker
@@ -69,10 +73,32 @@ export default defineHost<Api, Events>((ctx) => {
       })
     }
   }
+  // The track-devices socket dropped (adb restart, unplug churn, idle close) or the initial connect
+  // failed. Auto-recover with exponential backoff instead of dead-ending on a raw stream error like
+  // "ExactReadable ended"; after MAX_AUTO tries fall to a friendly terminal error with manual Retry.
+  const scheduleReconnect = (): void => {
+    if (disposed || reconnectTimer) return
+    if (backoff >= MAX_AUTO) {
+      return setStatus({ ok: false, state: 'error', error: 'Lost connection to adb. Make sure it’s running, then Retry.' })
+    }
+    setStatus({ ok: false, state: 'connecting' })
+    const delay = Math.min(500 * 2 ** backoff, 8000)
+    backoff += 1
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null
+      tracking = null
+      void ensureTracking()
+    }, delay)
+  }
   const runTracker = async (): Promise<void> => {
-    await observer?.stop()
+    try {
+      await observer?.stop()
+    } catch {
+      /* already dead */
+    }
     observer = null
     current = []
+    rawDevices = []
     setStatus({ ok: false, state: 'connecting' })
     const r = await ensureServer(ctx)
     if (!r.ok) return setStatus({ ok: false, state: 'no-adb', error: r.error })
@@ -82,10 +108,11 @@ export default defineHost<Api, Events>((ctx) => {
         emitDevices()
         resolveNames(devices)
       })
-      observer.onError((e) => setStatus({ ok: false, state: 'error', error: e.message }))
+      observer.onError(() => scheduleReconnect())
+      backoff = 0 // clean connect → reset the backoff ladder
       setStatus({ ok: true, state: 'connected' })
-    } catch (e) {
-      setStatus({ ok: false, state: 'error', error: e instanceof Error ? e.message : String(e) })
+    } catch {
+      scheduleReconnect()
     }
   }
   const ensureTracking = (): Promise<void> => (tracking ??= runTracker().finally(() => (tracking = null)))
@@ -134,6 +161,8 @@ export default defineHost<Api, Events>((ctx) => {
   ): Promise<void> => (hub && hubSerial === serial ? hub.control(fn) : Promise.resolve())
 
   ctx.onDispose(async () => {
+    disposed = true
+    if (reconnectTimer) clearTimeout(reconnectTimer)
     await observer?.stop()
     await hub?.close()
   })
@@ -148,6 +177,11 @@ export default defineHost<Api, Events>((ctx) => {
       return current
     },
     retry: async () => {
+      backoff = 0
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer)
+        reconnectTimer = null
+      }
       tracking = null
       return ensureTracking()
     },
