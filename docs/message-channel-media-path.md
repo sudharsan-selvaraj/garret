@@ -1,5 +1,28 @@
 # Direct media path — MessageChannelMain
 
+> **M0 OUTCOME (decisive — read first): recommend NOT building this.**
+> Electron's IPC does **not** support `ArrayBuffer` transfer. Every `postMessage` transfer list —
+> `ipcRenderer`, `WebContents`, `MessagePortMain`, `utilityProcess`, `parentPort` — is typed
+> `MessagePortMain[]` only (verified in `node_modules/electron/electron.d.ts`; no transfer list accepts
+> a `Transferable`/`ArrayBuffer` anywhere). So:
+> - **Zero-copy (Level 2) is impossible** across the host/main/renderer boundaries — frames are always
+>   structured-clone *copied*. Drop L2 entirely.
+> - The **only** achievable win is fewer *hops*: a direct port cuts host→main→guest (2 copies + main
+>   in the JS path) to host→guest (1 copy, main out of the JS path). Not zero-copy — half-copy.
+> - At realistic bitrates that win is negligible: 8 Mbps H.264 ≈ **1 MB/s**, so even the current 2
+>   copies ≈ 2 MB/s memcpy + ~60–120 msgs/s dispatch — trivial CPU. (The frame is already
+>   H.264-compressed; we're copying kilobytes, not raw frames.)
+>
+> **Conclusion:** this is premature optimization. The relay is simple and correct; the copy cost is
+> immaterial and the best-case improvement is small and bounded (can't beat 1 copy). Keep the relay.
+> Revisit ONLY if profiling ever shows the main process saturated by media dispatch — e.g. very high
+> bitrate / 4K, or many simultaneous mirrors — and even then weigh a half-copy win against the port
+> machinery (lifecycle, ordering, two transports). The rest of this doc is retained as the record of
+> the investigation and as the ready-to-go plan should that day come.
+
+---
+
+
 ## Problem
 
 Every host→UI message rides the two-hop relay: **host (utilityProcess) → main → renderer (guest webview)**.
