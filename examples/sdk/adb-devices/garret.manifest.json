@@ -1,21 +1,28 @@
 {
-  "id": "adb-devices",
+  "apiVersion": 2,
+  "id": "garret.adb-devices",
+  "publisher": "garret",
   "name": "Android Devices",
   "version": "0.1.0",
-  "apiVersion": 1,
   "description": "List, mirror, and control connected Android devices via ya-webadb + scrcpy.",
-  "ui": "dist/ui",
-  "host": "dist/host/index.cjs",
-  "capabilities": ["process", "windows"],
-  "defaultSize": { "w": 6, "h": 5 },
-  "surfaces": {
-    "device-mirror": {
-      "name": "Device Mirror",
-      "ui": "dist/mirror",
-      "frame": false,
-      "transparent": true,
-      "defaultSize": { "w": 360, "h": 760 },
-      "minSize": { "w": 180, "h": 380 }
+  "widgets": [
+    {
+      "id": "devices",
+      "name": "Android Devices",
+      "ui": "dist/ui",
+      "host": "dist/host/index.cjs",
+      "capabilities": ["process", "windows"],
+      "defaultSize": { "w": 6, "h": 5 },
+      "surfaces": {
+        "device-mirror": {
+          "name": "Device Mirror",
+          "ui": "dist/mirror",
+          "frame": false,
+          "transparent": true,
+          "defaultSize": { "w": 360, "h": 760 },
+          "minSize": { "w": 180, "h": 380 }
+        }
+      }
     }
-  }
+  ]
 }

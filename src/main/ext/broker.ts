@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync } from '
 import { join } from 'node:path'
 import { randomBytes, createCipheriv, createDecipheriv } from 'node:crypto'
 import { GarretError } from '@garretapp/sdk'
-import { extDataDir } from '@main/ext/install'
+import { widgetDataDir } from '@main/ext/install'
 import { extSecretKeyHex } from '@main/ext/keys'
 import { getService } from '@main/services/registry'
 
@@ -14,7 +14,10 @@ import { getService } from '@main/services/registry'
  * host share state. See docs/architecture.md § 5.
  */
 export interface Binding {
-  extId: string
+  packId: string
+  widgetId: string
+  /** `${packId}/${widgetId}` — storage dir + secret-key id. */
+  fullId: string
   instanceId: string
   tier: 'web' | 'full'
   capabilities: string[]
@@ -27,9 +30,9 @@ function gate(binding: Binding, cap: string): void {
   }
 }
 
-// ── data-dir JSON store (mirrors the SDK host so UI + host share state) ──────────────────────────
-function ensureDir(id: string): string {
-  const dir = extDataDir(id)
+// ── data-dir JSON store (mirrors the SDK host so UI + host share state; per WIDGET now) ────────────
+function widgetDir(packId: string, widgetId: string): string {
+  const dir = widgetDataDir(packId, widgetId)
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
   return dir
 }
@@ -45,8 +48,8 @@ function writeAtomic(file: string, obj: Record<string, unknown>): void {
   writeFileSync(tmp, JSON.stringify(obj))
   renameSync(tmp, file)
 }
-function storeFile(id: string, instanceId?: string): string {
-  return join(ensureDir(id), instanceId ? `instance.${instanceId}.json` : 'storage.json')
+function storeFile(b: Binding, instanceId?: string): string {
+  return join(widgetDir(b.packId, b.widgetId), instanceId ? `instance.${instanceId}.json` : 'storage.json')
 }
 
 interface SecretBox {
@@ -96,7 +99,7 @@ export async function platformCall(
     case 'instanceStorage': {
       gate(binding, 'storage')
       const instId = domain === 'instanceStorage' ? binding.instanceId : undefined
-      const file = storeFile(binding.extId, instId)
+      const file = storeFile(binding, instId)
       if (op === 'get') return readJson(file)[a0 as string]
       if (op === 'keys') return Object.keys(readJson(file))
       if (op === 'set') {
@@ -119,11 +122,11 @@ export async function platformCall(
     }
     case 'secrets': {
       gate(binding, 'secrets')
-      const file = join(ensureDir(binding.extId), 'secrets.json')
+      const file = join(widgetDir(binding.packId, binding.widgetId), 'secrets.json')
       if (op === 'get') {
         const box = readJson(file)[a0 as string] as SecretBox | undefined
         if (!box) return undefined
-        const d = createDecipheriv('aes-256-gcm', secretKey(binding.extId), Buffer.from(box.iv, 'base64'))
+        const d = createDecipheriv('aes-256-gcm', secretKey(binding.fullId), Buffer.from(box.iv, 'base64'))
         d.setAuthTag(Buffer.from(box.tag, 'base64'))
         try {
           return d.update(Buffer.from(box.ct, 'base64')).toString('utf8') + d.final('utf8')
@@ -133,7 +136,7 @@ export async function platformCall(
       }
       if (op === 'set') {
         const iv = randomBytes(12)
-        const c = createCipheriv('aes-256-gcm', secretKey(binding.extId), iv)
+        const c = createCipheriv('aes-256-gcm', secretKey(binding.fullId), iv)
         const ct = Buffer.concat([c.update(String(a1), 'utf8'), c.final()])
         const box: SecretBox = { v: 1, iv: iv.toString('base64'), tag: c.getAuthTag().toString('base64'), ct: ct.toString('base64') }
         const all = readJson(file)

@@ -2,8 +2,17 @@ import { utilityProcess, type UtilityProcess } from 'electron'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import type { WireMessage } from '@garretapp/sdk'
-import { ensureDataDir } from '@main/ext/install'
+import { ensureWidgetDataDir, ensureSharedDataDir } from '@main/ext/install'
 import { extSecretKeyHex } from '@main/ext/keys'
+
+/** What launching a widget's host needs — per-widget data dir + secret key, + opt-in pack-shared. */
+export interface WidgetHostDescriptor {
+  fullId: string
+  packId: string
+  widgetId: string
+  nodeEntry: string
+  hasShared: boolean
+}
 
 /**
  * Per-instance host process for a full-tier extension. A THIN frame pipe: correlation lives in the
@@ -49,7 +58,7 @@ export class ExtensionHost {
     env: NodeJS.ProcessEnv
   ) {
     this.child = utilityProcess.fork(entryFile, [], {
-      serviceName: `garret-ext:${extId}`,
+      serviceName: `garret-ext:${extId.replace(/[^a-z0-9.]+/gi, '-')}`, // fullId has a "/"
       env,
       stdio: ['ignore', 'pipe', 'pipe']
     })
@@ -81,14 +90,20 @@ export class ExtensionHost {
     })
   }
 
-  static async launch(extId: string, entryFile: string): Promise<ExtensionHost> {
+  static async launch(d: WidgetHostDescriptor): Promise<ExtensionHost> {
     const env = baseEnv()
     env.PATH = await loginPath()
-    env.GARRET_EXT_ID = extId
-    env.GARRET_EXT_DATA_DIR = await ensureDataDir(extId)
-    const key = extSecretKeyHex(extId)
+    env.GARRET_EXT_ID = d.fullId
+    env.GARRET_EXT_DATA_DIR = await ensureWidgetDataDir(d.packId, d.widgetId)
+    const key = extSecretKeyHex(d.fullId)
     if (key) env.GARRET_EXT_SECRET_KEY = key
-    return new ExtensionHost(extId, entryFile, env)
+    // Opt-in pack-shared namespace (only when the pack declares `shared`), with its OWN key.
+    if (d.hasShared) {
+      env.GARRET_PACK_SHARED_DIR = await ensureSharedDataDir(d.packId)
+      const sharedKey = extSecretKeyHex(`${d.packId}/_shared`)
+      if (sharedKey) env.GARRET_PACK_SHARED_KEY = sharedKey
+    }
+    return new ExtensionHost(d.fullId, d.nodeEntry, env)
   }
 
   onFrame(cb: FrameCb): void {
@@ -130,9 +145,9 @@ export class ExtensionHost {
 // registry keyed by the UI webview's webContents id (one host per placed instance)
 const hosts = new Map<number, ExtensionHost>()
 
-export async function launchHost(wcId: number, extId: string, entryFile: string): Promise<ExtensionHost> {
+export async function launchHost(wcId: number, d: WidgetHostDescriptor): Promise<ExtensionHost> {
   await killHost(wcId)
-  const host = await ExtensionHost.launch(extId, entryFile)
+  const host = await ExtensionHost.launch(d)
   hosts.set(wcId, host)
   return host
 }

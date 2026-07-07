@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { Channels } from '@shared/ipc/channels'
 import type { WireMessage } from '@garretapp/sdk'
-import type { ExtRuntimeInfo, ExtInstallPlan } from '@shared/types/ext'
+import type { ExtRuntimeInfo, ExtInstallPlan, InstalledExtension, InstalledPack, PackInstallPlan } from '@shared/types/ext'
 import { persistence } from '@main/persistence/store'
 import { registerExtProtocol, setUiResolver, resetUiDirs, EXT_PARTITION } from '@main/ext/protocol'
 import { launchHost, getHost, killHost } from '@main/ext/host'
@@ -24,15 +24,16 @@ import {
   type SurfaceOpenOpts
 } from '@main/windows/surfaceWindow'
 import {
-  resolveEnabled,
-  planInstall,
-  planInstallFromFile,
-  commitInstall,
-  cleanupStaging,
-  listInstalled,
-  setEnabled,
-  removeExtension,
-  type ResolvedExt
+  resolveEnabledWidgetSpecs,
+  planPackInstall,
+  planPackInstallFromFile,
+  commitPackInstall,
+  cleanupPackStaging,
+  listInstalledPacks,
+  setPackEnabled,
+  removePack,
+  readPackRecord,
+  type ResolvedWidget
 } from '@main/ext/install'
 
 /**
@@ -48,9 +49,12 @@ function extPreloadUrl(): string {
   return pathToFileURL(join(app.getAppPath(), 'out', 'preload', 'extBridge.js')).toString()
 }
 
-/** surfaceId → ui dir, for serving `garret://<id>/~<surfaceId>/` (undefined if the ext has none). */
-function surfaceDirs(e: ResolvedExt): Record<string, string> | undefined {
-  const s = e.spec.surfaces
+/** The scheme host label for a widget's origin: `garret://<widgetId>.<packId>/`. */
+const originHost = (w: ResolvedWidget): string => `${w.widgetId}.${w.packId}`
+
+/** surfaceId → ui dir, for serving `<widget origin>/~<surfaceId>/` (undefined if none). */
+function surfaceDirs(w: ResolvedWidget): Record<string, string> | undefined {
+  const s = w.widget.surfaces
   if (!s) return undefined
   const out: Record<string, string> = {}
   for (const [sid, spec] of Object.entries(s)) out[sid] = spec.uiDir
@@ -59,9 +63,47 @@ function surfaceDirs(e: ResolvedExt): Record<string, string> | undefined {
 
 async function syncUiDirs(): Promise<void> {
   resetUiDirs(
-    (await resolveEnabled()).map((e) => ({ id: e.id, dir: e.uiDir, tier: e.tier, surfaces: surfaceDirs(e) }))
+    (await resolveEnabledWidgetSpecs()).map((w) => ({
+      id: originHost(w),
+      dir: w.widget.uiDir,
+      tier: w.widget.tier,
+      surfaces: surfaceDirs(w)
+    }))
   )
 }
+
+// Map pack shapes onto the EXISTING IPC types so the renderer needs no change: a pack maps to one
+// InstalledExtension (id = packId), and a PackInstallPlan to one ExtInstallPlan (union caps). The
+// per-widget catalog + danger-wall UI can enrich these later without a format change.
+const toExtPlan = (p: PackInstallPlan): ExtInstallPlan => ({
+  ok: p.ok,
+  error: p.error,
+  id: p.id,
+  name: p.name,
+  description: p.description,
+  version: p.version,
+  source: p.source,
+  capabilities: p.capabilities,
+  tier: p.tier,
+  isUpdate: p.isUpdate,
+  codeChanged: p.codeChanged,
+  addedCapabilities: p.addedCapabilities,
+  sourceHash: p.sourceHash,
+  staged: p.staged
+})
+const toInstalled = (p: InstalledPack): InstalledExtension => ({
+  id: p.id,
+  name: p.name,
+  version: p.version,
+  description: p.description,
+  icon: p.icon,
+  source: p.source,
+  capabilities: p.capabilities,
+  tier: p.tier,
+  enabled: p.enabled,
+  tampered: p.tampered,
+  integrityOk: p.integrityOk
+})
 
 let currentActive = true
 /** Broadcast board activity to every bound widget (drives useActive / g.active). */
@@ -70,11 +112,13 @@ export function broadcastActive(active: boolean): void {
   for (const wcId of bound.keys()) webContents.fromId(wcId)?.send(Channels.extActive, active)
 }
 
-/** Tear down every live binding + host for an extension (on disable / uninstall). */
-async function revokeExt(extId: string): Promise<void> {
-  closeSurfacesForExt(extId) // close its floating surface windows too (no stale capability ceiling)
+/** Tear down every live binding + host for a PACK's widgets (on disable / uninstall). */
+async function revokePack(packId: string): Promise<void> {
+  const rec = await readPackRecord(packId)
+  // Close each widget's floating surfaces (owner id = fullId) so no stale capability ceiling survives.
+  for (const w of rec?.widgets ?? []) closeSurfacesForExt(w.fullId)
   for (const [wcId, b] of [...bound]) {
-    if (b.extId !== extId) continue
+    if (b.packId !== packId) continue
     bound.delete(wcId)
     await killHost(wcId)
   }
@@ -84,23 +128,23 @@ export function registerExtHandlers(): void {
   registerExtProtocol(session.defaultSession.protocol)
   registerExtProtocol(session.fromPartition(EXT_PARTITION).protocol)
   setUiResolver(async (id) => {
-    const ext = (await resolveEnabled()).find((e) => e.id === id)
-    return ext ? { dir: ext.uiDir, tier: ext.tier, surfaces: surfaceDirs(ext) } : null
+    const w = (await resolveEnabledWidgetSpecs()).find((x) => originHost(x) === id)
+    return w ? { dir: w.widget.uiDir, tier: w.widget.tier, surfaces: surfaceDirs(w) } : null
   })
   void syncUiDirs()
 
-  // ── board loader ────────────────────────────────────────────────────────────────────────────
+  // ── board loader — one placeable entry PER WIDGET (packs expand into their widgets) ──────────────
   ipcMain.handle(Channels.extList, async () => ({
     preloadUrl: extPreloadUrl(),
-    extensions: (await resolveEnabled()).map(
-      (e): ExtRuntimeInfo => ({
-        id: e.id,
-        name: e.name,
-        tier: e.tier,
-        uiUrl: `garret://${e.id}/`,
-        hasHost: e.nodeEntry !== undefined,
-        capabilities: e.capabilities,
-        defaultSize: e.defaultSize
+    extensions: (await resolveEnabledWidgetSpecs()).map(
+      (w): ExtRuntimeInfo => ({
+        id: w.fullId,
+        name: w.widget.name,
+        tier: w.widget.tier,
+        uiUrl: w.uiOrigin,
+        hasHost: w.widget.nodeEntry !== undefined,
+        capabilities: w.capabilities,
+        defaultSize: w.widget.defaultSize
       })
     )
   }))
@@ -110,34 +154,48 @@ export function registerExtHandlers(): void {
   //    to another extension's capabilities (B2). Launch the host if full tier.
   ipcMain.handle(Channels.extBind, async (e, extensionId: string, instanceId: string) => {
     const wcId = e.sender.id
+    // extensionId is the widget's fullId; verify the guest really runs its own per-widget origin.
+    const w = (await resolveEnabledWidgetSpecs()).find((x) => x.fullId === extensionId)
+    if (!w) return { ok: false, error: `unknown widget: ${extensionId}` }
     let originOk = false
     try {
       const u = new URL(e.sender.getURL())
-      originOk = u.protocol === 'garret:' && u.hostname === extensionId
+      originOk = u.protocol === 'garret:' && u.hostname === originHost(w)
     } catch {
       originOk = false
     }
     if (!originOk) return { ok: false, error: 'origin mismatch' }
-    const ext = (await resolveEnabled()).find((x) => x.id === extensionId)
-    if (!ext) return { ok: false, error: `unknown extension: ${extensionId}` }
-    bound.set(wcId, { extId: ext.id, instanceId, tier: ext.tier, capabilities: ext.capabilities })
+    bound.set(wcId, {
+      packId: w.packId,
+      widgetId: w.widgetId,
+      fullId: w.fullId,
+      instanceId,
+      tier: w.widget.tier,
+      capabilities: w.capabilities // this widget's own caps (record-authoritative) — NOT the pack union
+    })
     // Launch props for a spawned surface — computed BEFORE the host launch so a launch failure can't
     // drop them, and delivered on every return path. ONLY if the guest is genuinely hosted inside that
     // surface's window (embedder check), never by a guessed instanceId (B1).
     const props = surfacePropsForBind(instanceId, e.sender.hostWebContents?.id) ?? {}
-    if (ext.nodeEntry) {
+    if (w.widget.nodeEntry) {
       try {
-        const host = await launchHost(wcId, ext.id, ext.nodeEntry)
+        const host = await launchHost(wcId, {
+          fullId: w.fullId,
+          packId: w.packId,
+          widgetId: w.widgetId,
+          nodeEntry: w.widget.nodeEntry,
+          hasShared: w.hasShared
+        })
         host.onFrame((msg) => webContents.fromId(wcId)?.send(Channels.extHostFrame, msg))
       } catch (err) {
         return { ok: false, error: err instanceof Error ? err.message : String(err), props }
       }
     }
     // (Re)point close-notifications for any surfaces this placement opened, in case it just reloaded
-    // (a webview reload rebinds the same {extId, instanceId} under a new wcId).
-    repointOwner(ext.id, instanceId, wcId)
+    // (a webview reload rebinds the same {fullId, instanceId} under a new wcId).
+    repointOwner(w.fullId, instanceId, wcId)
     webContents.fromId(wcId)?.send(Channels.extActive, currentActive) // S4: fresh state on bind
-    return { ok: true, hasHost: ext.nodeEntry !== undefined, props }
+    return { ok: true, hasHost: w.widget.nodeEntry !== undefined, props }
   })
   ipcMain.handle(Channels.extUnbind, async (_e, wcId: number) => {
     bound.delete(wcId)
@@ -162,7 +220,7 @@ export function registerExtHandlers(): void {
   ipcMain.handle(Channels.extConfig, (e, op: string, value?: unknown, replace?: boolean) => {
     const b = bound.get(e.sender.id)
     if (!b) throw new Error('widget not bound')
-    const key = `ext.config.${b.extId}.${b.instanceId}`
+    const key = `ext.config.${b.fullId}.${b.instanceId}`
     if (op === 'get') return persistence.kvGet(key) ?? {}
     if (op === 'set') {
       const cur = (persistence.kvGet(key) as Record<string, unknown>) ?? {}
@@ -185,16 +243,16 @@ export function registerExtHandlers(): void {
       return { ok: false, error: 'missing "windows" capability' }
     }
     if (typeof surfaceId !== 'string') return { ok: false, error: 'bad surfaceId' }
-    const ext = (await resolveEnabled()).find((x) => x.id === opener.extId)
-    const spec = ext?.spec.surfaces?.[surfaceId]
-    if (!spec) return { ok: false, error: `unknown surface: ${surfaceId}` }
+    const w = (await resolveEnabledWidgetSpecs()).find((x) => x.fullId === opener.fullId)
+    const spec = w?.widget.surfaces?.[surfaceId]
+    if (!spec || !w) return { ok: false, error: `unknown surface: ${surfaceId}` }
     return openSurface(
       {
         opener,
         openerWcId: e.sender.id,
         surfaceId,
         spec,
-        uiUrl: `garret://${opener.extId}/~${surfaceId}/`,
+        uiUrl: `${w.uiOrigin}~${surfaceId}/`, // garret://<widgetId>.<packId>/~<surfaceId>/
         preloadUrl: extPreloadUrl(),
         reqOpts: (reqOpts as SurfaceOpenOpts) ?? {}
       },
@@ -203,12 +261,12 @@ export function registerExtHandlers(): void {
   })
   ipcMain.handle(Channels.extSurfaceClose, (e, instanceId: string) => {
     const opener = bound.get(e.sender.id)
-    if (!opener || !surfaceBelongsTo(instanceId, opener.extId)) return false
+    if (!opener || !surfaceBelongsTo(instanceId, opener.fullId)) return false
     return closeSurface(instanceId)
   })
   ipcMain.handle(Channels.extSurfaceFocus, (e, instanceId: string) => {
     const opener = bound.get(e.sender.id)
-    if (!opener || !surfaceBelongsTo(instanceId, opener.extId)) return false
+    if (!opener || !surfaceBelongsTo(instanceId, opener.fullId)) return false
     return focusSurface(instanceId)
   })
   // The surface window's OWN root (board app code) fetches its render config, keyed on its top-level
@@ -239,30 +297,31 @@ export function registerExtHandlers(): void {
     if (typeof extId === 'string' && typeof instanceId === 'string') closeSurfacesForOwner(extId, instanceId)
   })
 
-  // ── install / manage ────────────────────────────────────────────────────────────────────────
-  ipcMain.handle(Channels.extInstallPlan, (_e, dir: string) => planInstall(dir))
-  ipcMain.handle(Channels.extInstallFromFile, (_e, p: string) => planInstallFromFile(p))
-  ipcMain.handle(Channels.extInstallCleanup, (_e, dir: string) => cleanupStaging(dir))
+  // ── install / manage (pack-based; mapped to the existing IPC shapes) ────────────────────────────
+  ipcMain.handle(Channels.extInstallPlan, async (_e, dir: string) => toExtPlan(await planPackInstall(dir)))
+  ipcMain.handle(Channels.extInstallFromFile, async (_e, p: string) => toExtPlan(await planPackInstallFromFile(p)))
+  ipcMain.handle(Channels.extInstallCleanup, (_e, dir: string) => cleanupPackStaging(dir))
   ipcMain.handle(Channels.extInstallCommit, async (_e, plan: ExtInstallPlan) => {
-    const res = await commitInstall(plan)
+    // commit re-verifies source+sha itself (the staged dir is unchanged since plan); id = packId.
+    const res = await commitPackInstall({ source: plan.source, sourceHash: plan.sourceHash })
     if (res.ok) {
-      await revokeExt(plan.id) // any running host is the OLD code now — tear it down; U3 rebinds
+      await revokePack(plan.id) // any running host is the OLD code now — tear it down; U3 rebinds
       await syncUiDirs()
     }
     return res
   })
-  ipcMain.handle(Channels.extListInstalled, () => listInstalled())
+  ipcMain.handle(Channels.extListInstalled, async () => (await listInstalledPacks()).map(toInstalled))
   ipcMain.handle(Channels.extSetEnabled, async (_e, id: string, on: boolean) => {
-    const res = await setEnabled(id, on)
+    const res = await setPackEnabled(id, on)
     if (res.ok) {
-      if (!on) await revokeExt(id) // kill live bindings/hosts so no stale capability ceiling survives
+      if (!on) await revokePack(id) // kill live bindings/hosts so no stale capability ceiling survives
       await syncUiDirs()
     }
     return res
   })
   ipcMain.handle(Channels.extRemove, async (_e, id: string) => {
-    await revokeExt(id)
-    await removeExtension(id)
+    await revokePack(id)
+    await removePack(id)
     await syncUiDirs()
   })
 

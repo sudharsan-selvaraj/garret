@@ -5,7 +5,7 @@ import { lstat, readdir, readFile, writeFile, rm, mkdir, rename, copyFile } from
 import { app } from 'electron'
 import { unpackZip, NATIVE_POLICY } from '@main/ext/unpack'
 import { recordMacKey, deleteExtSecretKey } from '@main/ext/keys'
-import { parseManifest, parsePack, MANIFEST_FILE, type ExtSpec, type PackSpec } from '@main/ext/manifest'
+import { parseManifest, parsePack, MANIFEST_FILE, type ExtSpec, type PackSpec, type WidgetSpec } from '@main/ext/manifest'
 import type {
   ExtInstallPlan,
   InstalledExtension,
@@ -510,7 +510,7 @@ export async function planPackInstall(srcDir: string, sourceKind: PackSourceKind
   }
 }
 
-export async function commitPackInstall(plan: PackInstallPlan): Promise<{ ok: boolean; error?: string }> {
+export async function commitPackInstall(plan: { source: string; sourceHash: string }): Promise<{ ok: boolean; error?: string }> {
   try {
     const files = await collectFiles(plan.source)
     const hash = await hashFiles(files)
@@ -686,6 +686,43 @@ export async function resolveEnabledWidgets(): Promise<WidgetRuntimeInfo[]> {
         capabilities: rec.widgets.find((x) => x.id === w.id)?.capabilities ?? w.capabilities,
         defaultSize: w.defaultSize,
         hasShared
+      })
+    }
+  }
+  return out
+}
+
+/** A widget of an enabled pack, WITH its full main-side spec (surfaces etc.) — the internal shape the
+ *  lane needs for the scheme + surface-open. `capabilities` is record-authoritative. */
+export interface ResolvedWidget {
+  packId: string
+  fullId: string
+  widgetId: string
+  uiOrigin: string
+  hasShared: boolean
+  capabilities: string[]
+  widget: WidgetSpec
+}
+
+export async function resolveEnabledWidgetSpecs(): Promise<ResolvedWidget[]> {
+  const packs = await listInstalledPacks()
+  const out: ResolvedWidget[] = []
+  for (const pack of packs) {
+    if (!pack.enabled) continue
+    const spec = await parsePack(packDir(pack.id))
+    if ('error' in spec) continue
+    const rec = await readPackRecord(pack.id)
+    if (!rec) continue
+    const hasShared = spec.shared !== undefined
+    for (const w of spec.widgets) {
+      out.push({
+        packId: pack.id,
+        fullId: w.fullId,
+        widgetId: w.id,
+        uiOrigin: widgetOrigin(pack.id, w.id),
+        hasShared,
+        capabilities: rec.widgets.find((x) => x.id === w.id)?.capabilities ?? w.capabilities,
+        widget: w
       })
     }
   }

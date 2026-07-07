@@ -76,7 +76,7 @@ export function openSurface(
   p: OpenSurfaceParams,
   now: number
 ): { ok: true; instanceId: string } | { ok: false; error: string } {
-  const oExt = p.opener.extId
+  const oExt = p.opener.fullId // owner id is the widget's fullId (packId/widgetId); stored opaquely
   const oInst = p.opener.instanceId
   const key = typeof p.reqOpts.key === 'string' ? p.reqOpts.key : undefined
 
