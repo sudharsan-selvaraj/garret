@@ -60,10 +60,16 @@ function Mirror(): JSX.Element {
       g.window.setAspectRatio(width / height, ASPECT_INSET)
     })
 
-    // The device disconnected / adb/scrcpy died: unlock the reserved control-column width so the
-    // "connection lost" card fills the window (no empty strip), then surface it.
+    // The device disconnected / adb/scrcpy died. Cancel the streams so the host's hub sees the last
+    // unsubscribe and tears down the on-device scrcpy server NOW (a video error while the device stays
+    // connected wouldn't otherwise release it until the window closes). Unlock the reserved control
+    // column so the card fills the window, then surface it. Runs once.
+    let ended = false
     const lost = (why: string): void => {
-      if (disposed) return
+      if (disposed || ended) return
+      ended = true
+      call.cancel()
+      audioCall.cancel()
       if (dims) g.window.setAspectRatio(dims.w / dims.h) // drop ASPECT_INSET — no column while lost
       setReason(why)
       setPhase('lost')
@@ -99,6 +105,7 @@ function Mirror(): JSX.Element {
       if (chunk.kind === 'config') audio.configure(chunk.data)
       else audio.frame(chunk.data, chunk.timestamp)
     })
+    audioCall.onError(() => {}) // best-effort — an audio-stream error must never break the mirror
     // Autoplay policy: resume the AudioContext on the first interaction with the window.
     const resumeAudio = (): void => audio.resume()
     window.addEventListener('pointerdown', resumeAudio)

@@ -42,7 +42,8 @@ export default defineHost<Api, Events>((ctx) => {
   let observer: AdbServerClient.DeviceObserver | null = null
   let current: AdbDevice[] = []
   let status: AdbStatus = { ok: false, state: 'connecting' }
-  let tracking: Promise<void> | null = null
+  let started = false // lazy-start guard so status()/listDevices() kick the tracker exactly once
+  let generation = 0 // bumped per runTracker; a superseded run bails instead of racing shared state
   let disposed = false
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
   let backoff = 0 // consecutive auto-reconnect attempts (drives the delay; reset on a clean connect)
@@ -86,11 +87,14 @@ export default defineHost<Api, Events>((ctx) => {
     backoff += 1
     reconnectTimer = setTimeout(() => {
       reconnectTimer = null
-      tracking = null
-      void ensureTracking()
+      void runTracker()
     }, delay)
   }
+  // A generation token guards against overlapping runs (a reconnect timer / manual retry firing while
+  // a prior run is mid-`await`): each run bumps `generation`, and a superseded run bails after its
+  // awaits — stopping any observer it opened — instead of corrupting the shared observer/status.
   const runTracker = async (): Promise<void> => {
+    const gen = ++generation
     try {
       await observer?.stop()
     } catch {
@@ -101,21 +105,36 @@ export default defineHost<Api, Events>((ctx) => {
     rawDevices = []
     setStatus({ ok: false, state: 'connecting' })
     const r = await ensureServer(ctx)
+    if (gen !== generation) return // superseded while probing
     if (!r.ok) return setStatus({ ok: false, state: 'no-adb', error: r.error })
     try {
-      observer = await startTracker(getClient(), (devices) => {
+      const obs = await startTracker(getClient(), (devices) => {
         rawDevices = devices
         emitDevices()
         resolveNames(devices)
       })
-      observer.onError(() => scheduleReconnect())
+      if (gen !== generation) {
+        try {
+          await obs.stop() // a newer run took over — don't leak this observer
+        } catch {
+          /* already dead */
+        }
+        return
+      }
+      observer = obs
+      obs.onError(() => scheduleReconnect())
       backoff = 0 // clean connect → reset the backoff ladder
       setStatus({ ok: true, state: 'connected' })
     } catch {
-      scheduleReconnect()
+      if (gen === generation) scheduleReconnect()
     }
   }
-  const ensureTracking = (): Promise<void> => (tracking ??= runTracker().finally(() => (tracking = null)))
+  // Lazy start on first access; the generation guard makes any later forced re-run (retry/reconnect) safe.
+  const ensureTracking = (): void => {
+    if (started) return
+    started = true
+    void runTracker()
+  }
 
   // ── mirror (one scrcpy session hub per host; drains both media streams regardless of subscription,
   //    ref-counted so it closes + resets on the last unsubscribe or on open failure) ───────────────
@@ -182,8 +201,8 @@ export default defineHost<Api, Events>((ctx) => {
         clearTimeout(reconnectTimer)
         reconnectTimer = null
       }
-      tracking = null
-      return ensureTracking()
+      started = true
+      await runTracker() // forced fresh run; generation guard supersedes any in-flight attempt
     },
     mirror: ({ serial, ...cfg }) =>
       ctx.stream((out, signal) => {
