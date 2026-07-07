@@ -6,6 +6,7 @@ import { ScrcpyVideoCodecId, type ScrcpyMediaStreamPacket } from '@yume-chan/scr
 import type { Api, VideoChunk, AudioChunk } from '../../shared/api'
 import { MirrorAudio } from './audio'
 import { attachPointerControl } from './pointer'
+import { attachKeyboardControl } from './keyboard'
 
 /**
  * The floating "phone on the desktop" mirror surface. Reads its device serial from g.props, streams
@@ -35,6 +36,7 @@ function Mirror(): JSX.Element {
     // pointer handlers always read the latest across rotation).
     let dims: { w: number; h: number } | null = null
     const control = attachPointerControl(canvas, host, serial, () => dims)
+    const keyboard = attachKeyboardControl(host, serial)
 
     decoder.sizeChanged(({ width, height }) => {
       // sizeChanged fires on every scrcpy config/keyframe, NOT only on rotation — so act ONLY when the
@@ -86,6 +88,7 @@ function Mirror(): JSX.Element {
       disposed = true
       window.removeEventListener('pointerdown', resumeAudio)
       control.detach()
+      keyboard.detach()
       call.cancel()
       audioCall.cancel()
       audio.close()
