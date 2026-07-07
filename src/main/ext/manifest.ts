@@ -10,7 +10,6 @@ import type { ExtTier } from '@shared/types/ext'
 
 export const MANIFEST_FILE = 'garret.manifest.json'
 const ID_RE = /^[a-z0-9][a-z0-9._-]*$/
-const SUPPORTED_API_VERSION = 1
 
 // ── v2 pack identity (locked; see docs/widget-packs-and-distribution.md) ─────────────────────────
 export const PACK_API_VERSION = 2
@@ -43,39 +42,6 @@ export interface SurfaceSpec {
   frame: boolean
   /** transparent background — for non-rectangular UIs (e.g. a phone screen); default false. */
   transparent: boolean
-}
-
-export interface ExtSpec {
-  id: string
-  name: string
-  version: string
-  description?: string
-  icon?: string
-  /** absolute, contained. */
-  uiDir: string
-  /** absolute, contained. Present ⇒ full tier. */
-  nodeEntry?: string
-  capabilities: string[]
-  tier: ExtTier
-  defaultSize?: { w: number; h: number }
-  /** Secondary openable surfaces, keyed by surfaceId. Requires the `windows` capability. */
-  surfaces?: Record<string, SurfaceSpec>
-  config?: Record<string, unknown>
-}
-
-interface DiskManifest {
-  id?: unknown
-  name?: unknown
-  version?: unknown
-  apiVersion?: unknown
-  description?: unknown
-  icon?: unknown
-  ui?: unknown
-  host?: unknown
-  capabilities?: unknown
-  defaultSize?: unknown
-  surfaces?: unknown
-  config?: unknown
 }
 
 /** Lenient `{ w, h }` numeric size (grid units for the primary widget), or undefined. */
@@ -118,142 +84,11 @@ function isSystemCap(c: string): boolean {
   return SYSTEM_CAPS.has(c) || c === 'network:*'
 }
 
-export async function parseManifest(dir: string): Promise<ExtSpec | { error: string }> {
-  const base = normalize(dir)
-  let m: DiskManifest
-  try {
-    m = JSON.parse(await readFile(join(base, MANIFEST_FILE), 'utf8')) as DiskManifest
-  } catch {
-    return { error: `No readable ${MANIFEST_FILE} in that folder` }
-  }
-
-  const id = typeof m.id === 'string' ? m.id.toLowerCase() : ''
-  if (!ID_RE.test(id)) return { error: 'manifest.id must be lowercase alphanumeric (a-z0-9._-), no ".."' }
-  if (typeof m.name !== 'string' || !m.name) return { error: 'manifest.name required' }
-  const apiVersion = typeof m.apiVersion === 'number' ? m.apiVersion : 0
-  if (apiVersion > SUPPORTED_API_VERSION) return { error: 'This extension needs a newer version of Garret' }
-
-  const uiDir = containedPath(base, m.ui)
-  if (!uiDir) return { error: 'manifest.ui must be a path inside the extension (no "..")' }
-  try {
-    if (!(await lstat(uiDir)).isDirectory()) return { error: 'manifest.ui is not a directory' }
-    if (!(await lstat(join(uiDir, 'index.html'))).isFile()) return { error: 'manifest.ui must contain index.html' }
-  } catch {
-    return { error: 'manifest.ui / index.html not found' }
-  }
-
-  let nodeEntry: string | undefined
-  if (m.host !== undefined) {
-    const p = containedPath(base, m.host)
-    if (!p) return { error: 'manifest.host must be a path inside the extension (no "..")' }
-    try {
-      if (!(await lstat(p)).isFile()) return { error: 'manifest.host not found' }
-    } catch {
-      return { error: 'manifest.host not found' }
-    }
-    nodeEntry = p
-  }
-
-  const rawCaps = Array.isArray(m.capabilities) ? m.capabilities : []
-  const capabilities: string[] = []
-  for (const c of rawCaps) {
-    const norm = normalizeCapability(c)
-    if (!norm) return { error: `Unsupported capability: ${String(c)}` }
-    capabilities.push(norm)
-  }
-
-  // Tier = require BOTH a host and a system capability (docs § Pre-SDK resolutions).
-  const hasHost = nodeEntry !== undefined
-  const hasSystemCap = capabilities.some(isSystemCap)
-  if (hasHost && !hasSystemCap) {
-    return { error: 'A host entry requires at least one system capability (process / fs / native).' }
-  }
-  if (!hasHost && hasSystemCap) {
-    return { error: 'A system capability (process / fs / native / network:*) requires a host entry.' }
-  }
-  const tier: ExtTier = hasHost && hasSystemCap ? 'full' : 'web'
-
-  const defaultSize = pxSize(m.defaultSize)
-
-  // Secondary surfaces (openable as floating windows). Each is validated like the primary ui
-  // (contained path + dir + index.html); declaring any requires the `windows` capability.
-  let surfaces: Record<string, SurfaceSpec> | undefined
-  if (m.surfaces !== undefined) {
-    if (typeof m.surfaces !== 'object' || m.surfaces === null || Array.isArray(m.surfaces)) {
-      return { error: 'manifest.surfaces must be an object' }
-    }
-    const entries = Object.entries(m.surfaces as Record<string, unknown>)
-    if (entries.length > MAX_SURFACES) return { error: `Too many surfaces (max ${MAX_SURFACES})` }
-    const out: Record<string, SurfaceSpec> = {}
-    for (const [sid, raw] of entries) {
-      if (!ID_RE.test(sid)) return { error: `Invalid surface id: ${sid}` }
-      const s = raw as { name?: unknown; ui?: unknown; defaultSize?: unknown; minSize?: unknown; resizable?: unknown }
-      if (typeof s.name !== 'string' || !s.name) return { error: `surface "${sid}" requires a name` }
-      const sDir = containedPath(base, s.ui)
-      if (!sDir) return { error: `surface "${sid}" ui must be a path inside the extension (no "..")` }
-      // A surface must be its OWN directory — never the ext root or primary ui (would expose the
-      // manifest/host source over garret://), and it must not contain the host entry.
-      if (sDir === base || sDir === uiDir) {
-        return { error: `surface "${sid}" ui must be its own subdirectory, not the extension root or the primary ui` }
-      }
-      if (nodeEntry && (nodeEntry === sDir || nodeEntry.startsWith(sDir + sep))) {
-        return { error: `surface "${sid}" ui must not contain the host entry` }
-      }
-      try {
-        if (!(await lstat(sDir)).isDirectory()) return { error: `surface "${sid}" ui is not a directory` }
-        if (!(await lstat(join(sDir, 'index.html'))).isFile()) return { error: `surface "${sid}" ui must contain index.html` }
-      } catch {
-        return { error: `surface "${sid}" ui / index.html not found` }
-      }
-      const defaultSize = s.defaultSize !== undefined ? winSize(s.defaultSize) : undefined
-      if (s.defaultSize !== undefined && !defaultSize) {
-        return { error: `surface "${sid}" defaultSize must be integer px in [${MIN_WIN_PX}, ${MAX_WIN_PX}]` }
-      }
-      const minSize = s.minSize !== undefined ? winSize(s.minSize) : undefined
-      if (s.minSize !== undefined && !minSize) {
-        return { error: `surface "${sid}" minSize must be integer px in [${MIN_WIN_PX}, ${MAX_WIN_PX}]` }
-      }
-      if (defaultSize && minSize && (minSize.w > defaultSize.w || minSize.h > defaultSize.h)) {
-        return { error: `surface "${sid}" minSize exceeds defaultSize` }
-      }
-      out[sid] = {
-        name: s.name,
-        uiDir: sDir,
-        defaultSize: defaultSize ?? undefined,
-        minSize: minSize ?? undefined,
-        resizable: s.resizable !== false, // default true
-        frame: (s as { frame?: unknown }).frame !== false, // default true
-        transparent: (s as { transparent?: unknown }).transparent === true // default false
-      }
-    }
-    if (Object.keys(out).length > 0) {
-      if (!capabilities.includes('windows')) {
-        return { error: 'Declaring surfaces requires the "windows" capability.' }
-      }
-      surfaces = out
-    }
-  }
-
-  return {
-    id,
-    name: m.name,
-    version: typeof m.version === 'string' ? m.version : '0.0.0',
-    description: typeof m.description === 'string' ? m.description : undefined,
-    icon: typeof m.icon === 'string' ? m.icon : undefined,
-    uiDir,
-    nodeEntry,
-    capabilities,
-    tier,
-    defaultSize,
-    surfaces,
-    config: m.config && typeof m.config === 'object' ? (m.config as Record<string, unknown>) : undefined
-  }
-}
-
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// v2: PACKS (multiple widgets per package). Additive alongside the v1 path above during migration.
-// A pack has a publisher-namespaced id; each widget has its own ui/host/caps/tier/surfaces and a
-// permanent full id `${packId}/${widgetId}`. See docs/widget-packs-and-distribution.md.
+// PACKS (multiple widgets per package). apiVersion 2 is THE manifest format (v1 single-widget
+// manifests are rejected with a repack hint). A pack has a publisher-namespaced id; each widget has
+// its own ui/host/caps/tier/surfaces and a permanent full id `${packId}/${widgetId}`. See
+// docs/widget-packs-and-distribution.md.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 /** A declarative settings field → Garret renders an isolated settings pane; values persist in the
