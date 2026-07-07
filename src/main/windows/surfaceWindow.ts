@@ -324,8 +324,10 @@ function applyAspect(rec: SurfaceRecord, ratio: number, inset?: { width?: number
   // resizes). Aim for a ~700px long edge on the CONTENT area, clamped to 90% of the display — so
   // portrait is tall and landscape is wide (a device rotation re-orients rather than squashing).
   const area = screen.getDisplayMatching(rec.win.getBounds()).workArea
-  const maxW = Math.floor(area.width * 0.9) - chromeW
-  const maxH = Math.floor(area.height * 0.9) - chromeH
+  // Floor to a positive minimum: a large inset on a small display could otherwise drive the content
+  // area negative (→ negative setSize, then Electron clamps to minWidth and the ratio is wrong).
+  const maxW = Math.max(120, Math.floor(area.width * 0.9) - chromeW)
+  const maxH = Math.max(120, Math.floor(area.height * 0.9) - chromeH)
   const PREF = 700
   let cw: number
   let ch: number

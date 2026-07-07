@@ -81,9 +81,21 @@ export function attachPointerControl(
     window.removeEventListener('pointercancel', onCancel)
   }
 
+  // Tear down the active gesture and notify the device. NO pointerId guard — used for a normal
+  // release (`up`), a cancel (pointercancel / rotation), and to force-release a STALE gesture whose
+  // own `up` never arrived (a new pointerdown almost always has a different pointerId, so a guarded
+  // end would silently skip it and the device would read one continuous drag).
+  const finish = (action: 'up' | 'cancel', p: { x: number; y: number }): void => {
+    if (!active) return
+    active = false
+    latest = null
+    pointerId = null
+    removeGestureListeners()
+    send(action, p)
+  }
+
   const onDown = (e: PointerEvent): void => {
-    // A prior gesture whose `up` was somehow missed must never permanently block input — cancel it.
-    if (active) end(e, 'cancel')
+    if (active) finish('cancel', norm(e)) // release any stale gesture before starting a new one
     active = true
     pointerId = e.pointerId
     addGestureListeners()
@@ -99,16 +111,12 @@ export function attachPointerControl(
     }
   }
 
-  const end = (e: PointerEvent, action: 'up' | 'cancel'): void => {
-    if (!active || e.pointerId !== pointerId) return
-    active = false
-    latest = null
-    removeGestureListeners()
-    send(action, norm(e))
-    pointerId = null
+  const onUp = (e: PointerEvent): void => {
+    if (active && e.pointerId === pointerId) finish('up', norm(e))
   }
-  const onUp = (e: PointerEvent): void => end(e, 'up')
-  const onCancel = (e: PointerEvent): void => end(e, 'cancel')
+  const onCancel = (e: PointerEvent): void => {
+    if (active && e.pointerId === pointerId) finish('cancel', norm(e))
+  }
 
   const onWheel = (e: WheelEvent): void => {
     e.preventDefault()
@@ -128,16 +136,9 @@ export function attachPointerControl(
       .catch(() => {})
   }
 
-  /** Abort an in-flight gesture without a tap-release (e.g. the device rotated mid-drag). */
-  const cancelGesture = (): void => {
-    if (!active || pointerId === null) return
-    const dims = getDims()
-    active = false
-    latest = null
-    removeGestureListeners()
-    if (dims) void client.pointer({ serial, action: 'cancel', x: 0, y: 0, w: dims.w, h: dims.h }).catch(() => {})
-    pointerId = null
-  }
+  /** Abort an in-flight gesture without a tap-release (e.g. the device rotated mid-drag). Coordinates
+   *  are meaningless across a rotation, and scrcpy ignores them for a cancel — send 0,0. */
+  const cancelGesture = (): void => finish('cancel', { x: 0, y: 0 })
 
   canvas.addEventListener('pointerdown', onDown)
   canvas.addEventListener('wheel', onWheel, { passive: false })

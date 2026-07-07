@@ -54,7 +54,7 @@ export function attachKeyboardControl(client: KeyClient, serial: string): { deta
   }
 
   const onKeyUp = (e: KeyboardEvent): void => {
-    if (BARE_MODIFIERS.has(e.key) || isTextEntry(e)) return // text was injected atomically on keydown
+    if (e.isComposing || BARE_MODIFIERS.has(e.key) || isTextEntry(e)) return // text injected atomically on keydown
     const keyCode = keyCodeOf(e.code)
     if (keyCode === undefined) return
     e.preventDefault()
