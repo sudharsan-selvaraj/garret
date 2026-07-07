@@ -65,6 +65,9 @@ export interface HostContext<Events extends EventMap = EventMap> {
   resolveBinary(name: string, opts?: { hint?: string }): Promise<string>
   storage: Storage
   secrets: Secrets
+  /** Pack-shared storage/secrets — present ONLY when the pack declares a `shared` namespace. All the
+   *  pack's widgets read/write the same store (e.g. one account token); isolated from other packs. */
+  shared?: { storage: Storage; secrets: Secrets }
   fetch: typeof fetch
   onDispose(cb: () => void | Promise<void>): void
   log(...args: unknown[]): void
@@ -132,8 +135,12 @@ export function defineHost<Api extends Methods<Api>, Events extends EventMap = E
     spawnShell: (command, opts) =>
       track(nodeSpawn(command, { ...opts, shell: true, env: scrubbedEnv({ ...process.env, ...(opts?.env ?? {}) }) })),
     resolveBinary,
-    storage: makeStorage(),
-    secrets: makeSecrets(),
+    storage: makeStorage(dataDir),
+    secrets: makeSecrets(dataDir, secretKey),
+    // Pack-shared store only when the host was launched with GARRET_PACK_SHARED_DIR (pack declares `shared`).
+    shared: process.env.GARRET_PACK_SHARED_DIR
+      ? { storage: makeStorage(sharedDir), secrets: makeSecrets(sharedDir, sharedSecretKey) }
+      : undefined,
     fetch: (...a: Parameters<typeof fetch>) => fetch(...a),
     onDispose: (cb) => disposers.push(cb),
     log: (...args) => console.error('[host]', ...args)
@@ -258,12 +265,14 @@ async function resolveBinary(name: string, opts?: { hint?: string }): Promise<st
 }
 
 // ── data-dir-backed storage + secrets (Garret injects the dir + key via env) ────────────────────
-function dataDir(): string {
-  const dir = process.env.GARRET_EXT_DATA_DIR
+function dirFromEnv(name: string): string {
+  const dir = process.env[name]
   if (!dir) throw new GarretError('UNAVAILABLE', 'storage/secrets unavailable (no data dir)')
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
   return dir
 }
+const dataDir = (): string => dirFromEnv('GARRET_EXT_DATA_DIR') // this widget's own dir
+const sharedDir = (): string => dirFromEnv('GARRET_PACK_SHARED_DIR') // pack-shared dir (if declared)
 function readJson(file: string): Record<string, unknown> {
   try {
     return JSON.parse(readFileSync(file, 'utf8')) as Record<string, unknown>
@@ -286,9 +295,9 @@ function makeChain(): <T>(fn: () => T) => Promise<T> {
   }
 }
 
-function makeStorage(): Storage {
+function makeStorage(dir: () => string): Storage {
   const queue = makeChain()
-  const file = (): string => join(dataDir(), 'storage.json')
+  const file = (): string => join(dir(), 'storage.json')
   return {
     get: async <T = unknown>(key: string) => readJson(file())[key] as T | undefined,
     set: (key, value) =>
@@ -310,25 +319,27 @@ function makeStorage(): Storage {
   }
 }
 
-function secretKey(): Buffer {
-  const hex = process.env.GARRET_EXT_SECRET_KEY
+function keyFromEnv(name: string): Buffer {
+  const hex = process.env[name]
   if (!hex) throw new GarretError('UNAVAILABLE', 'secrets unavailable on this platform')
   return Buffer.from(hex, 'hex')
 }
+const secretKey = (): Buffer => keyFromEnv('GARRET_EXT_SECRET_KEY')
+const sharedSecretKey = (): Buffer => keyFromEnv('GARRET_PACK_SHARED_KEY')
 interface SecretBox {
   v: 1
   iv: string
   tag: string
   ct: string
 }
-function makeSecrets(): Secrets {
+function makeSecrets(dir: () => string, getKey: () => Buffer): Secrets {
   const queue = makeChain()
-  const file = (): string => join(dataDir(), 'secrets.json')
+  const file = (): string => join(dir(), 'secrets.json')
   return {
     get: async (key: string) => {
       const box = readJson(file())[key] as SecretBox | undefined
       if (!box) return undefined
-      const decipher = createDecipheriv('aes-256-gcm', secretKey(), Buffer.from(box.iv, 'base64'))
+      const decipher = createDecipheriv('aes-256-gcm', getKey(), Buffer.from(box.iv, 'base64'))
       decipher.setAuthTag(Buffer.from(box.tag, 'base64'))
       try {
         return decipher.update(Buffer.from(box.ct, 'base64')).toString('utf8') + decipher.final('utf8')
@@ -339,7 +350,7 @@ function makeSecrets(): Secrets {
     set: (key, value) =>
       queue(() => {
         const iv = randomBytes(12) // GCM: fresh 96-bit nonce per set (never reuse)
-        const cipher = createCipheriv('aes-256-gcm', secretKey(), iv)
+        const cipher = createCipheriv('aes-256-gcm', getKey(), iv)
         const ct = Buffer.concat([cipher.update(value, 'utf8'), cipher.final()])
         const box: SecretBox = { v: 1, iv: iv.toString('base64'), tag: cipher.getAuthTag().toString('base64'), ct: ct.toString('base64') }
         const f = file()
