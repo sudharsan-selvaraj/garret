@@ -2,7 +2,7 @@
   "name": "garret-example-adb-devices",
   "private": true,
   "version": "0.1.0",
-  "description": "List + mirror Android devices via ya-webadb (host connects to the local adb server)",
+  "description": "List, mirror, and control Android devices via ya-webadb + scrcpy (host connects to the local adb server)",
   "comment": "scrcpy stack pinned EXACT. Three things must move together: the option class (AdbScrcpyOptions3_3_1) in host/adb/mirror.ts, SCRCPY_VERSION='3.3.1' there, and the jar URL (v3.3.1) in build.mjs. scrcpy 3.3.1 is required for modern Android — 2.x fails on Android 14+ (SurfaceControl.createDisplay removed; verified live on Android 16). @yume-chan npm versions are decoupled from scrcpy protocol versions, so 2.3.x packages expose the 3_3_1 option class.",
   "dependencies": {
     "@yume-chan/adb": "^2.6.0",
