@@ -16,6 +16,9 @@ const ID_RE = /^[a-z0-9][a-z0-9._-]*$/
 export const PACK_API_VERSION = 2
 /** A single dns-label-ish segment: lowercase alnum, internal hyphens. */
 const SEG_RE = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/
+/** A settings/config field key — a plain identifier (camelCase, snake, kebab all fine). It's only a
+ *  storage-object key, so it needn't follow the dns-label rules that IDs/origins do. */
+const SETTING_KEY_RE = /^[A-Za-z_][A-Za-z0-9_-]*$/
 /** publisher = one segment; packId = publisher + ≥1 dotted segments (e.g. `acme.devtools`). */
 const isSegment = (s: string): boolean => SEG_RE.test(s)
 function isPackId(id: string, publisher: string): boolean {
@@ -126,7 +129,7 @@ function parseSettingsSchema(v: unknown): SettingsField[] | undefined {
   const out: SettingsField[] = []
   for (const raw of v) {
     const f = raw as Partial<SettingsField>
-    if (typeof f.key !== 'string' || !SEG_RE.test(f.key)) continue
+    if (typeof f.key !== 'string' || !SETTING_KEY_RE.test(f.key)) continue
     if (typeof f.label !== 'string' || !f.label) continue
     if (!['string', 'secret', 'number', 'boolean', 'select'].includes(f.type as string)) continue
     out.push({
