@@ -273,7 +273,10 @@ export async function commitPackInstall(
 }
 
 const packStaging = new Set<string>()
-export async function planPackInstallFromFile(garretPath: string): Promise<PackInstallPlan> {
+export async function planPackInstallFromFile(
+  garretPath: string,
+  sourceKind: PackSourceKind = 'local'
+): Promise<PackInstallPlan> {
   const dir = join(tmpdir(), `garret-pack-${randomUUID()}`)
   try {
     await mkdir(dir, { recursive: true })
@@ -283,7 +286,7 @@ export async function planPackInstallFromFile(garretPath: string): Promise<PackI
     await cleanupPackStaging(dir)
     return failPack(e instanceof Error ? e.message : 'Could not open .garret file')
   }
-  const plan = await planPackInstall(dir, 'local')
+  const plan = await planPackInstall(dir, sourceKind)
   if (!plan.ok) {
     await cleanupPackStaging(dir)
     return plan
@@ -295,6 +298,34 @@ export async function cleanupPackStaging(dir: string): Promise<void> {
   if (!packStaging.has(dir)) return
   packStaging.delete(dir)
   await rm(dir, { recursive: true, force: true }).catch(() => {})
+}
+
+// Marketplace / git install: download a prebuilt `.garret` over HTTPS, then run the SAME verify
+// pipeline (slip-safe unzip → parse → plan → commit). No build, no scripts — just fetch + verify.
+const MAX_PACK_BYTES = 64 * 1024 * 1024 // 64 MB cap on a downloaded pack
+export async function planPackInstallFromUrl(
+  url: string,
+  sourceKind: PackSourceKind = 'registry'
+): Promise<PackInstallPlan> {
+  if (!/^https:\/\//i.test(url)) return failPack('Only https:// pack URLs are allowed')
+  const tmpFile = join(tmpdir(), `garret-dl-${randomUUID()}.garret`)
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return failPack(`Download failed: HTTP ${res.status}`)
+    const len = Number(res.headers.get('content-length') ?? 0)
+    if (len > MAX_PACK_BYTES) return failPack('Pack exceeds the size limit')
+    const bytes = new Uint8Array(await res.arrayBuffer())
+    if (bytes.byteLength > MAX_PACK_BYTES) return failPack('Pack exceeds the size limit')
+    await writeFile(tmpFile, bytes)
+  } catch (e) {
+    await rm(tmpFile, { force: true }).catch(() => {})
+    return failPack(e instanceof Error ? e.message : 'Download failed')
+  }
+  try {
+    return await planPackInstallFromFile(tmpFile, sourceKind)
+  } finally {
+    await rm(tmpFile, { force: true }).catch(() => {})
+  }
 }
 
 export async function setPackEnabled(packId: string, on: boolean): Promise<{ ok: boolean; error?: string }> {
