@@ -30,3 +30,7 @@ examples/**/package-lock.json
 
 # Fetched-on-build scrcpy server binary (not vendored)
 examples/**/host/assets/*.jar
+
+# Bundled widget pack build artifacts (source in packs/*, built on app build)
+packs/*/pack/
+resources/packs/*.garret
