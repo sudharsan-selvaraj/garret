@@ -2,10 +2,11 @@ import type { MarketplaceEntry } from '@shared/types/ext'
 import { listInstalledPacks } from '@main/ext/install'
 
 /**
- * The marketplace is a curated registry INDEX — a JSON file in a GitHub repo listing packs, each
- * pointing at a prebuilt `.garret` (a GitHub Release asset). No server: Garret fetches the raw index,
- * shows it, and installs the chosen pack's URL through the normal verify pipeline (planPackInstallFromUrl).
- * Override the index for dev via GARRET_MARKETPLACE_URL.
+ * The marketplace is a curated registry INDEX — `index.json` in the separate `garret-widgets` repo,
+ * listing packs. Each entry's `url` points at a prebuilt `.garret` GitHub **Release asset** (CI in
+ * that repo builds every pack and attaches it to the release — binaries never live in source). No
+ * server: Garret fetches the raw index, shows it, and installs the chosen pack's URL through the
+ * normal verify pipeline (planPackInstallFromUrl). Override the index for dev via GARRET_MARKETPLACE_URL.
  */
 const INDEX_URL =
   process.env.GARRET_MARKETPLACE_URL ||
