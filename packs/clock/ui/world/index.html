@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      :root { color-scheme: dark; }
+      html, body { margin: 0; height: 100%; }
+      body {
+        background: #1c1c1e; color: rgba(255, 255, 255, 0.92);
+        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+        user-select: none; -webkit-user-select: none;
+        display: flex; flex-direction: column; justify-content: center; padding: 14px 18px; box-sizing: border-box;
+      }
+      .row { display: flex; align-items: baseline; justify-content: space-between; padding: 7px 0; }
+      .row + .row { border-top: 0.5px solid rgba(255, 255, 255, 0.08); }
+      .city { font-size: 14px; font-weight: 500; }
+      .zone { font-size: 11px; color: rgba(235, 235, 245, 0.5); }
+      .t { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    </style>
+  </head>
+  <body>
+    <div id="rows"></div>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

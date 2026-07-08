@@ -9,8 +9,11 @@ const outDir = resolve(process.cwd(), '..', '..', 'resources', 'packs') // <repo
 const outFile = join(outDir, 'clock.garret')
 
 rmSync(PACK, { recursive: true, force: true })
-mkdirSync(`${PACK}/dist/ui`, { recursive: true })
-cpSync('ui', `${PACK}/dist/ui`, { recursive: true })
+mkdirSync(`${PACK}/dist`, { recursive: true })
+// One dir per widget → dist/<widgetId> (matches each widget's `ui` in the manifest).
+for (const w of ['clock', 'world', 'timer', 'stopwatch']) {
+  cpSync(`ui/${w}`, `${PACK}/dist/${w}`, { recursive: true })
+}
 cpSync('garret.manifest.json', `${PACK}/garret.manifest.json`)
 
 mkdirSync(outDir, { recursive: true })
