@@ -70,7 +70,8 @@ export async function syncUiDirs(): Promise<void> {
     (await resolveEnabledWidgetSpecs()).map((w) => ({
       id: originHost(w),
       dir: w.widget.uiDir,
-      surfaces: surfaceDirs(w)
+      surfaces: surfaceDirs(w),
+      embed: w.capabilities.includes('embed')
     }))
   )
 }
@@ -129,7 +130,7 @@ export function registerExtHandlers(): void {
   registerExtProtocol(session.fromPartition(EXT_PARTITION).protocol)
   setUiResolver(async (id) => {
     const w = (await resolveEnabledWidgetSpecs()).find((x) => originHost(x) === id)
-    return w ? { dir: w.widget.uiDir, surfaces: surfaceDirs(w) } : null
+    return w ? { dir: w.widget.uiDir, surfaces: surfaceDirs(w), embed: w.capabilities.includes('embed') } : null
   })
   void syncUiDirs()
 

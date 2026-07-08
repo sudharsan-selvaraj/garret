@@ -1,0 +1,22 @@
+{
+  "apiVersion": 2,
+  "id": "garret.web-view",
+  "publisher": "garret",
+  "name": "Web View",
+  "version": "1.0.0",
+  "description": "Load any webpage from a URL.",
+  "widgets": [
+    {
+      "id": "web",
+      "name": "Web View",
+      "ui": "dist/web",
+      "capabilities": ["embed"],
+      "defaultSize": { "w": 6, "h": 5 },
+      "settings": {
+        "schema": [
+          { "key": "url", "label": "Page URL", "type": "string", "default": "https://example.com", "placeholder": "https://…" }
+        ]
+      }
+    }
+  ]
+}

@@ -19,7 +19,7 @@ import {
   setHudMode,
   type WindowMode
 } from '@main/windows/createWindow'
-import { registerExtScheme } from '@main/ext/protocol'
+import { registerExtScheme, EXT_EMBED_PARTITION } from '@main/ext/protocol'
 import { registerExtHandlers, broadcastActive, syncUiDirs } from '@main/ext/lane'
 import { installBundledPacks } from '@main/ext/install'
 import { registerWcvSpike } from '@main/spike/wcvSpike'
@@ -191,6 +191,18 @@ app.whenReady().then(() => {
       const fromExt = contents.getURL().startsWith('garret:')
       if (!fromExt && /^https?:\/\//i.test(url)) void shell.openExternal(url)
       return { action: 'deny' }
+    })
+    // A garret:// widget with the `embed` capability nests an <webview> onto an external site. Only
+    // such widgets have webviewTag enabled (set per-widget in WidgetSurface), so this fires only for
+    // them — but constrain it anyway: https only, the isolated embed partition, no Node, no preload.
+    contents.on('will-attach-webview', (e, webPreferences, params) => {
+      if (typeof params.src !== 'string' || !/^https:\/\//i.test(params.src) || params.partition !== EXT_EMBED_PARTITION) {
+        e.preventDefault()
+        return
+      }
+      delete webPreferences.preload
+      webPreferences.nodeIntegration = false
+      webPreferences.contextIsolation = true
     })
     // DEV: auto-open DevTools for extension UI webviews so their console/errors are inspectable
     // (the guest has its own devtools, separate from the board window).

@@ -25,7 +25,10 @@ function isPackId(id: string, publisher: string): boolean {
 
 /** Capabilities Garret implements (a functional allowlist; anything else is rejected at install).
  *  `process`/`fs`/`native` are accepted but are effectively implied by shipping a host. */
-const SIMPLE_CAPS = new Set(['storage', 'secrets', 'notify', 'clipboard', 'openExternal', 'process', 'fs', 'native', 'windows'])
+// `embed` = the widget renders an isolated <webview> onto arbitrary https pages (loads sites that
+// block iframes). Rendering privilege, not a broker call: it enables webviewTag on the widget's
+// surface + frame-src https in its CSP. Isolated partition, no Node, no Garret preload.
+const SIMPLE_CAPS = new Set(['storage', 'secrets', 'notify', 'clipboard', 'openExternal', 'process', 'fs', 'native', 'windows', 'embed'])
 
 /** A secondary, non-placeable UI surface a widget can open as a floating window (same package only). */
 export interface SurfaceSpec {

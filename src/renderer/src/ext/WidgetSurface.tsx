@@ -16,9 +16,12 @@ interface Props {
   uiUrl: string
   /** file:// URL of the extBridge preload. */
   preloadUrl: string
+  /** Widget declares the `embed` capability → enable webviewTag so its UI can nest an https <webview>
+   *  (main constrains that nested guest to the isolated embed partition, no Node, no preload). */
+  embed?: boolean
 }
 
-export function WidgetSurface({ extensionId, instanceId, uiUrl, preloadUrl }: Props): JSX.Element {
+export function WidgetSurface({ extensionId, instanceId, uiUrl, preloadUrl, embed }: Props): JSX.Element {
   const ref = useRef<HTMLElement | null>(null)
   const [crashed, setCrashed] = useState(false)
   const [nonce, setNonce] = useState(0) // bump to remount the webview on Retry
@@ -69,7 +72,7 @@ export function WidgetSurface({ extensionId, instanceId, uiUrl, preloadUrl }: Pr
       // import). Must stay in sync — the surface window's will-attach-webview check pins this value.
       partition="persist:garret-ext"
       // eslint-disable-next-line react/no-unknown-property
-      webpreferences="contextIsolation=yes,nodeIntegration=no,sandbox=no"
+      webpreferences={`contextIsolation=yes,nodeIntegration=no,sandbox=no${embed ? ',webviewTag=yes' : ''}`}
       className="widget-webview"
     />
   )

@@ -1,0 +1,60 @@
+* {
+  margin: 0;
+  box-sizing: border-box;
+}
+html,
+body {
+  height: 100%;
+  background: #0e1014;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+}
+body {
+  display: flex;
+  flex-direction: column;
+}
+.bar {
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  -webkit-app-region: drag;
+}
+#url {
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.25);
+  color: #e8eaed;
+  font-size: 12px;
+  outline: none;
+  -webkit-app-region: no-drag;
+}
+#url:focus {
+  border-color: #0a84ff;
+}
+#go {
+  height: 26px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 7px;
+  background: #0a84ff;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 590;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+#go:active {
+  opacity: 0.7;
+}
+#view {
+  flex: 1;
+  width: 100%;
+  border: none;
+  background: #fff;
+}

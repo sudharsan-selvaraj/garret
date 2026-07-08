@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <div class="bar">
+      <input id="url" type="text" spellcheck="false" placeholder="https://…" />
+      <button id="go" title="Go">Go</button>
+    </div>
+    <!-- Isolated guest: main pins the embed partition, strips Node + any preload (see index.ts
+         will-attach-webview). The initial src must be https or main blocks the attach. -->
+    <webview id="view" partition="persist:garret-embed" src="https://example.com"></webview>
+    <script src="app.js"></script>
+  </body>
+</html>

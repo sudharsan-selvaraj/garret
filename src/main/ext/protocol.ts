@@ -12,6 +12,9 @@ export const EXT_SCHEME = 'garret'
 /** The session partition every extension guest webview loads under (board + surface windows). The
  *  single source of truth — imported by the lane + surface-window manager (renderer hardcodes it). */
 export const EXT_PARTITION = 'persist:garret-ext'
+/** The isolated session a widget's embedded external `<webview>` (`embed` capability) loads under —
+ *  never the ext partition, so untrusted sites can't touch widget storage/cookies. No Garret preload. */
+export const EXT_EMBED_PARTITION = 'persist:garret-embed'
 export const extSchemePrivilege = {
   scheme: EXT_SCHEME,
   privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: false }
@@ -25,8 +28,10 @@ export function registerExtScheme(): void {
 const SAFE_ID = /^[a-z0-9][a-z0-9._-]*$/
 
 // One strict CSP for every widget (packs ship built UIs; no inline script). `connect-src 'none'` —
-// network goes through the broker (`g.fetch`) or the host, never the UI directly.
-function csp(): string {
+// network goes through the broker (`g.fetch`) or the host, never the UI directly. Widgets with the
+// `embed` capability additionally get `frame-src https:` so their isolated <webview> can load real
+// sites (Chromium enforces the embedder's frame-src on <webview>, same as the board renderer).
+function csp(embed: boolean): string {
   return [
     "default-src 'none'",
     "script-src 'self'",
@@ -34,6 +39,7 @@ function csp(): string {
     "img-src 'self' data:",
     "font-src 'self' data:",
     "connect-src 'none'",
+    embed ? "frame-src https:" : "frame-src 'none'",
     "base-uri 'none'"
   ].join('; ')
 }
@@ -57,13 +63,17 @@ interface UiEntry {
   dir: string
   /** surfaceId → that surface's ui dir, served at `<origin>/~<surfaceId>/`. */
   surfaces?: Record<string, string>
+  /** Widget declares the `embed` capability → relax CSP to allow an https <webview>. */
+  embed?: boolean
 }
 const uiDirs = new Map<string, UiEntry>()
 let resolver: ((id: string) => Promise<UiEntry | null>) | null = null
 
-export function resetUiDirs(entries: Array<{ id: string; dir: string; surfaces?: Record<string, string> }>): void {
+export function resetUiDirs(
+  entries: Array<{ id: string; dir: string; surfaces?: Record<string, string>; embed?: boolean }>
+): void {
   uiDirs.clear()
-  for (const e of entries) uiDirs.set(e.id, { dir: e.dir, surfaces: e.surfaces })
+  for (const e of entries) uiDirs.set(e.id, { dir: e.dir, surfaces: e.surfaces, embed: e.embed })
 }
 export function setUiResolver(fn: (id: string) => Promise<UiEntry | null>): void {
   resolver = fn
@@ -109,7 +119,7 @@ async function serve(request: Request): Promise<Response> {
       status: 200,
       headers: {
         'Content-Type': MIME[ext] ?? 'application/octet-stream',
-        'Content-Security-Policy': csp(),
+        'Content-Security-Policy': csp(entry.embed ?? false),
         'X-Content-Type-Options': 'nosniff'
       }
     })

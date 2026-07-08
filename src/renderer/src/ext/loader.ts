@@ -24,7 +24,8 @@ async function register(): Promise<void> {
           extensionId: e.id,
           instanceId: ctx.instanceId,
           uiUrl: e.uiUrl,
-          preloadUrl
+          preloadUrl,
+          embed: e.capabilities.includes('embed')
         })
     } as AnyWidgetPlugin)
   }
@@ -56,7 +57,13 @@ export async function resyncExtensions(): Promise<void> {
       apiVersion: 1,
       manifest: { id: `gx:${e.id}`, name: e.name, defaultSize: e.defaultSize ?? { w: 4, h: 4 }, configSchema: {} },
       render: ({ ctx }: WidgetRenderProps) =>
-        createElement(WidgetSurface, { extensionId: e.id, instanceId: ctx.instanceId, uiUrl: e.uiUrl, preloadUrl: listed.preloadUrl })
+        createElement(WidgetSurface, {
+          extensionId: e.id,
+          instanceId: ctx.instanceId,
+          uiUrl: e.uiUrl,
+          preloadUrl: listed.preloadUrl,
+          embed: e.capabilities.includes('embed')
+        })
     } as AnyWidgetPlugin)
   }
 }
