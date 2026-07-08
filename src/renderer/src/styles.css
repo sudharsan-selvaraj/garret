@@ -3062,6 +3062,19 @@ button[disabled],
 .ws-section {
   margin-bottom: 18px;
 }
+.ws-secret {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ws-secret .row-input {
+  flex: 1;
+}
+.ws-secret-ok {
+  color: var(--text-2);
+  font-size: 11px;
+  white-space: nowrap;
+}
 .mw-subtitle {
   display: flex;
   align-items: center;

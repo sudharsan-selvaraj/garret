@@ -37,6 +37,8 @@ import {
   readPackRecord,
   readWidgetSettings,
   writeWidgetSettings,
+  writeWidgetSecret,
+  listWidgetSecretKeys,
   type ResolvedWidget
 } from '@main/ext/install'
 
@@ -331,6 +333,10 @@ export function registerExtHandlers(): void {
   ipcMain.handle(Channels.extSettingsSet, async (_e, fullId: string, patch: Record<string, unknown>) => {
     await writeWidgetSettings(fullId, patch)
   })
+  ipcMain.handle(Channels.extSecretSet, async (_e, fullId: string, key: string, value: string) => {
+    await writeWidgetSecret(fullId, key, String(value))
+  })
+  ipcMain.handle(Channels.extSecretKeys, (_e, fullId: string) => listWidgetSecretKeys(fullId))
 
   // ── marketplace (GitHub registry index → one-click install) ─────────────────────────────────────
   ipcMain.handle(Channels.extMarketplace, () => fetchMarketplaceIndex())

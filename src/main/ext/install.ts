@@ -5,6 +5,7 @@ import { lstat, readdir, readFile, writeFile, rm, mkdir, rename, copyFile } from
 import { app } from 'electron'
 import { unpackZip, NATIVE_POLICY } from '@main/ext/unpack'
 import { recordMacKey, deleteExtSecretKey } from '@main/ext/keys'
+import { setSecret, secretKeys } from '@main/ext/secrets'
 import { parsePack, MANIFEST_FILE, type PackSpec, type WidgetSpec } from '@main/ext/manifest'
 import type {
   PackRecord,
@@ -92,6 +93,21 @@ export async function writeWidgetSettings(fullId: string, patch: Record<string, 
   const tmp = `${file}.${randomUUID().slice(0, 8)}.tmp`
   await writeFile(tmp, JSON.stringify({ ...cur, ...patch }))
   await rename(tmp, file)
+}
+
+// A `type:"secret"` settings field lands in the widget's ENCRYPTED secrets store (not plaintext
+// storage.json) — the same store the widget reads via `g.secrets.get(key)`. We never hand the
+// plaintext back to the UI; the settings pane only learns which keys are set (listWidgetSecretKeys).
+export async function writeWidgetSecret(fullId: string, key: string, value: string): Promise<void> {
+  const p = splitFullId(fullId)
+  if (!p) return
+  const dir = await ensureWidgetDataDir(p.packId, p.widgetId)
+  setSecret(dir, fullId, key, value)
+}
+export async function listWidgetSecretKeys(fullId: string): Promise<string[]> {
+  const p = splitFullId(fullId)
+  if (!p) return []
+  return secretKeys(widgetDataDir(p.packId, p.widgetId))
 }
 
 // Pack record: HMAC anti-tamper. The signed payload binds each widget's host+caps so a local edit

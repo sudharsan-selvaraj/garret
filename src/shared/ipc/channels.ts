@@ -56,6 +56,8 @@ export const Channels = {
   extPacks: 'ext:packs', // () → InstalledPack[] (per-pack + per-widget detail, for the settings sidebar)
   extSettingsGet: 'ext:settings-get', // (fullId) → the widget's stored settings values
   extSettingsSet: 'ext:settings-set', // (fullId, patch) → merge settings into the widget's store
+  extSecretSet: 'ext:secret-set', // (fullId, key, value) → a type:"secret" field → encrypted store
+  extSecretKeys: 'ext:secret-keys', // (fullId) → names of secrets that are set (never the values)
   extOpenFile: 'ext:open-file', // main → renderer: a .garret was opened from Finder
   extFlushOpenFiles: 'ext:flush-open-files', // renderer → main: drain opens queued before mount
   // --- floating surface windows (docs/floating-surface-windows.md) ---
@@ -257,6 +259,9 @@ export interface GarretApi {
     /** Read / merge a widget's declarative settings values (keyed by `packId/widgetId`). */
     settingsGet(fullId: string): Promise<Record<string, unknown>>
     settingsSet(fullId: string, patch: Record<string, unknown>): Promise<void>
+    /** Write a `type:"secret"` field to the widget's encrypted store; list which secrets are set. */
+    secretSet(fullId: string, key: string, value: string): Promise<void>
+    secretKeys(fullId: string): Promise<string[]>
     /** A `.garret` was opened from Finder (double-click / Open With) — deliver its path. */
     onOpenFile(cb: (path: string) => void): () => void
     /** Ask main to drain any `.garret` opens queued before the renderer's listener mounted. */

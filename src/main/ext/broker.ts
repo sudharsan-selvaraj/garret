@@ -1,10 +1,10 @@
 import { clipboard, Notification, shell } from 'electron'
 import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { randomBytes, createCipheriv, createDecipheriv } from 'node:crypto'
+import { randomBytes } from 'node:crypto'
 import { GarretError } from '@garretapp/sdk'
 import { widgetDataDir } from '@main/ext/install'
-import { extSecretKeyHex } from '@main/ext/keys'
+import { getSecret, setSecret, deleteSecret } from '@main/ext/secrets'
 import { getService } from '@main/services/registry'
 
 /**
@@ -52,18 +52,6 @@ function storeFile(b: Binding, instanceId?: string): string {
   return join(widgetDir(b.packId, b.widgetId), instanceId ? `instance.${instanceId}.json` : 'storage.json')
 }
 
-interface SecretBox {
-  v: 1
-  iv: string
-  tag: string
-  ct: string
-}
-function secretKey(id: string): Buffer {
-  const hex = extSecretKeyHex(id)
-  if (!hex) throw new GarretError('UNAVAILABLE', 'secrets unavailable on this platform')
-  return Buffer.from(hex, 'hex')
-}
-
 // ── fetch allowlist ──────────────────────────────────────────────────────────────────────────────
 function fetchAllowed(binding: Binding, url: string): boolean {
   let u: URL
@@ -74,11 +62,18 @@ function fetchAllowed(binding: Binding, url: string): boolean {
   }
   if (u.protocol !== 'https:') return false // web tier: TLS only (no http:// downgrade)
   const host = u.hostname.toLowerCase()
-  // `network:<host>` is exact-hostname (any port). `network:*` allows any host.
+  // `network:<host>` is exact-hostname (any port). `network:*` allows any host. `network:*.<suffix>`
+  // allows the suffix domain + any subdomain (e.g. `*.atlassian.net` → `acme.atlassian.net`) — needed
+  // for services whose host is the user's own site.
   return binding.capabilities.some((c) => {
     if (!c.startsWith('network:')) return false
     const h = c.slice(8)
-    return h === '*' || h === host
+    if (h === '*' || h === host) return true
+    if (h.startsWith('*.')) {
+      const suffix = h.slice(2)
+      return host === suffix || host.endsWith(`.${suffix}`)
+    }
+    return false
   })
 }
 
@@ -123,34 +118,10 @@ export async function platformCall(
     }
     case 'secrets': {
       gate(binding, 'secrets')
-      const file = join(widgetDir(binding.packId, binding.widgetId), 'secrets.json')
-      if (op === 'get') {
-        const box = readJson(file)[a0 as string] as SecretBox | undefined
-        if (!box) return undefined
-        const d = createDecipheriv('aes-256-gcm', secretKey(binding.fullId), Buffer.from(box.iv, 'base64'))
-        d.setAuthTag(Buffer.from(box.tag, 'base64'))
-        try {
-          return d.update(Buffer.from(box.ct, 'base64')).toString('utf8') + d.final('utf8')
-        } catch {
-          throw new GarretError('INTERNAL', 'secret failed to decrypt')
-        }
-      }
-      if (op === 'set') {
-        const iv = randomBytes(12)
-        const c = createCipheriv('aes-256-gcm', secretKey(binding.fullId), iv)
-        const ct = Buffer.concat([c.update(String(a1), 'utf8'), c.final()])
-        const box: SecretBox = { v: 1, iv: iv.toString('base64'), tag: c.getAuthTag().toString('base64'), ct: ct.toString('base64') }
-        const all = readJson(file)
-        all[a0 as string] = box
-        writeAtomic(file, all)
-        return
-      }
-      if (op === 'delete') {
-        const all = readJson(file)
-        delete all[a0 as string]
-        writeAtomic(file, all)
-        return
-      }
+      const dir = widgetDir(binding.packId, binding.widgetId)
+      if (op === 'get') return getSecret(dir, binding.fullId, a0 as string)
+      if (op === 'set') return setSecret(dir, binding.fullId, a0 as string, String(a1))
+      if (op === 'delete') return deleteSecret(dir, a0 as string)
       break
     }
     case 'fetch': {

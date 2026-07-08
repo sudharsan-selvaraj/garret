@@ -104,6 +104,9 @@ const api: GarretApi = {
     settingsGet: (fullId: string) => ipcRenderer.invoke(Channels.extSettingsGet, fullId),
     settingsSet: (fullId: string, patch: Record<string, unknown>) =>
       ipcRenderer.invoke(Channels.extSettingsSet, fullId, patch),
+    secretSet: (fullId: string, key: string, value: string) =>
+      ipcRenderer.invoke(Channels.extSecretSet, fullId, key, value),
+    secretKeys: (fullId: string) => ipcRenderer.invoke(Channels.extSecretKeys, fullId),
     onOpenFile: (cb) => {
       const listener = (_e: unknown, path: string): void => cb(path)
       ipcRenderer.on(Channels.extOpenFile, listener)
