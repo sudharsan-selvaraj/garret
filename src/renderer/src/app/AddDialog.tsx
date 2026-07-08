@@ -72,6 +72,15 @@ export function AddDialog(): JSX.Element {
   const all = registry.list()
   const navGroups = useMemo(() => buildGroups(all, '', packs), [all, packs]) // categories (unfiltered)
   const filtered = useMemo(() => buildGroups(all, query, packs), [all, query, packs]) // for the right pane
+  // Widgets that ship a host (raw Node) — the only install-time risk signal. Everything else is a
+  // sandboxed UI, so we don't badge it (no tiers, no "unverified author" theatre).
+  const hostIds = useMemo(
+    () =>
+      new Set(
+        packs.flatMap((p) => p.widgets.filter((w) => w.hasHost).map((w) => `gx:${w.fullId}`))
+      ),
+    [packs]
+  )
   const visible = selected === 'all' ? filtered : filtered.filter((g) => g.id === selected)
 
   const add = (id: string): void => {
@@ -125,9 +134,9 @@ export function AddDialog(): JSX.Element {
           ) : (
             visible.map((g) =>
               g.serviceId ? (
-                <ServiceSection key={g.id} group={g} onAdd={add} onConnect={connect} />
+                <ServiceSection key={g.id} group={g} onAdd={add} onConnect={connect} hostIds={hostIds} />
               ) : (
-                <GeneralSection key={g.id} group={g} onAdd={add} />
+                <GeneralSection key={g.id} group={g} onAdd={add} hostIds={hostIds} />
               )
             )
           )}
@@ -137,14 +146,28 @@ export function AddDialog(): JSX.Element {
   )
 }
 
-function GeneralSection({ group, onAdd }: { group: Group; onAdd: (id: string) => void }): JSX.Element {
+function GeneralSection({
+  group,
+  onAdd,
+  hostIds
+}: {
+  group: Group
+  onAdd: (id: string) => void
+  hostIds: Set<string>
+}): JSX.Element {
   return (
     <section className="add-section">
       <div className="add-section-head">
         <span>{group.name}</span>
       </div>
       {group.widgets.map((w) => (
-        <WidgetItem key={w.manifest.id} plugin={w} locked={false} onAdd={() => onAdd(w.manifest.id)} />
+        <WidgetItem
+          key={w.manifest.id}
+          plugin={w}
+          locked={false}
+          hasHost={hostIds.has(w.manifest.id)}
+          onAdd={() => onAdd(w.manifest.id)}
+        />
       ))}
     </section>
   )
@@ -153,11 +176,13 @@ function GeneralSection({ group, onAdd }: { group: Group; onAdd: (id: string) =>
 function ServiceSection({
   group,
   onAdd,
-  onConnect
+  onConnect,
+  hostIds
 }: {
   group: Group
   onAdd: (id: string) => void
   onConnect: (serviceId: string) => void
+  hostIds: Set<string>
 }): JSX.Element {
   const { status } = useServiceStatus(group.serviceId as string)
   const def = serviceRegistry.get(group.serviceId as string)
@@ -180,6 +205,7 @@ function ServiceSection({
           key={w.manifest.id}
           plugin={w}
           locked={locked}
+          hasHost={hostIds.has(w.manifest.id)}
           onAdd={() => onAdd(w.manifest.id)}
           onConnect={() => onConnect(group.serviceId as string)}
         />
@@ -191,11 +217,13 @@ function ServiceSection({
 function WidgetItem({
   plugin,
   locked,
+  hasHost,
   onAdd,
   onConnect
 }: {
   plugin: AnyWidgetPlugin
   locked: boolean
+  hasHost: boolean
   onAdd: () => void
   onConnect?: () => void
 }): JSX.Element {
@@ -207,9 +235,9 @@ function WidgetItem({
           <div className="add-item-head">
             <WidgetIcon icon={manifest.icon} size={16} />
             <span className="add-item-name">{manifest.name}</span>
-            {(isThirdParty(plugin) || isExtWidget(plugin)) && (
-              <span className="add-item-badge" title="Third-party · unverified author">
-                <ShieldAlert size={11} strokeWidth={2} /> Unverified
+            {hasHost && (
+              <span className="add-item-badge" title="This widget runs code on your computer, outside the sandbox.">
+                <ShieldAlert size={11} strokeWidth={2} /> Host access
               </span>
             )}
           </div>
