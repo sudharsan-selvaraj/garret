@@ -167,27 +167,25 @@ claim any `packId`.** So the trust root differs by source:
   publisher key) is the eventual end state — the manifest carries `publisher` now so signatures can
   bind to it later without a format change.
 
-### Full-tier from the internet — the real RCE surface (LOCKED)
+### Trust model — one `Widget` primitive, warn-on-host (LOCKED, SUPERSEDES tiers/consent)
 
-"No build/install scripts" is hygiene, not the actual protection. A **full-tier widget's host runs as
-raw Node with `process` / network / fs at RUNTIME**, however it was built. So for an internet-sourced
-(git/npm) full-tier pack, **consent is the ONLY thing between install and arbitrary code execution**
-until the sandbox lands (separate backlog).
+**Revised decision:** there are **no tiers** (`web`/`full`/`native`) and **no consent flow**. A widget
+is just a `Widget`. Installing is always **one-click** — no default-OFF, no re-consent, no danger wall.
 
-**Locked policy** (web-tier — UI-only, no host — is low-risk and installs frictionlessly from ANY
-source):
+- **The only user-facing risk signal is a passive HOST WARNING.** If a widget ships a `host` (raw Node
+  → files/network/processes), the marketplace card + install + manager show a badge/notice ("This
+  widget can access your computer"). Informational, not blocking.
+- **Capabilities remain a functional allowlist the broker enforces** (a UI-only widget can only reach
+  what it declared — e.g. `network:api.weather.com`), but they are **not** a consent gate. A widget WITH
+  a host is unrestricted at the host (the broker only governs UI-side calls) — that's what the warning
+  is for.
+- Rationale: same posture as VSCode extensions / npm — the **curated marketplace** (you vouch for the
+  index) is the trust root, and the warning sets expectations. Pre-built-only + no install/build scripts
+  still hold (that's hygiene, kept). When a sandbox lands later, the warning becomes an enforcement
+  boundary with no format change.
 
-- **Full-tier from `local`** → normal consent (today's flow).
-- **Full-tier from `git` / `npm`** → an explicit **high-friction confirmation** ("danger wall"),
-  **default-OFF**: states in plain language that it runs unrestricted code with no sandbox, shows the
-  exact source + requested capabilities, defaults to *Cancel*, and requires a deliberate acknowledgement
-  ("I understand and trust this source") before *Install* enables. Friction is proportional to risk —
-  the goal is that no one installs internet full-tier code by clicking through on autopilot.
-- **Full-tier from `registry`** (later) → softer consent, because the curated/signed registry vouches
-  for the artifact + publisher.
-
-The capability model + per-widget enforcement above is built so the future sandbox can turn this
-consent into *enforcement*.
+Removed by this decision: `ExtTier` + tier derivation, the "require both host + system cap" rule,
+install consent / default-OFF / re-consent-on-cap-growth, and the danger-wall UI.
 
 ### Versioning & updates
 
