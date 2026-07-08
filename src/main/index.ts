@@ -180,6 +180,13 @@ app.whenReady().then(() => {
   })
   registerClipboardHandlers()
 
+  // External `embed` guests load under this isolated session. Harden it once: deny the `file:`
+  // scheme outright. A pack UI is untrusted and controls its <webview>'s src — a programmatic
+  // `view.src = 'file:///…'` bypasses will-navigate (which only fires for page-initiated navs), so
+  // a per-session scheme deny is the ONLY authoritative gate against local-file read + exfiltration.
+  const embedSession = session.fromPartition(EXT_EMBED_PARTITION)
+  embedSession.protocol.handle('file', async () => new Response('blocked', { status: 403 }))
+
   // Webview guests must never spawn an in-app popup: an unhandled window.open also crashes
   // the main process with "Render frame was disposed before WebFrameMain could be accessed"
   // (Electron touches the popup's frame after it's torn down). Web-embed guests open http(s)
@@ -192,9 +199,22 @@ app.whenReady().then(() => {
       if (!fromExt && /^https?:\/\//i.test(url)) void shell.openExternal(url)
       return { action: 'deny' }
     })
+    // Defense-in-depth for the embedded external guest: keep it on https for page-initiated navs and
+    // redirects (link clicks, location changes, 30x off https). The file: deny above is what stops
+    // the programmatic-src bypass; these keep the guest from being redirected to a non-web scheme.
+    if (contents.session === embedSession) {
+      const httpsOnly = (e: Electron.Event, url: string): void => {
+        if (!/^https:\/\//i.test(url)) e.preventDefault()
+      }
+      contents.on('will-navigate', httpsOnly)
+      contents.on('will-redirect', httpsOnly)
+    }
     // A garret:// widget with the `embed` capability nests an <webview> onto an external site. Only
     // such widgets have webviewTag enabled (set per-widget in WidgetSurface), so this fires only for
-    // them — but constrain it anyway: https only, the isolated embed partition, no Node, no preload.
+    // them — but the pack UI is untrusted (any pack may declare `embed`), so it authors the element
+    // markup: constrain hard. https only, the isolated embed partition, and force EVERY isolation
+    // pref (the guest can request disablewebsecurity / nodeintegrationinsubframes / etc. via the
+    // element — allowlist, don't trust). Post-attach navigation is gated on the embed session below.
     contents.on('will-attach-webview', (e, webPreferences, params) => {
       if (typeof params.src !== 'string' || !/^https:\/\//i.test(params.src) || params.partition !== EXT_EMBED_PARTITION) {
         e.preventDefault()
@@ -202,7 +222,12 @@ app.whenReady().then(() => {
       }
       delete webPreferences.preload
       webPreferences.nodeIntegration = false
+      webPreferences.nodeIntegrationInSubFrames = false
       webPreferences.contextIsolation = true
+      webPreferences.sandbox = true
+      webPreferences.webSecurity = true
+      webPreferences.allowRunningInsecureContent = false
+      webPreferences.experimentalFeatures = false
     })
     // DEV: auto-open DevTools for extension UI webviews so their console/errors are inspectable
     // (the guest has its own devtools, separate from the board window).
