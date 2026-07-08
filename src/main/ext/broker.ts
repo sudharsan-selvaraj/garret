@@ -96,7 +96,9 @@ export async function platformCall(
   switch (domain) {
     case 'storage':
     case 'instanceStorage': {
-      gate(binding, 'storage')
+      // Not gated: a widget's own per-widget KV is isolated to its own data dir — it can't reach
+      // anything external, so it isn't a privilege to allowlist. Ungating it also lets the settings
+      // pane round-trip (widget reads the keys the pane writes) without every pack declaring `storage`.
       const instId = domain === 'instanceStorage' ? binding.instanceId : undefined
       const file = storeFile(binding, instId)
       if (op === 'get') return readJson(file)[a0 as string]
