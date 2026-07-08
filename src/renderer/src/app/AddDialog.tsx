@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
-import { Blocks, LayoutGrid, Plus, Search, ShieldAlert } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Blocks, LayoutGrid, Package, Plus, Search, ShieldAlert } from 'lucide-react'
 import type { AnyWidgetPlugin } from '@sdk'
 import { useServiceStatus } from '@sdk'
+import type { InstalledPack } from '@shared/types/ext'
 import { registry } from '@renderer/plugins/registry'
 import { serviceRegistry } from '@renderer/services/serviceRegistry'
 import { useBoardStore } from '@renderer/canvas/useBoardStore'
@@ -30,7 +31,7 @@ export function isExtWidget(w: AnyWidgetPlugin): boolean {
   return w.manifest.id.startsWith('gx:')
 }
 
-function buildGroups(all: AnyWidgetPlugin[], query: string): Group[] {
+function buildGroups(all: AnyWidgetPlugin[], query: string, packs: InstalledPack[]): Group[] {
   const q = query.trim().toLowerCase()
   const matches = (w: AnyWidgetPlugin): boolean =>
     !q ||
@@ -42,15 +43,18 @@ function buildGroups(all: AnyWidgetPlugin[], query: string): Group[] {
     const widgets = all.filter((w) => w.manifest.serviceId === def.id && !isThirdParty(w) && matches(w))
     if (widgets.length) out.push({ id: def.id, name: def.name, icon: def.icon, serviceId: def.id, widgets })
   }
-  // Built-in miscellaneous (first-party, no service). Installed widgets have no serviceId either,
-  // so exclude them explicitly — they get their own group below.
-  const general = all.filter(
-    (w) => !w.manifest.serviceId && !isThirdParty(w) && !isExtWidget(w) && matches(w)
-  )
+  // One group PER installed pack — its widgets are registered `gx:<packId>/<widgetId>`.
+  for (const p of packs) {
+    const prefix = `gx:${p.id}/`
+    const widgets = all.filter((w) => w.manifest.id.startsWith(prefix) && matches(w))
+    if (widgets.length) out.push({ id: `pack:${p.id}`, name: p.name, icon: Package, widgets })
+  }
+  // Dev-tier (`ext:`) widgets loaded from disk.
+  const dev = all.filter((w) => isThirdParty(w) && matches(w))
+  if (dev.length) out.push({ id: 'dev', name: 'Dev widgets', icon: Blocks, widgets: dev })
+  // Built-in miscellaneous (first-party, no service) — until they're migrated to packs.
+  const general = all.filter((w) => !w.manifest.serviceId && !isThirdParty(w) && !isExtWidget(w) && matches(w))
   if (general.length) out.push({ id: 'general', name: 'General', widgets: general })
-  // Installed widgets — one group, whatever they can access (a widget is a widget).
-  const widgets = all.filter((w) => (isThirdParty(w) || isExtWidget(w)) && matches(w))
-  if (widgets.length) out.push({ id: 'widgets', name: 'Widgets', icon: Blocks, widgets })
   return out
 }
 
@@ -60,10 +64,14 @@ export function AddDialog(): JSX.Element {
   const addWidget = useBoardStore((s) => s.addWidget)
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState('all')
+  const [packs, setPacks] = useState<InstalledPack[]>([])
+  useEffect(() => {
+    void window.garret.ext.packs().then(setPacks)
+  }, [])
 
   const all = registry.list()
-  const navGroups = useMemo(() => buildGroups(all, ''), [all]) // categories (unfiltered)
-  const filtered = useMemo(() => buildGroups(all, query), [all, query]) // for the right pane
+  const navGroups = useMemo(() => buildGroups(all, '', packs), [all, packs]) // categories (unfiltered)
+  const filtered = useMemo(() => buildGroups(all, query, packs), [all, query, packs]) // for the right pane
   const visible = selected === 'all' ? filtered : filtered.filter((g) => g.id === selected)
 
   const add = (id: string): void => {
@@ -118,8 +126,6 @@ export function AddDialog(): JSX.Element {
             visible.map((g) =>
               g.serviceId ? (
                 <ServiceSection key={g.id} group={g} onAdd={add} onConnect={connect} />
-              ) : g.id === 'installed' ? (
-                <InstalledSection key={g.id} group={g} onAdd={add} />
               ) : (
                 <GeneralSection key={g.id} group={g} onAdd={add} />
               )
@@ -136,22 +142,6 @@ function GeneralSection({ group, onAdd }: { group: Group; onAdd: (id: string) =>
     <section className="add-section">
       <div className="add-section-head">
         <span>{group.name}</span>
-      </div>
-      {group.widgets.map((w) => (
-        <WidgetItem key={w.manifest.id} plugin={w} locked={false} onAdd={() => onAdd(w.manifest.id)} />
-      ))}
-    </section>
-  )
-}
-
-function InstalledSection({ group, onAdd }: { group: Group; onAdd: (id: string) => void }): JSX.Element {
-  return (
-    <section className="add-section">
-      <div className="add-section-head">
-        <span>{group.name}</span>
-        <span className="add-section-note">
-          <ShieldAlert size={12} strokeWidth={2} /> Sandboxed · unverified authors
-        </span>
       </div>
       {group.widgets.map((w) => (
         <WidgetItem key={w.manifest.id} plugin={w} locked={false} onAdd={() => onAdd(w.manifest.id)} />
