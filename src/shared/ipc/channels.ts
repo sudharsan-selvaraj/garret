@@ -4,7 +4,7 @@ import type { ServiceStatus } from '../types/services'
 import type { PollUpdate, WatchSpec } from '../types/poll'
 import type { Preferences } from '../types/preferences'
 import type { ClipItem } from '../types/clipboard'
-import type { ExtRuntimeInfo, ExtInstallPlan, InstalledExtension as ExtInstalled } from '../types/ext'
+import type { ExtRuntimeInfo, ExtInstallPlan, InstalledExtension as ExtInstalled, MarketplaceEntry } from '../types/ext'
 import type { WatchOptions } from 'garret-core'
 
 /**
@@ -45,6 +45,8 @@ export const Channels = {
   extListInstalled: 'ext:list-installed',
   extSetEnabled: 'ext:set-enabled',
   extRemove: 'ext:remove',
+  extMarketplace: 'ext:marketplace', // () → MarketplaceEntry[] (fetch the GitHub registry index)
+  extInstallUrl: 'ext:install-url', // (url) → install a marketplace pack's .garret (one-click)
   extOpenFile: 'ext:open-file', // main → renderer: a .garret was opened from Finder
   extFlushOpenFiles: 'ext:flush-open-files', // renderer → main: drain opens queued before mount
   // --- floating surface windows (docs/floating-surface-windows.md) ---
@@ -237,6 +239,10 @@ export interface GarretApi {
     listInstalled(): Promise<ExtInstalled[]>
     setEnabled(id: string, on: boolean): Promise<{ ok: boolean; error?: string }>
     remove(id: string): Promise<void>
+    /** Fetch the marketplace registry index (curated GitHub repo). */
+    marketplace(): Promise<MarketplaceEntry[]>
+    /** One-click install a marketplace pack by its prebuilt-.garret URL. */
+    installUrl(url: string): Promise<{ ok: boolean; error?: string }>
     /** A `.garret` was opened from Finder (double-click / Open With) — deliver its path. */
     onOpenFile(cb: (path: string) => void): () => void
     /** Ask main to drain any `.garret` opens queued before the renderer's listener mounted. */

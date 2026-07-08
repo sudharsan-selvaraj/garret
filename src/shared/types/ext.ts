@@ -39,6 +39,21 @@ export interface PackRecord {
 /** Where a pack came from — drives update checks + the marketplace (P2). */
 export type PackSourceKind = 'local' | 'git' | 'npm' | 'registry'
 
+/** One entry in the marketplace (a curated GitHub registry index → each pack's prebuilt .garret). */
+export interface MarketplaceEntry {
+  id: string
+  name: string
+  publisher: string
+  description?: string
+  version: string
+  /** https URL of the prebuilt .garret to install. */
+  url: string
+  /** ships a host (system access) → show the warning before install. */
+  hasHost: boolean
+  /** already installed locally. */
+  installed: boolean
+}
+
 /** A validated pack-install proposal. Install is one-click; `hasHost` drives the passive warning. */
 export interface PackInstallPlan {
   ok: boolean

@@ -7,6 +7,7 @@ import type { ExtRuntimeInfo, ExtInstallPlan, InstalledExtension, InstalledPack,
 import { persistence } from '@main/persistence/store'
 import { registerExtProtocol, setUiResolver, resetUiDirs, EXT_PARTITION } from '@main/ext/protocol'
 import { launchHost, getHost, killHost } from '@main/ext/host'
+import { fetchMarketplaceIndex } from '@main/ext/marketplace'
 import { platformCall, type Binding } from '@main/ext/broker'
 import {
   openSurface,
@@ -27,6 +28,7 @@ import {
   resolveEnabledWidgetSpecs,
   planPackInstall,
   planPackInstallFromFile,
+  planPackInstallFromUrl,
   commitPackInstall,
   cleanupPackStaging,
   listInstalledPacks,
@@ -318,6 +320,20 @@ export function registerExtHandlers(): void {
     await revokePack(id)
     await removePack(id)
     await syncUiDirs()
+  })
+
+  // ── marketplace (GitHub registry index → one-click install) ─────────────────────────────────────
+  ipcMain.handle(Channels.extMarketplace, () => fetchMarketplaceIndex())
+  ipcMain.handle(Channels.extInstallUrl, async (_e, url: string) => {
+    const plan = await planPackInstallFromUrl(url)
+    if (!plan.ok) return { ok: false, error: plan.error }
+    const res = await commitPackInstall({ source: plan.source, sourceHash: plan.sourceHash })
+    await cleanupPackStaging(plan.source)
+    if (res.ok) {
+      await revokePack(plan.id)
+      await syncUiDirs()
+    }
+    return res
   })
 
   // Clean up a bound host when its renderer goes away.
