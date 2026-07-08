@@ -4,7 +4,6 @@ import webEmbed from '@plugins/web-embed'
 import jiraTickets from '@plugins/jira-tickets'
 import pullRequests from '@plugins/pull-requests'
 import gitRepo from '@plugins/git-repo'
-import clock from '@plugins/clock'
 import notes from '@plugins/notes'
 import weather from '@plugins/weather'
 import devTools from '@plugins/dev-tools'
@@ -20,7 +19,6 @@ const builtins: AnyWidgetPlugin[] = [
   calendar,
   pullRequests,
   gitRepo,
-  clock,
   weather,
   notes,
   devTools,

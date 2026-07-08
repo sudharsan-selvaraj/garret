@@ -20,7 +20,7 @@ import {
   type WindowMode
 } from '@main/windows/createWindow'
 import { registerExtScheme } from '@main/ext/protocol'
-import { registerExtHandlers, broadcastActive } from '@main/ext/lane'
+import { registerExtHandlers, broadcastActive, syncUiDirs } from '@main/ext/lane'
 import { installBundledPacks } from '@main/ext/install'
 import { registerWcvSpike } from '@main/spike/wcvSpike'
 
@@ -234,7 +234,9 @@ app.whenReady().then(() => {
   initScheduler()
 
   registerExtHandlers() // unified extension system (garret-sdk) — one path for web + native
-  void installBundledPacks() // auto-install/refresh app-shipped packs (clock, web-view, …)
+  // Auto-install/refresh app-shipped packs, THEN refresh the scheme's ui-dir cache so a freshly
+  // (re)installed bundled pack serves its current files (installBundledPacks bypasses the lane).
+  void installBundledPacks().then(() => syncUiDirs())
   registerWcvSpike() // dev-only WebContentsView geometry spike (GARRET_WCV_SPIKE=1)
 
   win = createWindow(WINDOW_MODE)

@@ -61,7 +61,7 @@ function surfaceDirs(w: ResolvedWidget): Record<string, string> | undefined {
   return out
 }
 
-async function syncUiDirs(): Promise<void> {
+export async function syncUiDirs(): Promise<void> {
   resetUiDirs(
     (await resolveEnabledWidgetSpecs()).map((w) => ({
       id: originHost(w),
