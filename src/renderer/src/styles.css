@@ -3039,6 +3039,29 @@ button[disabled],
 .mw-section {
   margin-bottom: 18px;
 }
+/* Per-pack settings pane (Settings → <pack>). */
+.ws-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+.ws-head h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+.ws-pub {
+  font-size: 12px;
+  color: var(--text-2);
+}
+.ws-empty {
+  color: var(--text-2);
+  font-size: 13px;
+}
+.ws-section {
+  margin-bottom: 18px;
+}
 .mw-subtitle {
   display: flex;
   align-items: center;

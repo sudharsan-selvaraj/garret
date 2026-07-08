@@ -1,21 +1,38 @@
-import { useState } from 'react'
-import { Blocks, SlidersHorizontal } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Blocks, Package, SlidersHorizontal } from 'lucide-react'
 import { services, useServiceStatus, type ServiceDefinition } from '@sdk'
+import type { InstalledPack } from '@shared/types/ext'
 import { serviceRegistry } from '@renderer/services/serviceRegistry'
 import { useUiStore } from '@renderer/app/useUiStore'
 import { WidgetIcon } from '@renderer/widgets/WidgetIcon'
 import { Dialog } from '@renderer/app/Dialog'
 import { GeneralSettings } from '@renderer/app/GeneralSettings'
 import { ManageExtensions } from '@renderer/ext/ManageExtensions'
+import { WidgetSettings } from '@renderer/ext/WidgetSettings'
 
 const GENERAL = 'general'
 const WIDGETS = 'widgets'
+const PACK_PREFIX = 'pack:'
 
 export function SettingsDialog(): JSX.Element {
   const close = useUiStore((s) => s.close)
   const initial = useUiStore((s) => s.settingsServiceId)
   const defs = serviceRegistry.list()
   const [selected, setSelected] = useState<string>(initial ?? GENERAL)
+  // Installed packs that declare any settings → one left-nav section each.
+  const [settingsPacks, setSettingsPacks] = useState<InstalledPack[]>([])
+  useEffect(() => {
+    void window.garret.ext.packs().then((packs) =>
+      setSettingsPacks(
+        packs.filter(
+          (p) => p.widgets.some((w) => (w.settingsSchema?.length ?? 0) > 0) || (p.sharedSettingsSchema?.length ?? 0) > 0
+        )
+      )
+    )
+  }, [])
+  const selectedPack = selected.startsWith(PACK_PREFIX)
+    ? settingsPacks.find((p) => p.id === selected.slice(PACK_PREFIX.length))
+    : undefined
 
   return (
     <Dialog title="Settings" onClose={close} className="dialog-settings">
@@ -39,7 +56,19 @@ export function SettingsDialog(): JSX.Element {
               <span className="svc-nav-name">Widgets</span>
             </button>
           </li>
-          <li className="settings-nav-sep" />
+          {settingsPacks.length > 0 && <li className="settings-nav-sep" />}
+          {settingsPacks.map((p) => (
+            <li key={p.id}>
+              <button
+                className={`svc-nav${selected === PACK_PREFIX + p.id ? ' active' : ''}`}
+                onClick={() => setSelected(PACK_PREFIX + p.id)}
+              >
+                <Package size={16} strokeWidth={1.75} />
+                <span className="svc-nav-name">{p.name}</span>
+              </button>
+            </li>
+          ))}
+          {defs.length > 0 && <li className="settings-nav-sep" />}
           {defs.map((d) => (
             <li key={d.id}>
               <button
@@ -58,6 +87,8 @@ export function SettingsDialog(): JSX.Element {
             <GeneralSettings />
           ) : selected === WIDGETS ? (
             <ManageExtensions />
+          ) : selectedPack ? (
+            <WidgetSettings pack={selectedPack} />
           ) : (
             <ServiceDetail def={defs.find((d) => d.id === selected) as ServiceDefinition} />
           )}
