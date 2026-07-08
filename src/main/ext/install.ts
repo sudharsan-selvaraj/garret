@@ -110,6 +110,40 @@ export async function listWidgetSecretKeys(fullId: string): Promise<string[]> {
   return secretKeys(widgetDataDir(p.packId, p.widgetId))
 }
 
+// Pack-shared settings (the `shared` schema) — one credential/config set the whole pack sees. Same
+// split as per-widget: non-secret → shared storage.json, `type:"secret"` → shared encrypted store.
+export async function readSharedSettings(packId: string): Promise<Record<string, unknown>> {
+  if (!PACK_ID_RE.test(packId)) return {}
+  try {
+    return JSON.parse(await readFile(join(sharedDataDir(packId), 'storage.json'), 'utf8'))
+  } catch {
+    return {}
+  }
+}
+export async function writeSharedSettings(packId: string, patch: Record<string, unknown>): Promise<void> {
+  if (!PACK_ID_RE.test(packId)) return
+  const dir = await ensureSharedDataDir(packId)
+  const file = join(dir, 'storage.json')
+  let cur: Record<string, unknown> = {}
+  try {
+    cur = JSON.parse(await readFile(file, 'utf8'))
+  } catch {
+    /* fresh */
+  }
+  const tmp = `${file}.${randomUUID().slice(0, 8)}.tmp`
+  await writeFile(tmp, JSON.stringify({ ...cur, ...patch }))
+  await rename(tmp, file)
+}
+export async function writeSharedSecret(packId: string, key: string, value: string): Promise<void> {
+  if (!PACK_ID_RE.test(packId)) return
+  const dir = await ensureSharedDataDir(packId)
+  setSecret(dir, `${packId}/_shared`, key, value)
+}
+export async function listSharedSecretKeys(packId: string): Promise<string[]> {
+  if (!PACK_ID_RE.test(packId)) return []
+  return secretKeys(sharedDataDir(packId))
+}
+
 // Pack record: HMAC anti-tamper. The signed payload binds each widget's host+caps so a local edit
 // can't silently re-scope a widget.
 function packMacPayload(r: PackRecord): string {

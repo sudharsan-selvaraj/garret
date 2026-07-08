@@ -1,57 +1,104 @@
 import { useEffect, useState } from 'react'
-import type { InstalledPack, InstalledPackWidget, SettingsField } from '@shared/types/ext'
+import type { InstalledPack, SettingsField } from '@shared/types/ext'
 
 /**
- * The per-pack settings pane (Settings → <pack>). Renders one section per widget that declares a
- * `settings.schema`, as a form. Values load via ext.settingsGet and persist per-widget via
- * ext.settingsSet — the same storage the widget reads through `g.storage`, so settings are isolated
- * per widget and shared across that widget's placements.
+ * The per-pack settings pane (Settings → <pack>). One section per widget that declares a
+ * `settings.schema`, plus (if the pack declares `shared`) a single pack-wide "Account" section — so a
+ * multi-widget service pack holds ONE credential set. Non-secret values persist to the store the
+ * widget reads via `g.storage`/`g.shared.storage`; `type:"secret"` fields go to the encrypted store
+ * (`g.secrets`/`g.shared.secrets`) and are never read back into the UI.
  */
 export function WidgetSettings({ pack }: { pack: InstalledPack }): JSX.Element {
-  const sections = pack.widgets.filter((w) => (w.settingsSchema?.length ?? 0) > 0)
+  const widgetSections = pack.widgets.filter((w) => (w.settingsSchema?.length ?? 0) > 0)
+  const sharedSchema = pack.sharedSettingsSchema ?? []
+  const g = window.garret.ext
   return (
     <div className="ws" key={pack.id}>
       <div className="ws-head">
         <h3>{pack.name}</h3>
         <span className="ws-pub">{pack.publisher}</span>
       </div>
-      {sections.length === 0 ? (
+      {widgetSections.length === 0 && sharedSchema.length === 0 ? (
         <p className="ws-empty">This pack has no settings.</p>
       ) : (
-        sections.map((w) => <WidgetSection key={w.fullId} widget={w} />)
+        <>
+          {sharedSchema.length > 0 && (
+            <SettingsForm
+              scopeKey={`${pack.id}:shared`}
+              title="Account"
+              schema={sharedSchema}
+              io={{
+                get: () => g.sharedGet(pack.id),
+                set: (patch) => g.sharedSet(pack.id, patch),
+                secretSet: (k, v) => g.sharedSecretSet(pack.id, k, v),
+                secretKeys: () => g.sharedSecretKeys(pack.id)
+              }}
+            />
+          )}
+          {widgetSections.map((w) => (
+            <SettingsForm
+              key={w.fullId}
+              scopeKey={w.fullId}
+              title={w.name}
+              schema={w.settingsSchema ?? []}
+              io={{
+                get: () => g.settingsGet(w.fullId),
+                set: (patch) => g.settingsSet(w.fullId, patch),
+                secretSet: (k, v) => g.secretSet(w.fullId, k, v),
+                secretKeys: () => g.secretKeys(w.fullId)
+              }}
+            />
+          ))}
+        </>
       )}
     </div>
   )
 }
 
-function WidgetSection({ widget }: { widget: InstalledPackWidget }): JSX.Element {
-  const schema = widget.settingsSchema ?? []
+interface SettingsIO {
+  get: () => Promise<Record<string, unknown>>
+  set: (patch: Record<string, unknown>) => Promise<void>
+  secretSet: (key: string, value: string) => Promise<void>
+  secretKeys: () => Promise<string[]>
+}
+
+/** One settings section (a widget's, or the pack-shared "Account") — a form over a SettingsIO. */
+function SettingsForm({
+  scopeKey,
+  title,
+  schema,
+  io
+}: {
+  scopeKey: string
+  title: string
+  schema: SettingsField[]
+  io: SettingsIO
+}): JSX.Element {
   const [values, setValues] = useState<Record<string, unknown>>({})
   const [secretsSet, setSecretsSet] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     let alive = true
-    void window.garret.ext.settingsGet(widget.fullId).then((v) => alive && setValues(v))
+    void io.get().then((v) => alive && setValues(v))
     // Secret values are never returned to the UI — only which keys are set (so we can show "Saved").
-    void window.garret.ext.secretKeys(widget.fullId).then((k) => alive && setSecretsSet(new Set(k)))
+    void io.secretKeys().then((k) => alive && setSecretsSet(new Set(k)))
     return () => {
       alive = false
     }
-  }, [widget.fullId])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scopeKey])
 
   const update = (key: string, val: unknown): void => {
     setValues((v) => ({ ...v, [key]: val }))
-    void window.garret.ext.settingsSet(widget.fullId, { [key]: val })
+    void io.set({ [key]: val })
   }
   const saveSecret = (key: string, val: string): void => {
-    void window.garret.ext.secretSet(widget.fullId, key, val).then(() =>
-      setSecretsSet((s) => new Set(s).add(key))
-    )
+    void io.secretSet(key, val).then(() => setSecretsSet((s) => new Set(s).add(key)))
   }
 
   return (
     <section className="ws-section">
-      <p className="settings-section-label">{widget.name}</p>
+      <p className="settings-section-label">{title}</p>
       <div className="settings-group">
         {schema.map((f) => (
           <div className="settings-row" key={f.key}>

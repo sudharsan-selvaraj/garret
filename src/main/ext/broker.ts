@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync } from '
 import { join } from 'node:path'
 import { randomBytes } from 'node:crypto'
 import { GarretError } from '@garretapp/sdk'
-import { widgetDataDir } from '@main/ext/install'
+import { widgetDataDir, sharedDataDir } from '@main/ext/install'
 import { getSecret, setSecret, deleteSecret } from '@main/ext/secrets'
 import { getService } from '@main/services/registry'
 
@@ -20,6 +20,8 @@ export interface Binding {
   fullId: string
   instanceId: string
   capabilities: string[]
+  /** Pack declared a `shared` store → `g.shared.storage`/`g.shared.secrets` are available. */
+  hasShared: boolean
 }
 
 // No tiers: every UI-side platform call is gated by the widget's declared capabilities (a functional
@@ -50,6 +52,12 @@ function writeAtomic(file: string, obj: Record<string, unknown>): void {
 }
 function storeFile(b: Binding, instanceId?: string): string {
   return join(widgetDir(b.packId, b.widgetId), instanceId ? `instance.${instanceId}.json` : 'storage.json')
+}
+function sharedDir(b: Binding): string {
+  if (!b.hasShared) throw new GarretError('PERMISSION', 'pack has no shared store (declare `shared` in the manifest)')
+  const dir = sharedDataDir(b.packId)
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
+  return dir
 }
 
 // ── fetch allowlist ──────────────────────────────────────────────────────────────────────────────
@@ -121,6 +129,35 @@ export async function platformCall(
       const dir = widgetDir(binding.packId, binding.widgetId)
       if (op === 'get') return getSecret(dir, binding.fullId, a0 as string)
       if (op === 'set') return setSecret(dir, binding.fullId, a0 as string, String(a1))
+      if (op === 'delete') return deleteSecret(dir, a0 as string)
+      break
+    }
+    // Pack-shared store: one namespace all widgets in the pack share (`ext-data/<packId>/_shared`),
+    // available only when the pack declared `shared`. Lets a multi-widget pack hold one credential set.
+    case 'sharedStorage': {
+      const file = join(sharedDir(binding), 'storage.json')
+      if (op === 'get') return readJson(file)[a0 as string]
+      if (op === 'keys') return Object.keys(readJson(file))
+      if (op === 'set') {
+        const all = readJson(file)
+        all[a0 as string] = a1
+        writeAtomic(file, all)
+        return
+      }
+      if (op === 'delete') {
+        const all = readJson(file)
+        delete all[a0 as string]
+        writeAtomic(file, all)
+        return
+      }
+      break
+    }
+    case 'sharedSecrets': {
+      gate(binding, 'secrets')
+      const dir = sharedDir(binding)
+      const keyId = `${binding.packId}/_shared`
+      if (op === 'get') return getSecret(dir, keyId, a0 as string)
+      if (op === 'set') return setSecret(dir, keyId, a0 as string, String(a1))
       if (op === 'delete') return deleteSecret(dir, a0 as string)
       break
     }

@@ -39,6 +39,10 @@ import {
   writeWidgetSettings,
   writeWidgetSecret,
   listWidgetSecretKeys,
+  readSharedSettings,
+  writeSharedSettings,
+  writeSharedSecret,
+  listSharedSecretKeys,
   type ResolvedWidget
 } from '@main/ext/install'
 
@@ -173,7 +177,8 @@ export function registerExtHandlers(): void {
       widgetId: w.widgetId,
       fullId: w.fullId,
       instanceId,
-      capabilities: w.capabilities // this widget's own caps (record-authoritative) — NOT the pack union
+      capabilities: w.capabilities, // this widget's own caps (record-authoritative) — NOT the pack union
+      hasShared: w.hasShared // pack opted into a shared store → g.shared.* is available
     })
     // Launch props for a spawned surface — computed BEFORE the host launch so a launch failure can't
     // drop them, and delivered on every return path. ONLY if the guest is genuinely hosted inside that
@@ -337,6 +342,14 @@ export function registerExtHandlers(): void {
     await writeWidgetSecret(fullId, key, String(value))
   })
   ipcMain.handle(Channels.extSecretKeys, (_e, fullId: string) => listWidgetSecretKeys(fullId))
+  ipcMain.handle(Channels.extSharedGet, (_e, packId: string) => readSharedSettings(packId))
+  ipcMain.handle(Channels.extSharedSet, async (_e, packId: string, patch: Record<string, unknown>) => {
+    await writeSharedSettings(packId, patch)
+  })
+  ipcMain.handle(Channels.extSharedSecretSet, async (_e, packId: string, key: string, value: string) => {
+    await writeSharedSecret(packId, key, String(value))
+  })
+  ipcMain.handle(Channels.extSharedSecretKeys, (_e, packId: string) => listSharedSecretKeys(packId))
 
   // ── marketplace (GitHub registry index → one-click install) ─────────────────────────────────────
   ipcMain.handle(Channels.extMarketplace, () => fetchMarketplaceIndex())

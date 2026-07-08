@@ -138,6 +138,16 @@ const runtime = {
     set: (k: string, v: string) => call('secrets', 'set', [k, v]),
     delete: (k: string) => call('secrets', 'delete', [k])
   },
+  // Pack-shared store (only if the pack declared `shared`) — one namespace across the pack's widgets,
+  // e.g. a single credential set for a multi-widget service pack.
+  shared: {
+    storage: storage('sharedStorage'),
+    secrets: {
+      get: (k: string) => call('sharedSecrets', 'get', [k]),
+      set: (k: string, v: string) => call('sharedSecrets', 'set', [k, v]),
+      delete: (k: string) => call('sharedSecrets', 'delete', [k])
+    }
+  },
   async fetch(url: string, init?: RequestInit): Promise<Response> {
     const r = (await call('fetch', '', [url, init])) as {
       status: number

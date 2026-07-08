@@ -58,6 +58,10 @@ export const Channels = {
   extSettingsSet: 'ext:settings-set', // (fullId, patch) → merge settings into the widget's store
   extSecretSet: 'ext:secret-set', // (fullId, key, value) → a type:"secret" field → encrypted store
   extSecretKeys: 'ext:secret-keys', // (fullId) → names of secrets that are set (never the values)
+  extSharedGet: 'ext:shared-get', // (packId) → the pack's shared (non-secret) settings values
+  extSharedSet: 'ext:shared-set', // (packId, patch) → merge into the pack's shared store
+  extSharedSecretSet: 'ext:shared-secret-set', // (packId, key, value) → pack-shared encrypted store
+  extSharedSecretKeys: 'ext:shared-secret-keys', // (packId) → names of shared secrets that are set
   extOpenFile: 'ext:open-file', // main → renderer: a .garret was opened from Finder
   extFlushOpenFiles: 'ext:flush-open-files', // renderer → main: drain opens queued before mount
   // --- floating surface windows (docs/floating-surface-windows.md) ---
@@ -262,6 +266,11 @@ export interface GarretApi {
     /** Write a `type:"secret"` field to the widget's encrypted store; list which secrets are set. */
     secretSet(fullId: string, key: string, value: string): Promise<void>
     secretKeys(fullId: string): Promise<string[]>
+    /** Pack-shared settings (the `shared` schema): read/merge values + write/list secret keys. */
+    sharedGet(packId: string): Promise<Record<string, unknown>>
+    sharedSet(packId: string, patch: Record<string, unknown>): Promise<void>
+    sharedSecretSet(packId: string, key: string, value: string): Promise<void>
+    sharedSecretKeys(packId: string): Promise<string[]>
     /** A `.garret` was opened from Finder (double-click / Open With) — deliver its path. */
     onOpenFile(cb: (path: string) => void): () => void
     /** Ask main to drain any `.garret` opens queued before the renderer's listener mounted. */
