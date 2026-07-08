@@ -59,8 +59,8 @@ export async function ensureSharedDataDir(packId: string): Promise<string> {
   return dir
 }
 
-// Pack record: same HMAC-anti-tamper scheme as the v1 record, but the signed payload also binds the
-// per-widget tier/host/caps so a local edit can't silently re-scope a widget.
+// Pack record: HMAC anti-tamper. The signed payload binds each widget's host+caps so a local edit
+// can't silently re-scope a widget.
 function packMacPayload(r: PackRecord): string {
   return JSON.stringify({
     id: r.id,
@@ -68,11 +68,10 @@ function packMacPayload(r: PackRecord): string {
     version: r.version,
     sha256: r.sha256,
     capabilities: [...r.capabilities].sort(),
-    tier: r.tier,
     enabled: r.enabled,
     installedAt: r.installedAt,
     widgets: [...r.widgets]
-      .map((w) => ({ fullId: w.fullId, tier: w.tier, hasHost: w.hasHost, capabilities: [...w.capabilities].sort() }))
+      .map((w) => ({ fullId: w.fullId, hasHost: w.hasHost, capabilities: [...w.capabilities].sort() }))
       .sort((a, b) => a.fullId.localeCompare(b.fullId))
   })
 }
@@ -170,11 +169,12 @@ const widgetMetaFrom = (spec: PackSpec): WidgetMeta[] =>
     id: w.id,
     fullId: w.fullId,
     name: w.name,
-    tier: w.tier,
     capabilities: w.capabilities,
     hasHost: w.nodeEntry !== undefined,
     defaultSize: w.defaultSize
   }))
+
+const packHasHost = (spec: PackSpec): boolean => spec.widgets.some((w) => w.nodeEntry !== undefined)
 
 function failPack(msg: string): PackInstallPlan {
   return {
@@ -186,12 +186,10 @@ function failPack(msg: string): PackInstallPlan {
     version: '',
     source: '',
     sourceKind: 'local',
-    tier: 'web',
+    hasHost: false,
     capabilities: [],
     widgets: [],
     isUpdate: false,
-    codeChanged: false,
-    addedCapabilities: [],
     sourceHash: ''
   }
 }
@@ -206,7 +204,6 @@ export async function planPackInstall(srcDir: string, sourceKind: PackSourceKind
     return failPack(e instanceof Error ? e.message : String(e))
   }
   const prior = await readPackRecord(spec.id)
-  const priorCaps = new Set(prior?.capabilities ?? [])
   return {
     ok: true,
     id: spec.id,
@@ -216,12 +213,10 @@ export async function planPackInstall(srcDir: string, sourceKind: PackSourceKind
     version: spec.version,
     source: srcDir,
     sourceKind,
-    tier: spec.tier,
+    hasHost: packHasHost(spec),
     capabilities: spec.capabilities,
     widgets: widgetMetaFrom(spec),
     isUpdate: prior !== null,
-    codeChanged: !prior || prior.sha256 !== sourceHash,
-    addedCapabilities: spec.capabilities.filter((c) => !priorCaps.has(c)),
     sourceHash
   }
 }
@@ -235,13 +230,9 @@ export async function commitPackInstall(plan: { source: string; sourceHash: stri
     if ('error' in spec) return { ok: false, error: spec.error }
 
     const prior = await readPackRecord(spec.id)
-    const codeChanged = !prior || prior.sha256 !== hash
-    const addedCaps = spec.capabilities.filter((c) => !(prior?.capabilities ?? []).includes(c))
-    // Same policy as v1, per pack: full default-OFF; any added cap or (full + code change) → re-consent.
-    let enabled: boolean
-    if (!prior) enabled = spec.tier === 'web'
-    else if (addedCaps.length > 0 || (spec.tier === 'full' && codeChanged)) enabled = false
-    else enabled = packRecordMacOk(prior) ? prior.enabled : spec.tier === 'web'
+    // No consent/tiers: install is one-click → enabled. On reinstall keep the prior enabled state if
+    // the record is authentic (a user who disabled it stays disabled); default enabled otherwise.
+    const enabled = prior && packRecordMacOk(prior) ? prior.enabled : true
 
     const dest = packDir(spec.id)
     const tmp = join(extDir(), `.tmp-${spec.id}-${randomUUID().slice(0, 8)}`)
@@ -258,7 +249,6 @@ export async function commitPackInstall(plan: { source: string; sourceHash: stri
       version: spec.version,
       source: plan.source,
       sha256: hash,
-      tier: spec.tier,
       capabilities: spec.capabilities,
       enabled,
       installedAt: Date.now(),
@@ -359,7 +349,7 @@ export async function listInstalledPacks(): Promise<InstalledPack[]> {
       description: spec.description,
       icon: spec.icon,
       source: rec.source,
-      tier: rec.tier,
+      hasHost: rec.widgets.some((w) => w.hasHost),
       capabilities: rec.capabilities,
       enabled: rec.enabled && integrityOk && !tampered,
       tampered,
@@ -368,7 +358,7 @@ export async function listInstalledPacks(): Promise<InstalledPack[]> {
         fullId: w.fullId,
         id: w.id,
         name: w.name,
-        tier: w.tier,
+        hasHost: w.nodeEntry !== undefined,
         capabilities: rec.widgets.find((x) => x.id === w.id)?.capabilities ?? w.capabilities,
         defaultSize: w.defaultSize
       }))
@@ -395,7 +385,6 @@ export async function resolveEnabledWidgets(): Promise<WidgetRuntimeInfo[]> {
         packId: pack.id,
         widgetId: w.id,
         name: w.name,
-        tier: w.tier,
         uiOrigin: widgetOrigin(pack.id, w.id),
         uiDir: w.uiDir,
         nodeEntry: w.nodeEntry,

@@ -1,7 +1,6 @@
 import { protocol, type Protocol, type Session } from 'electron'
 import { readFile } from 'node:fs/promises'
 import { join, normalize, sep } from 'node:path'
-import type { ExtTier } from '@shared/types/ext'
 
 /**
  * `garret://<id>/<path>` serves an extension's built UI. One scheme for both tiers; the CSP differs
@@ -25,11 +24,12 @@ export function registerExtScheme(): void {
 
 const SAFE_ID = /^[a-z0-9][a-z0-9._-]*$/
 
-function csp(tier: ExtTier): string {
-  const script = tier === 'full' ? "script-src 'self' 'unsafe-inline'" : "script-src 'self'"
+// One strict CSP for every widget (packs ship built UIs; no inline script). `connect-src 'none'` —
+// network goes through the broker (`g.fetch`) or the host, never the UI directly.
+function csp(): string {
   return [
     "default-src 'none'",
-    script,
+    "script-src 'self'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data:",
     "font-src 'self' data:",
@@ -55,18 +55,15 @@ const MIME: Record<string, string> = {
 
 interface UiEntry {
   dir: string
-  tier: ExtTier
-  /** surfaceId → that surface's ui dir, served at `garret://<id>/~<surfaceId>/`. */
+  /** surfaceId → that surface's ui dir, served at `<origin>/~<surfaceId>/`. */
   surfaces?: Record<string, string>
 }
 const uiDirs = new Map<string, UiEntry>()
 let resolver: ((id: string) => Promise<UiEntry | null>) | null = null
 
-export function resetUiDirs(
-  entries: Array<{ id: string; dir: string; tier: ExtTier; surfaces?: Record<string, string> }>
-): void {
+export function resetUiDirs(entries: Array<{ id: string; dir: string; surfaces?: Record<string, string> }>): void {
   uiDirs.clear()
-  for (const e of entries) uiDirs.set(e.id, { dir: e.dir, tier: e.tier, surfaces: e.surfaces })
+  for (const e of entries) uiDirs.set(e.id, { dir: e.dir, surfaces: e.surfaces })
 }
 export function setUiResolver(fn: (id: string) => Promise<UiEntry | null>): void {
   resolver = fn
@@ -112,7 +109,7 @@ async function serve(request: Request): Promise<Response> {
       status: 200,
       headers: {
         'Content-Type': MIME[ext] ?? 'application/octet-stream',
-        'Content-Security-Policy': csp(entry.tier),
+        'Content-Security-Policy': csp(),
         'X-Content-Type-Options': 'nosniff'
       }
     })

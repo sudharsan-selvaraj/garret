@@ -8,7 +8,7 @@ const DEV_KEY = 'ui.widgetDevMode'
 
 /** One-line summary of what a widget can do (no tier jargon). */
 function accessSummary(e: InstalledExtension): string {
-  if (e.tier === 'full') return 'Full system access'
+  if (e.hasHost) return 'Can access your computer'
   const parts: string[] = []
   if (e.capabilities.some((c) => c.startsWith('network:'))) parts.push('Network')
   if (e.capabilities.some((c) => c.startsWith('service:'))) parts.push('Account')

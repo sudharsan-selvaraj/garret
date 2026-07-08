@@ -19,12 +19,12 @@ export interface Binding {
   /** `${packId}/${widgetId}` — storage dir + secret-key id. */
   fullId: string
   instanceId: string
-  tier: 'web' | 'full'
   capabilities: string[]
 }
 
+// No tiers: every UI-side platform call is gated by the widget's declared capabilities (a functional
+// allowlist). A widget's HOST, if any, is unrestricted raw Node — that's what the host warning is for.
 function gate(binding: Binding, cap: string): void {
-  if (binding.tier === 'full') return // full-access consented to everything
   if (!binding.capabilities.includes(cap)) {
     throw new GarretError('PERMISSION', `capability "${cap}" not granted`)
   }
@@ -66,7 +66,6 @@ function secretKey(id: string): Buffer {
 
 // ── fetch allowlist ──────────────────────────────────────────────────────────────────────────────
 function fetchAllowed(binding: Binding, url: string): boolean {
-  if (binding.tier === 'full') return true // full-access: unrestricted (consented)
   let u: URL
   try {
     u = new URL(url)

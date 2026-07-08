@@ -1,11 +1,10 @@
 import { normalize, join, sep } from 'node:path'
 import { lstat, readFile } from 'node:fs/promises'
-import type { ExtTier } from '@shared/types/ext'
 
 /**
- * Parse + validate `garret.manifest.json` into the trusted spec, and DERIVE the tier from declared
- * capabilities (never chosen). The one place the tier + require-both rule live. See
- * docs/architecture.md § Pre-SDK resolutions (tier inference) and § 10 (reject unimplemented caps).
+ * Parse + validate `garret.manifest.json` into the trusted spec. One primitive: a Widget (no tiers).
+ * A widget optionally ships a `host` (raw Node → `hasHost`, the warning); `capabilities` is a
+ * broker-enforced functional allowlist. See docs/widget-packs-and-distribution.md.
  */
 
 export const MANIFEST_FILE = 'garret.manifest.json'
@@ -22,12 +21,9 @@ function isPackId(id: string, publisher: string): boolean {
   return parts.length >= 2 && parts.every(isSegment) && parts[0] === publisher
 }
 
-/** Capabilities Garret actually implements. Anything else (e.g. `window`) is rejected at install.
- *  `windows` (open floating sibling surfaces) is a SIMPLE cap — it does not force the full tier, so a
- *  web-tier widget may open a pure-UI floating surface. See docs/floating-surface-windows.md. */
+/** Capabilities Garret implements (a functional allowlist; anything else is rejected at install).
+ *  `process`/`fs`/`native` are accepted but are effectively implied by shipping a host. */
 const SIMPLE_CAPS = new Set(['storage', 'secrets', 'notify', 'clipboard', 'openExternal', 'process', 'fs', 'native', 'windows'])
-/** Caps that require a host process (full-access tier). */
-const SYSTEM_CAPS = new Set(['process', 'fs', 'native'])
 
 /** A secondary, non-placeable UI surface a widget can open as a floating window (same package only). */
 export interface SurfaceSpec {
@@ -80,10 +76,6 @@ function normalizeCapability(c: unknown): string | null {
   return null
 }
 
-function isSystemCap(c: string): boolean {
-  return SYSTEM_CAPS.has(c) || c === 'network:*'
-}
-
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // PACKS (multiple widgets per package). apiVersion 2 is THE manifest format (v1 single-widget
 // manifests are rejected with a repack hint). A pack has a publisher-namespaced id; each widget has
@@ -111,9 +103,9 @@ export interface WidgetSpec {
   description?: string
   icon?: string
   uiDir: string
+  /** present ⇒ the widget ships a raw-Node host (system access → the warning). */
   nodeEntry?: string
   capabilities: string[]
-  tier: ExtTier
   defaultSize?: { w: number; h: number }
   surfaces?: Record<string, SurfaceSpec>
   settingsSchema?: SettingsField[]
@@ -130,9 +122,7 @@ export interface PackSpec {
   widgets: WidgetSpec[]
   /** opt-in pack-shared settings schema (values live in `ext-data/<packId>/_shared/`). */
   shared?: { settingsSchema?: SettingsField[] }
-  /** pack tier = 'full' if ANY widget is full — drives consent gating / the danger wall. */
-  tier: ExtTier
-  /** union of widget caps — for the consent display only; enforcement is per-widget. */
+  /** union of widget caps — for display; enforcement is per-widget at the broker. */
   capabilities: string[]
 }
 
@@ -239,12 +229,6 @@ async function parseWidget(base: string, packId: string, raw: unknown): Promise<
     if (!norm) return { error: `widget "${id}": unsupported capability ${String(c)}` }
     capabilities.push(norm)
   }
-  const hasHost = nodeEntry !== undefined
-  const hasSystemCap = capabilities.some(isSystemCap)
-  if (hasHost && !hasSystemCap) return { error: `widget "${id}": a host requires a system capability (process / fs / native)` }
-  if (!hasHost && hasSystemCap) return { error: `widget "${id}": a system capability requires a host entry` }
-  const tier: ExtTier = hasHost && hasSystemCap ? 'full' : 'web'
-
   let surfaces: Record<string, SurfaceSpec> | undefined
   if (w.surfaces !== undefined) {
     const s = await parseSurfacesFor(base, uiDir, nodeEntry, w.surfaces)
@@ -264,7 +248,6 @@ async function parseWidget(base: string, packId: string, raw: unknown): Promise<
     uiDir,
     nodeEntry,
     capabilities,
-    tier,
     defaultSize: pxSize(w.defaultSize),
     surfaces,
     settingsSchema: parseSettingsSchema((w.settings as { schema?: unknown })?.schema)
@@ -305,7 +288,6 @@ export async function parsePack(dir: string): Promise<PackSpec | { error: string
   }
 
   const capabilities = [...new Set(widgets.flatMap((w) => w.capabilities))]
-  const tier: ExtTier = widgets.some((w) => w.tier === 'full') ? 'full' : 'web'
 
   let shared: PackSpec['shared']
   if (m.shared !== undefined) {
@@ -322,7 +304,6 @@ export async function parsePack(dir: string): Promise<PackSpec | { error: string
     icon: typeof m.icon === 'string' ? m.icon : undefined,
     widgets,
     shared,
-    tier,
     capabilities
   }
 }

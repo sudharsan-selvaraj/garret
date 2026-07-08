@@ -1,36 +1,32 @@
 /**
- * Unified extension types (one path for web widgets + native extensions). The tier is DERIVED from
- * declared capabilities, never chosen. See docs/architecture.md and docs/garret.html.
+ * Extension types. One primitive: a Widget. No tiers, no consent — install is one-click; the only
+ * risk signal is `hasHost` (a widget shipping a raw-Node host → a passive "can access your computer"
+ * warning). Capabilities remain a broker-enforced functional allowlist, not a consent gate. See
+ * docs/widget-packs-and-distribution.md.
  */
 
-/** web = sandboxed/limited (no host); full = raw-Node host + full system access (consent, default-OFF). */
-export type ExtTier = 'web' | 'full'
+// ── packs (multiple widgets per package) ─────────────────────────────────────────────────────────
 
-// ── v2 packs (multiple widgets per package; see docs/widget-packs-and-distribution.md) ───────────
-
-/** Per-widget summary in the pack's install record. Capability ENFORCEMENT is per widget (each host
- *  gets only its own widget's caps), even though consent is shown once per pack. */
+/** Per-widget summary in the pack's install record. Capabilities are enforced per widget at the
+ *  broker; `hasHost` marks a widget with system access (the warning). */
 export interface WidgetMeta {
   /** widget key, unique within the pack. */
   id: string
   /** the permanent identity `${packId}/${id}`. */
   fullId: string
   name: string
-  tier: ExtTier
   capabilities: string[]
   hasHost: boolean
   defaultSize?: { w: number; h: number }
 }
 
-/** HMAC-signed install record — ONE per installed pack. Pack-level version/source/enabled; the
- *  per-widget caps live in `widgets[]`. `capabilities` is the union, for display/consent only. */
+/** HMAC-signed install record — ONE per installed pack. `capabilities` is the union (for display). */
 export interface PackRecord {
   id: string
   publisher: string
   version: string
   source: string
   sha256: string
-  tier: ExtTier
   capabilities: string[]
   enabled: boolean
   installedAt: number
@@ -38,11 +34,10 @@ export interface PackRecord {
   mac?: string
 }
 
-/** Where a pack came from — drives the danger wall (git/npm full-tier) + update checks (P2). */
+/** Where a pack came from — drives update checks + the marketplace (P2). */
 export type PackSourceKind = 'local' | 'git' | 'npm' | 'registry'
 
-/** A validated pack-install proposal shown before any files are written (consent is per pack; the
- *  per-widget caps in `widgets[]` are what actually gets enforced at each host launch). */
+/** A validated pack-install proposal. Install is one-click; `hasHost` drives the passive warning. */
 export interface PackInstallPlan {
   ok: boolean
   error?: string
@@ -53,12 +48,10 @@ export interface PackInstallPlan {
   version: string
   source: string
   sourceKind: PackSourceKind
-  tier: ExtTier
+  hasHost: boolean
   capabilities: string[]
   widgets: WidgetMeta[]
   isUpdate: boolean
-  codeChanged: boolean
-  addedCapabilities: string[]
   sourceHash: string
   staged?: boolean
 }
@@ -68,7 +61,7 @@ export interface InstalledPackWidget {
   fullId: string
   id: string
   name: string
-  tier: ExtTier
+  hasHost: boolean
   capabilities: string[]
   defaultSize?: { w: number; h: number }
 }
@@ -82,7 +75,8 @@ export interface InstalledPack {
   description?: string
   icon?: string
   source: string
-  tier: ExtTier
+  /** any widget ships a host → the pack carries the host-access warning. */
+  hasHost: boolean
   capabilities: string[]
   enabled: boolean
   tampered: boolean
@@ -96,7 +90,6 @@ export interface WidgetRuntimeInfo {
   packId: string
   widgetId: string
   name: string
-  tier: ExtTier
   /** garret://<widgetId>.<packId>/ — this widget's own origin (per-widget storage partition). */
   uiOrigin: string
   uiDir: string
@@ -107,7 +100,7 @@ export interface WidgetRuntimeInfo {
   hasShared: boolean
 }
 
-/** A validated install proposal shown before any files are written. */
+/** A validated install proposal (mapped from a pack plan for the existing install IPC). */
 export interface ExtInstallPlan {
   ok: boolean
   error?: string
@@ -116,15 +109,10 @@ export interface ExtInstallPlan {
   description?: string
   version: string
   source: string
-  /** Declared capabilities (validated, normalized). The authoritative ceiling once committed. */
   capabilities: string[]
-  tier: ExtTier
+  /** widget ships a raw-Node host (system access) → passive warning. */
+  hasHost: boolean
   isUpdate: boolean
-  /** True when the code differs from a prior install (sha delta) → re-consent (full tier). */
-  codeChanged: boolean
-  /** Capabilities not in the prior consented set → re-consent if non-empty. */
-  addedCapabilities: string[]
-  /** Full-tree integrity hash at plan time (re-checked at commit). */
   sourceHash: string
   /** True when `source` is a host-owned temp dir (from a `.garret`) to clean up after. */
   staged?: boolean
@@ -139,7 +127,7 @@ export interface InstalledExtension {
   icon?: string
   source: string
   capabilities: string[]
-  tier: ExtTier
+  hasHost: boolean
   enabled: boolean
   /** Files no longer match the recorded hash (tamper/corruption) — will not run. */
   tampered: boolean
@@ -148,14 +136,13 @@ export interface InstalledExtension {
   defaultSize?: { w: number; h: number }
 }
 
-/** What the board loader needs to place + render an enabled extension. */
+/** What the board loader needs to place + render an enabled widget. */
 export interface ExtRuntimeInfo {
   id: string
   name: string
-  tier: ExtTier
-  /** garret://<id>/ — the UI origin. */
+  /** garret://<widgetId>.<packId>/ — the UI origin. */
   uiUrl: string
-  /** true if this extension has a host process (full tier). */
+  /** the widget ships a host process (system access) → passive warning. */
   hasHost: boolean
   capabilities: string[]
   defaultSize?: { w: number; h: number }

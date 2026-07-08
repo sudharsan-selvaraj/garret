@@ -54,10 +54,10 @@ export function InstallDialog({
             </ul>
           </>
         )}
-        {plan.tier === 'full' && (
+        {plan.hasHost && (
           <p className="consent-note">
-            <ShieldAlert size={13} strokeWidth={2} /> Full system access, no sandbox. It will be added
-            off — you confirm access when you turn it on.
+            <ShieldAlert size={13} strokeWidth={2} /> This widget can access your computer — files,
+            network, and programs. Only add widgets you trust.
           </p>
         )}
 
@@ -77,10 +77,9 @@ export function InstallDialog({
 /** True when turning a widget on grants access worth confirming (system access, an account, secrets,
  *  or unrestricted network). Plain network:<host> + storage stay one-click (disclosed at install). */
 export function needsEnableConsent(e: InstalledExtension): boolean {
-  return (
-    e.tier === 'full' ||
-    e.capabilities.some((c) => c.startsWith('service:') || c === 'secrets' || c === 'network:*')
-  )
+  // No consent model any more — install/enable is one-click; the host warning shows at install.
+  void e
+  return false
 }
 
 /** Enable consent, scaled to what the widget can do: full system access requires typing a phrase;
@@ -96,7 +95,7 @@ export function EnableDialog({
   onConfirm: () => void
   onCancel: () => void
 }): JSX.Element {
-  const requirePhrase = ext.tier === 'full'
+  const requirePhrase = ext.hasHost
   const [typed, setTyped] = useState('')
   const armed = !requirePhrase || typed.trim().toLowerCase() === ENABLE_PHRASE.toLowerCase()
   return (

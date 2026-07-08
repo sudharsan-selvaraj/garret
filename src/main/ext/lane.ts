@@ -66,15 +66,13 @@ async function syncUiDirs(): Promise<void> {
     (await resolveEnabledWidgetSpecs()).map((w) => ({
       id: originHost(w),
       dir: w.widget.uiDir,
-      tier: w.widget.tier,
       surfaces: surfaceDirs(w)
     }))
   )
 }
 
 // Map pack shapes onto the EXISTING IPC types so the renderer needs no change: a pack maps to one
-// InstalledExtension (id = packId), and a PackInstallPlan to one ExtInstallPlan (union caps). The
-// per-widget catalog + danger-wall UI can enrich these later without a format change.
+// InstalledExtension (id = packId), and a PackInstallPlan to one ExtInstallPlan (union caps).
 const toExtPlan = (p: PackInstallPlan): ExtInstallPlan => ({
   ok: p.ok,
   error: p.error,
@@ -84,10 +82,8 @@ const toExtPlan = (p: PackInstallPlan): ExtInstallPlan => ({
   version: p.version,
   source: p.source,
   capabilities: p.capabilities,
-  tier: p.tier,
+  hasHost: p.hasHost,
   isUpdate: p.isUpdate,
-  codeChanged: p.codeChanged,
-  addedCapabilities: p.addedCapabilities,
   sourceHash: p.sourceHash,
   staged: p.staged
 })
@@ -99,7 +95,7 @@ const toInstalled = (p: InstalledPack): InstalledExtension => ({
   icon: p.icon,
   source: p.source,
   capabilities: p.capabilities,
-  tier: p.tier,
+  hasHost: p.hasHost,
   enabled: p.enabled,
   tampered: p.tampered,
   integrityOk: p.integrityOk
@@ -129,7 +125,7 @@ export function registerExtHandlers(): void {
   registerExtProtocol(session.fromPartition(EXT_PARTITION).protocol)
   setUiResolver(async (id) => {
     const w = (await resolveEnabledWidgetSpecs()).find((x) => originHost(x) === id)
-    return w ? { dir: w.widget.uiDir, tier: w.widget.tier, surfaces: surfaceDirs(w) } : null
+    return w ? { dir: w.widget.uiDir, surfaces: surfaceDirs(w) } : null
   })
   void syncUiDirs()
 
@@ -140,7 +136,6 @@ export function registerExtHandlers(): void {
       (w): ExtRuntimeInfo => ({
         id: w.fullId,
         name: w.widget.name,
-        tier: w.widget.tier,
         uiUrl: w.uiOrigin,
         hasHost: w.widget.nodeEntry !== undefined,
         capabilities: w.capabilities,
@@ -171,7 +166,6 @@ export function registerExtHandlers(): void {
       widgetId: w.widgetId,
       fullId: w.fullId,
       instanceId,
-      tier: w.widget.tier,
       capabilities: w.capabilities // this widget's own caps (record-authoritative) — NOT the pack union
     })
     // Launch props for a spawned surface — computed BEFORE the host launch so a launch failure can't
@@ -240,7 +234,7 @@ export function registerExtHandlers(): void {
   ipcMain.handle(Channels.extSurfaceOpen, async (e, surfaceId: string, reqOpts: unknown) => {
     const opener = bound.get(e.sender.id)
     if (!opener) return { ok: false, error: 'not bound' }
-    if (opener.tier !== 'full' && !opener.capabilities.includes('windows')) {
+    if (!opener.capabilities.includes('windows')) {
       return { ok: false, error: 'missing "windows" capability' }
     }
     if (typeof surfaceId !== 'string') return { ok: false, error: 'bad surfaceId' }
