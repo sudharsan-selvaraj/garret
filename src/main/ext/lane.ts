@@ -35,6 +35,8 @@ import {
   setPackEnabled,
   removePack,
   readPackRecord,
+  readWidgetSettings,
+  writeWidgetSettings,
   type ResolvedWidget
 } from '@main/ext/install'
 
@@ -320,6 +322,13 @@ export function registerExtHandlers(): void {
     await revokePack(id)
     await removePack(id)
     await syncUiDirs()
+  })
+
+  // ── settings sidebar: per-pack detail + per-widget declarative settings ─────────────────────────
+  ipcMain.handle(Channels.extPacks, () => listInstalledPacks())
+  ipcMain.handle(Channels.extSettingsGet, (_e, fullId: string) => readWidgetSettings(fullId))
+  ipcMain.handle(Channels.extSettingsSet, async (_e, fullId: string, patch: Record<string, unknown>) => {
+    await writeWidgetSettings(fullId, patch)
   })
 
   // ── marketplace (GitHub registry index → one-click install) ─────────────────────────────────────

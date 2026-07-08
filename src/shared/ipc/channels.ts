@@ -4,7 +4,13 @@ import type { ServiceStatus } from '../types/services'
 import type { PollUpdate, WatchSpec } from '../types/poll'
 import type { Preferences } from '../types/preferences'
 import type { ClipItem } from '../types/clipboard'
-import type { ExtRuntimeInfo, ExtInstallPlan, InstalledExtension as ExtInstalled, MarketplaceEntry } from '../types/ext'
+import type {
+  ExtRuntimeInfo,
+  ExtInstallPlan,
+  InstalledExtension as ExtInstalled,
+  MarketplaceEntry,
+  InstalledPack
+} from '../types/ext'
 import type { WatchOptions } from 'garret-core'
 
 /**
@@ -47,6 +53,9 @@ export const Channels = {
   extRemove: 'ext:remove',
   extMarketplace: 'ext:marketplace', // () → MarketplaceEntry[] (fetch the GitHub registry index)
   extInstallUrl: 'ext:install-url', // (url) → install a marketplace pack's .garret (one-click)
+  extPacks: 'ext:packs', // () → InstalledPack[] (per-pack + per-widget detail, for the settings sidebar)
+  extSettingsGet: 'ext:settings-get', // (fullId) → the widget's stored settings values
+  extSettingsSet: 'ext:settings-set', // (fullId, patch) → merge settings into the widget's store
   extOpenFile: 'ext:open-file', // main → renderer: a .garret was opened from Finder
   extFlushOpenFiles: 'ext:flush-open-files', // renderer → main: drain opens queued before mount
   // --- floating surface windows (docs/floating-surface-windows.md) ---
@@ -243,6 +252,11 @@ export interface GarretApi {
     marketplace(): Promise<MarketplaceEntry[]>
     /** One-click install a marketplace pack by its prebuilt-.garret URL. */
     installUrl(url: string): Promise<{ ok: boolean; error?: string }>
+    /** Installed packs with per-widget detail + settings schemas (for the settings sidebar). */
+    packs(): Promise<InstalledPack[]>
+    /** Read / merge a widget's declarative settings values (keyed by `packId/widgetId`). */
+    settingsGet(fullId: string): Promise<Record<string, unknown>>
+    settingsSet(fullId: string, patch: Record<string, unknown>): Promise<void>
     /** A `.garret` was opened from Finder (double-click / Open With) — deliver its path. */
     onOpenFile(cb: (path: string) => void): () => void
     /** Ask main to drain any `.garret` opens queued before the renderer's listener mounted. */

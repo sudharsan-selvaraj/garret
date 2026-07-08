@@ -1,5 +1,7 @@
 import { normalize, join, sep } from 'node:path'
 import { lstat, readFile } from 'node:fs/promises'
+import type { SettingsField } from '@shared/types/ext'
+export type { SettingsField }
 
 /**
  * Parse + validate `garret.manifest.json` into the trusted spec. One primitive: a Widget (no tiers).
@@ -82,17 +84,6 @@ function normalizeCapability(c: unknown): string | null {
 // its own ui/host/caps/tier/surfaces and a permanent full id `${packId}/${widgetId}`. See
 // docs/widget-packs-and-distribution.md.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-
-/** A declarative settings field → Garret renders an isolated settings pane; values persist in the
- *  widget's (or pack `_shared`) namespace. `secret` routes to encrypted secrets, never plain config. */
-export interface SettingsField {
-  key: string
-  label: string
-  type: 'string' | 'secret' | 'number' | 'boolean' | 'select'
-  options?: string[]
-  default?: string | number | boolean
-  placeholder?: string
-}
 
 export interface WidgetSpec {
   /** widget key, unique within the pack (single segment, no dots/slashes). */

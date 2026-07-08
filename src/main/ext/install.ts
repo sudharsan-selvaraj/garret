@@ -59,6 +59,41 @@ export async function ensureSharedDataDir(packId: string): Promise<string> {
   return dir
 }
 
+// Declarative settings persist as keys in the widget's OWN storage.json — the same store the widget
+// reads via `g.storage`/`ctx.storage`. So the settings sidebar just edits those keys; the widget picks
+// them up (on next read/reload). `fullId` = `<packId>/<widgetId>`.
+function splitFullId(fullId: string): { packId: string; widgetId: string } | null {
+  const i = fullId.indexOf('/')
+  if (i < 0) return null
+  const packId = fullId.slice(0, i)
+  const widgetId = fullId.slice(i + 1)
+  return PACK_ID_RE.test(packId) && WIDGET_ID_RE.test(widgetId) ? { packId, widgetId } : null
+}
+export async function readWidgetSettings(fullId: string): Promise<Record<string, unknown>> {
+  const p = splitFullId(fullId)
+  if (!p) return {}
+  try {
+    return JSON.parse(await readFile(join(widgetDataDir(p.packId, p.widgetId), 'storage.json'), 'utf8'))
+  } catch {
+    return {}
+  }
+}
+export async function writeWidgetSettings(fullId: string, patch: Record<string, unknown>): Promise<void> {
+  const p = splitFullId(fullId)
+  if (!p) return
+  const dir = await ensureWidgetDataDir(p.packId, p.widgetId)
+  const file = join(dir, 'storage.json')
+  let cur: Record<string, unknown> = {}
+  try {
+    cur = JSON.parse(await readFile(file, 'utf8'))
+  } catch {
+    /* fresh */
+  }
+  const tmp = `${file}.${randomUUID().slice(0, 8)}.tmp`
+  await writeFile(tmp, JSON.stringify({ ...cur, ...patch }))
+  await rename(tmp, file)
+}
+
 // Pack record: HMAC anti-tamper. The signed payload binds each widget's host+caps so a local edit
 // can't silently re-scope a widget.
 function packMacPayload(r: PackRecord): string {
@@ -398,8 +433,10 @@ export async function listInstalledPacks(): Promise<InstalledPack[]> {
         name: w.name,
         hasHost: w.nodeEntry !== undefined,
         capabilities: rec.widgets.find((x) => x.id === w.id)?.capabilities ?? w.capabilities,
-        defaultSize: w.defaultSize
-      }))
+        defaultSize: w.defaultSize,
+        settingsSchema: w.settingsSchema
+      })),
+      sharedSettingsSchema: spec.shared?.settingsSchema
     })
   }
   return out

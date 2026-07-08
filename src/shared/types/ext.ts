@@ -5,6 +5,17 @@
  * docs/widget-packs-and-distribution.md.
  */
 
+/** A declarative settings field → Garret renders an isolated settings pane per widget; values persist
+ *  in the widget's (or pack `_shared`) namespace. `secret` routes to encrypted secrets. */
+export interface SettingsField {
+  key: string
+  label: string
+  type: 'string' | 'secret' | 'number' | 'boolean' | 'select'
+  options?: string[]
+  default?: string | number | boolean
+  placeholder?: string
+}
+
 // ── packs (multiple widgets per package) ─────────────────────────────────────────────────────────
 
 /** Per-widget summary in the pack's install record. Capabilities are enforced per widget at the
@@ -73,7 +84,7 @@ export interface PackInstallPlan {
   staged?: boolean
 }
 
-/** A widget within an installed pack, as the manager/catalog sees it. */
+/** A widget within an installed pack, as the manager/catalog/settings sees it. */
 export interface InstalledPackWidget {
   fullId: string
   id: string
@@ -81,6 +92,8 @@ export interface InstalledPackWidget {
   hasHost: boolean
   capabilities: string[]
   defaultSize?: { w: number; h: number }
+  /** declarative settings the settings sidebar renders for this widget. */
+  settingsSchema?: SettingsField[]
 }
 
 /** An installed pack as the manager sees it. */
@@ -99,6 +112,8 @@ export interface InstalledPack {
   tampered: boolean
   integrityOk: boolean
   widgets: InstalledPackWidget[]
+  /** opt-in pack-shared settings schema (values in ext-data/<packId>/_shared). */
+  sharedSettingsSchema?: SettingsField[]
 }
 
 /** What the board loader + host launch need for ONE placeable widget of an enabled pack. */

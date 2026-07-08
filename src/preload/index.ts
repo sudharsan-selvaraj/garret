@@ -100,6 +100,10 @@ const api: GarretApi = {
     remove: (id) => ipcRenderer.invoke(Channels.extRemove, id),
     marketplace: () => ipcRenderer.invoke(Channels.extMarketplace),
     installUrl: (url: string) => ipcRenderer.invoke(Channels.extInstallUrl, url),
+    packs: () => ipcRenderer.invoke(Channels.extPacks),
+    settingsGet: (fullId: string) => ipcRenderer.invoke(Channels.extSettingsGet, fullId),
+    settingsSet: (fullId: string, patch: Record<string, unknown>) =>
+      ipcRenderer.invoke(Channels.extSettingsSet, fullId, patch),
     onOpenFile: (cb) => {
       const listener = (_e: unknown, path: string): void => cb(path)
       ipcRenderer.on(Channels.extOpenFile, listener)
