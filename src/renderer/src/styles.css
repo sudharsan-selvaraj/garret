@@ -3036,6 +3036,20 @@ button[disabled],
   font-weight: 600;
   margin: 0;
 }
+.mw-section {
+  margin-bottom: 18px;
+}
+.mw-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-2);
+  margin: 0 0 8px;
+}
 .mw-search {
   flex: 1;
   display: flex;

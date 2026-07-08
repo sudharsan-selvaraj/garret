@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Blocks, FolderOpen, HardDriveDownload, ShieldAlert, Trash2 } from 'lucide-react'
-import type { ExtInstallPlan, InstalledExtension } from '@shared/types/ext'
+import { Blocks, FolderOpen, HardDriveDownload, ShieldAlert, Store, Trash2 } from 'lucide-react'
+import type { ExtInstallPlan, InstalledExtension, MarketplaceEntry } from '@shared/types/ext'
 import { resyncExtensions } from '@renderer/ext/loader'
 import { InstallDialog, EnableDialog, needsEnableConsent } from '@renderer/ext/ExtDialogs'
 
@@ -25,14 +25,38 @@ export function ManageExtensions(): JSX.Element {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [dev, setDev] = useState(false)
+  const [market, setMarket] = useState<MarketplaceEntry[]>([])
+  const [installing, setInstalling] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
     setExts(await window.garret.ext.listInstalled())
   }, [])
+  const loadMarket = useCallback(async () => {
+    try {
+      setMarket(await window.garret.ext.marketplace())
+    } catch {
+      /* offline / no index yet — the marketplace section just stays empty */
+    }
+  }, [])
   useEffect(() => {
     void refresh()
+    void loadMarket()
     void window.garret.store.get<boolean>(DEV_KEY).then((v) => setDev(!!v))
-  }, [refresh])
+  }, [refresh, loadMarket])
+
+  const installFromMarket = async (m: MarketplaceEntry): Promise<void> => {
+    setError(null)
+    setInstalling(m.id)
+    try {
+      const res = await window.garret.ext.installUrl(m.url)
+      if (!res.ok) return setError(res.error ?? 'Install failed')
+      await resyncExtensions()
+      await refresh()
+      await loadMarket()
+    } finally {
+      setInstalling(null)
+    }
+  }
 
   const installFrom = async (pick: () => Promise<string | null>, planFn: (p: string) => Promise<ExtInstallPlan>): Promise<void> => {
     setError(null)
@@ -101,6 +125,45 @@ export function ManageExtensions(): JSX.Element {
       <div className="mw-head">
         <h2 className="mw-title">Widgets</h2>
       </div>
+
+      {market.length > 0 && (
+        <div className="mw-section">
+          <h3 className="mw-subtitle">
+            <Store size={13} strokeWidth={1.75} /> Marketplace
+          </h3>
+          <div className="mw-list">
+            {market.map((m) => (
+              <div key={m.id} className="mw-card">
+                <div className="mw-card-main mw-card-main--static">
+                  <span className="mw-card-body">
+                    <span className="mw-card-title">
+                      {m.name} <span className="mw-ver">v{m.version}</span>
+                    </span>
+                    {m.description && <span className="mw-card-desc">{m.description}</span>}
+                    <span className="mw-card-meta">
+                      <span className="mw-cap">{m.publisher}</span>
+                      {m.hasHost && <span className="mw-chip mw-chip--danger">Accesses your computer</span>}
+                    </span>
+                  </span>
+                </div>
+                <div className="mw-card-actions" onMouseDown={(ev) => ev.stopPropagation()}>
+                  {m.installed ? (
+                    <span className="mw-chip">Installed</span>
+                  ) : (
+                    <button
+                      className="mw-install"
+                      disabled={installing === m.id}
+                      onClick={() => void installFromMarket(m)}
+                    >
+                      {installing === m.id ? 'Installing…' : 'Install'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {exts.length === 0 ? (
         <div className="mw-empty">
