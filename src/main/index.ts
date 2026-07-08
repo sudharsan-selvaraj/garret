@@ -21,6 +21,7 @@ import {
 } from '@main/windows/createWindow'
 import { registerExtScheme } from '@main/ext/protocol'
 import { registerExtHandlers, broadcastActive } from '@main/ext/lane'
+import { installBundledPacks } from '@main/ext/install'
 import { registerWcvSpike } from '@main/spike/wcvSpike'
 
 // Declare the unified extension scheme (garret://) BEFORE app `ready` (Electron requirement) so it
@@ -233,6 +234,7 @@ app.whenReady().then(() => {
   initScheduler()
 
   registerExtHandlers() // unified extension system (garret-sdk) — one path for web + native
+  void installBundledPacks() // auto-install/refresh app-shipped packs (clock, web-view, …)
   registerWcvSpike() // dev-only WebContentsView geometry spike (GARRET_WCV_SPIKE=1)
 
   win = createWindow(WINDOW_MODE)

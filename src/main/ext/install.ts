@@ -70,6 +70,7 @@ function packMacPayload(r: PackRecord): string {
     capabilities: [...r.capabilities].sort(),
     enabled: r.enabled,
     installedAt: r.installedAt,
+    bundled: !!r.bundled,
     widgets: [...r.widgets]
       .map((w) => ({ fullId: w.fullId, hasHost: w.hasHost, capabilities: [...w.capabilities].sort() }))
       .sort((a, b) => a.fullId.localeCompare(b.fullId))
@@ -221,7 +222,10 @@ export async function planPackInstall(srcDir: string, sourceKind: PackSourceKind
   }
 }
 
-export async function commitPackInstall(plan: { source: string; sourceHash: string }): Promise<{ ok: boolean; error?: string }> {
+export async function commitPackInstall(
+  plan: { source: string; sourceHash: string },
+  opts?: { bundled?: boolean }
+): Promise<{ ok: boolean; error?: string }> {
   try {
     const files = await collectFiles(plan.source)
     const hash = await hashFiles(files)
@@ -233,6 +237,7 @@ export async function commitPackInstall(plan: { source: string; sourceHash: stri
     // No consent/tiers: install is one-click → enabled. On reinstall keep the prior enabled state if
     // the record is authentic (a user who disabled it stays disabled); default enabled otherwise.
     const enabled = prior && packRecordMacOk(prior) ? prior.enabled : true
+    const bundled = opts?.bundled ?? prior?.bundled ?? false
 
     const dest = packDir(spec.id)
     const tmp = join(extDir(), `.tmp-${spec.id}-${randomUUID().slice(0, 8)}`)
@@ -252,6 +257,7 @@ export async function commitPackInstall(plan: { source: string; sourceHash: stri
       capabilities: spec.capabilities,
       enabled,
       installedAt: Date.now(),
+      bundled,
       widgets: widgetMetaFrom(spec)
     }
     record.mac = signPackRecord(record) ?? undefined
@@ -310,6 +316,7 @@ export async function setPackEnabled(packId: string, on: boolean): Promise<{ ok:
 export async function removePack(packId: string): Promise<void> {
   if (!PACK_ID_RE.test(packId)) return
   const rec = await readPackRecord(packId)
+  if (rec?.bundled) return // bundled packs ship with the app + auto-reinstall — non-removable
   // Secret keys (per widget + shared) before code/data, so a crash never orphans a decryptable secret.
   if (rec) {
     for (const w of rec.widgets) deleteExtSecretKey(w.fullId)
@@ -432,4 +439,35 @@ export async function resolveEnabledWidgetSpecs(): Promise<ResolvedWidget[]> {
     }
   }
   return out
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// Bundled packs — .garret files shipped with the app (clock, web-view, …), auto-installed on first
+// run + kept current on app update, and marked non-removable. Prod: <resources>/packs; dev: repo.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+function bundledPacksDir(): string {
+  return app.isPackaged ? join(process.resourcesPath, 'packs') : join(app.getAppPath(), 'resources', 'packs')
+}
+
+/** Install/refresh every bundled `.garret` (idempotent: skips one already installed at the same hash).
+ *  Best-effort per pack; a bad bundled pack never blocks startup. Call once after the ext lane inits. */
+export async function installBundledPacks(): Promise<void> {
+  let files: string[]
+  try {
+    files = (await readdir(bundledPacksDir())).filter((f) => f.endsWith('.garret'))
+  } catch {
+    return // no bundled packs dir (dev before any are added) → nothing to do
+  }
+  for (const f of files) {
+    const plan = await planPackInstallFromFile(join(bundledPacksDir(), f))
+    if (!plan.ok) continue
+    try {
+      const prior = await readPackRecord(plan.id)
+      if (!prior || prior.sha256 !== plan.sourceHash) {
+        await commitPackInstall({ source: plan.source, sourceHash: plan.sourceHash }, { bundled: true })
+      }
+    } finally {
+      await cleanupPackStaging(plan.source)
+    }
+  }
 }

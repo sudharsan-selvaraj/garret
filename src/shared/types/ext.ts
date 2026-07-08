@@ -30,6 +30,8 @@ export interface PackRecord {
   capabilities: string[]
   enabled: boolean
   installedAt: number
+  /** shipped with the app + auto-installed on first run → non-removable. */
+  bundled?: boolean
   widgets: WidgetMeta[]
   mac?: string
 }

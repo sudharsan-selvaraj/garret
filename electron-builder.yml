@@ -7,6 +7,12 @@ files:
   - out/**
   - native/build/Release/*.node
   - package.json
+# Bundled widget packs (clock, web-view, …) shipped with the app; auto-installed on first run.
+extraResources:
+  - from: resources/packs
+    to: packs
+    filter:
+      - '**/*.garret'
 # Native addon can't run from inside the asar — keep it unpacked.
 asarUnpack:
   - native/build/**
