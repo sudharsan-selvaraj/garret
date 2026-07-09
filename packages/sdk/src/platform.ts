@@ -27,6 +27,23 @@ export interface SecretsApi {
   set(key: string, value: string): Promise<void>
   delete(key: string): Promise<void>
 }
+/** What `g.fetch` resolves to. NOT a DOM `Response` — a Response can't cross the contextBridge from
+ *  the preload, so Garret hands back this serializable shape (primitive fields + body readers). */
+export interface GarretResponse {
+  ok: boolean
+  status: number
+  statusText: string
+  headers: Record<string, string>
+  text(): Promise<string>
+  json<T = unknown>(): Promise<T>
+  arrayBuffer(): Promise<ArrayBuffer>
+}
+/** The pack-shared store (only usable when the pack manifest declares `shared`): one namespace across
+ *  all the pack's widgets — e.g. a single credential set for a multi-widget service pack. */
+export interface SharedApi {
+  storage: StorageApi
+  secrets: SecretsApi
+}
 /** Options for opening a floating sibling surface. All fields optional; sizes in px. */
 export interface SurfaceOpenOptions {
   /** initial props delivered to the opened surface as `g.props`; structured-cloned, so each surface
@@ -78,7 +95,11 @@ export interface GarretPlatform {
   /** per-placement (isolated) — safe for cursors/state that mustn't clobber other instances. */
   instanceStorage: StorageApi
   secrets: SecretsApi
-  fetch: typeof fetch
+  /** Brokered HTTPS fetch (capability `network:<host>` / `network:*`). Resolves to a GarretResponse
+   *  (a Response-like shape — see the type), not a DOM Response. */
+  fetch(url: string, init?: RequestInit): Promise<GarretResponse>
+  /** Pack-shared store — present only when the pack declares `shared`; otherwise its calls reject. */
+  shared: SharedApi
   service<T extends ServiceClient = ServiceClient>(id: string): T
   notify(title: string, body?: string): void
   openExternal(url: string): Promise<boolean>
@@ -86,6 +107,8 @@ export interface GarretPlatform {
   /** false when the board is ambient/idle — pause rAF/animations, throttle polling. */
   active: boolean
   onActiveChange(cb: (active: boolean) => void): () => void
+  /** The host (frame ⋯→Settings) asks this widget to open its own config UI. */
+  onOpenSettings(cb: () => void): () => void
   /** Open sibling surfaces (same package) as floating windows. Requires the `windows` capability. */
   surfaces: SurfaceApi
   /** Controls for this UI's own surface window (no-op for a board-placed widget). */
@@ -143,7 +166,10 @@ export function getGarret(): GarretPlatform {
     storage: stubStorage,
     instanceStorage: stubStorage,
     secrets: stubSecrets,
-    fetch: (...a: Parameters<typeof fetch>) => fetch(...a),
+    shared: { storage: stubStorage, secrets: stubSecrets },
+    fetch: async () => {
+      throw new GarretError('UNAVAILABLE', 'g.fetch is only available inside Garret')
+    },
     service: <T extends ServiceClient = ServiceClient>(): T =>
       ({ status: nope, query: nope }) as unknown as T,
     notify: () => {},
@@ -151,6 +177,7 @@ export function getGarret(): GarretPlatform {
     clipboard: { readText: nope, writeText: nope },
     active: true,
     onActiveChange: () => () => {},
+    onOpenSettings: () => () => {},
     surfaces: { open: nope, onClosed: () => () => {} },
     window: { setAspectRatio: () => {}, resize: () => {}, close: () => {} },
     onReady: (cb: (props: Record<string, unknown>) => void) => {

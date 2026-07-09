@@ -111,6 +111,14 @@ export function useActive(): boolean {
   return active
 }
 
+/** Run `cb` when the host (frame ⋯→Settings) asks this widget to reveal its own config UI. */
+export function useOpenSettings(cb: () => void): void {
+  const g = getGarret()
+  const ref = useRef(cb)
+  ref.current = cb
+  useEffect(() => g.onOpenSettings(() => ref.current()), [g])
+}
+
 /** Launch props for a spawned surface window (`g.surfaces.open(..., { props })`). `{}` for the board
  *  surface. Delivered via `onReady`'s callback (a contextBridge getter would be frozen at exposure
  *  time), so this re-renders when the runtime binds. The `T` is an unchecked cast — validate it yourself. */
