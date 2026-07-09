@@ -119,6 +119,51 @@ export function useOpenSettings(cb: () => void): void {
   useEffect(() => g.onOpenSettings(() => ref.current()), [g])
 }
 
+/** Per-placement config backed by `g.instanceStorage` (isolated per widget instance). Loads once the
+ *  runtime binds (calls before bind reject); `set` writes through to storage + state. `loaded` gates
+ *  the first data fetch so you don't fetch with defaults before the saved config arrives. */
+export function useInstanceConfig<T extends Record<string, unknown>>(
+  defaults: T
+): { cfg: T; set: (patch: Partial<T>) => void; loaded: boolean } {
+  const g = getGarret()
+  const [cfg, setCfg] = useState<T>(defaults)
+  const [loaded, setLoaded] = useState(false)
+  useEffect(() => {
+    let alive = true
+    const unsub = g.onReady(() => {
+      void (async () => {
+        const saved: Record<string, unknown> = {}
+        await Promise.all(
+          Object.keys(defaults).map(async (k) => {
+            const v = await g.instanceStorage.get(k)
+            if (v !== undefined) saved[k] = v
+          })
+        )
+        if (alive) {
+          setCfg({ ...defaults, ...saved })
+          setLoaded(true)
+        }
+      })()
+    })
+    return () => {
+      alive = false
+      unsub()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const set = useCallback(
+    (patch: Partial<T>) => {
+      setCfg((c) => ({ ...c, ...patch }))
+      for (const [k, v] of Object.entries(patch)) void g.instanceStorage.set(k, v as unknown)
+    },
+    [g]
+  )
+  return { cfg, set, loaded }
+}
+
+// Native UI components (theme-styled markup) — SettingsPanel, StatusPill, TicketRow, etc.
+export * from './components'
+
 /** Launch props for a spawned surface window (`g.surfaces.open(..., { props })`). `{}` for the board
  *  surface. Delivered via `onReady`'s callback (a contextBridge getter would be frozen at exposure
  *  time), so this re-renders when the runtime binds. The `T` is an unchecked cast — validate it yourself. */
