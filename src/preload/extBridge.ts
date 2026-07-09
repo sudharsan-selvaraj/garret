@@ -148,18 +148,40 @@ const runtime = {
       delete: (k: string) => call('sharedSecrets', 'delete', [k])
     }
   },
-  async fetch(url: string, init?: RequestInit): Promise<Response> {
+  // NB: returns a Response-LIKE object, not a real `Response`. contextBridge can't clone a Response
+  // across the isolated-world boundary (the guest would receive a stripped `{}`), so we hand back a
+  // plain object with primitive fields + proxied text()/json()/arrayBuffer() methods (functions ARE
+  // proxied by contextBridge). Covers the common `res.ok`/`res.status`/`res.json()` usage.
+  async fetch(
+    url: string,
+    init?: RequestInit
+  ): Promise<{
+    ok: boolean
+    status: number
+    statusText: string
+    headers: Record<string, string>
+    text(): Promise<string>
+    json(): Promise<unknown>
+    arrayBuffer(): Promise<ArrayBuffer>
+  }> {
     const r = (await call('fetch', '', [url, init])) as {
       status: number
       statusText: string
       headers: Record<string, string>
       bodyBytes: Uint8Array
     }
-    return new Response(r.bodyBytes as unknown as BodyInit, {
+    const bytes = r.bodyBytes instanceof Uint8Array ? r.bodyBytes : new Uint8Array(r.bodyBytes ?? [])
+    const decode = (): string => new TextDecoder().decode(bytes)
+    return {
+      ok: r.status >= 200 && r.status < 300,
       status: r.status,
       statusText: r.statusText,
-      headers: r.headers
-    })
+      headers: r.headers,
+      text: async () => decode(),
+      json: async () => JSON.parse(decode()),
+      arrayBuffer: async () =>
+        bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
+    }
   },
   service: (id: string) => ({
     status: () => call('service', 'status', [id]),
