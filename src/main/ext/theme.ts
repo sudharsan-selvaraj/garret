@@ -105,7 +105,12 @@ body {
 
 /* ---- grouped PR list ---- */
 .pr-widget { display: flex; flex-direction: column; overflow: auto; padding: 6px; }
-.pr-group-head { padding: 7px 8px; color: var(--text-2); display: flex; align-items: center; gap: 6px; }
+.pr-group-head {
+  display: flex; align-items: center; gap: 6px; width: 100%; padding: 7px 8px;
+  background: transparent; border: none; border-radius: 7px; color: var(--text-2);
+  font: inherit; text-align: left; cursor: default;
+}
+.pr-group-head:hover { background: var(--surface-hover); }
 .pr-group-name {
   flex: 1; font-size: 11.5px; font-weight: 600; white-space: nowrap; overflow: hidden;
   text-overflow: ellipsis;
