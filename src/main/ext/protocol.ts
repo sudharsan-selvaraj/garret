@@ -1,6 +1,7 @@
 import { protocol, type Protocol, type Session } from 'electron'
 import { readFile } from 'node:fs/promises'
 import { join, normalize, sep } from 'node:path'
+import { WIDGET_THEME_CSS } from '@main/ext/theme'
 
 /**
  * `garret://<id>/<path>` serves an extension's built UI. One scheme for both tiers; the CSP differs
@@ -87,6 +88,20 @@ async function serve(request: Request): Promise<Response> {
   const url = new URL(request.url)
   const id = url.hostname
   if (!SAFE_ID.test(id)) return notFound()
+  // Reserved: the shared widget theme, served on EVERY widget origin (so `style-src 'self'` allows a
+  // `<link href="~theme.css">`). It's static + public, so cache it hard. Must come before the file/
+  // surface resolution — it's generated, not a file in the pack.
+  if (url.pathname === '/~theme.css') {
+    return new Response(WIDGET_THEME_CSS, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/css',
+        'Content-Security-Policy': csp(false),
+        'Cache-Control': 'public, max-age=86400',
+        'X-Content-Type-Options': 'nosniff'
+      }
+    })
+  }
   let entry = uiDirs.get(id)
   if (!entry && resolver) {
     const resolved = await resolver(id)
