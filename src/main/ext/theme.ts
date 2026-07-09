@@ -138,6 +138,8 @@ body {
 
 /* ---- settings / config form (System-Settings style grouped rows) ---- */
 .settings-form { display: flex; flex-direction: column; gap: 16px; padding: 10px; }
+/* Make the hidden attribute win over the flex display above (equal specificity otherwise). */
+.settings-form[hidden] { display: none; }
 .settings-item { display: flex; flex-direction: column; gap: 6px; }
 .settings-section-label { font-size: 12.5px; font-weight: 600; color: var(--text); padding: 0 2px 2px; }
 .settings-group {
