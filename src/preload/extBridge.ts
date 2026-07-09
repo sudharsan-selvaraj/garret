@@ -23,6 +23,7 @@ const SURFACE_CLOSED = 'ext:surface-closed'
 const SURFACE_SET_ASPECT = 'ext:surface-set-aspect'
 const SURFACE_RESIZE = 'ext:surface-resize'
 const SURFACE_SELF_CLOSE = 'ext:surface-self-close'
+const OPEN_SETTINGS = 'ext:open-settings'
 
 const extId = location.hostname
 const instanceId = new URLSearchParams(location.search).get('instance') || 'unknown'
@@ -81,6 +82,10 @@ ipcRenderer.on(CONFIG_CHANGE, (_e: IpcRendererEvent, c: unknown) => {
   config = c
   configCbs.forEach((cb) => cb(c))
 })
+
+// ── open-settings signal (frame ⋯→Settings → reveal the widget's own config panel) ─────────────────
+const openSettingsCbs = new Set<() => void>()
+ipcRenderer.on(OPEN_SETTINGS, () => openSettingsCbs.forEach((cb) => cb()))
 
 // ── surfaces (floating sibling windows) + launch props + ready ─────────────────────────────────────
 let launchProps: Record<string, unknown> = {}
@@ -199,6 +204,11 @@ const runtime = {
   onActiveChange(cb: (a: boolean) => void): () => void {
     activeCbs.add(cb)
     return () => activeCbs.delete(cb)
+  },
+  // The host (frame ⋯→Settings) asks this widget to open its own config UI.
+  onOpenSettings(cb: () => void): () => void {
+    openSettingsCbs.add(cb)
+    return () => openSettingsCbs.delete(cb)
   },
   surfaces,
   // Controls for THIS UI's own surface window (no-op for board widgets — main scopes it to the

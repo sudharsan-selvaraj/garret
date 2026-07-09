@@ -172,6 +172,16 @@ body {
 }
 .switch.on .switch-knob { transform: translateX(17px); }
 .settings-note { font-size: 11.5px; color: var(--text-2); line-height: 1.45; padding: 0 4px; }
+.settings-footer {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 2px 2px;
+}
+.settings-saved { font-size: 11.5px; color: var(--text-2); }
+.settings-done {
+  padding: 6px 16px; border: none; border-radius: var(--r-input); background: var(--accent);
+  color: #fff; font-size: 12.5px; font-weight: 590; cursor: default;
+}
+.settings-done:hover { filter: brightness(1.08); }
 
 /* ---- empty / error states ---- */
 .svc-empty {

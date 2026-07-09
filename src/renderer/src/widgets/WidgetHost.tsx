@@ -168,7 +168,10 @@ export function WidgetHost({ widget }: { widget: PlacedWidget }): JSX.Element {
             icon={<SlidersHorizontal size={15} strokeWidth={1.75} />}
             label="Settings"
             onClick={() => {
-              setShowSettings(true)
+              // A gx: pack renders in a sandboxed webview — the frame can't render its config, so ask
+              // the guest to reveal its own panel. First-party widgets show the in-frame Settings form.
+              if (widget.pluginId.startsWith('gx:')) void window.garret.ext.requestSettings(ctx.instanceId)
+              else setShowSettings(true)
               setMenu(null)
             }}
           />

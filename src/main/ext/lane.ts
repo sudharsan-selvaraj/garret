@@ -350,6 +350,13 @@ export function registerExtHandlers(): void {
     await writeSharedSecret(packId, key, String(value))
   })
   ipcMain.handle(Channels.extSharedSecretKeys, (_e, packId: string) => listSharedSecretKeys(packId))
+  // Frame ⋯→Settings for a gx: pack: relay to the guest bound to this placement so it can reveal its
+  // own (natively-styled) config panel. Keyed on the bind-verified instanceId, not a guessed id.
+  ipcMain.handle(Channels.extRequestSettings, (_e, instanceId: string) => {
+    for (const [wcId, b] of bound) {
+      if (b.instanceId === instanceId) webContents.fromId(wcId)?.send(Channels.extOpenSettings)
+    }
+  })
 
   // ── marketplace (GitHub registry index → one-click install) ─────────────────────────────────────
   ipcMain.handle(Channels.extMarketplace, () => fetchMarketplaceIndex())

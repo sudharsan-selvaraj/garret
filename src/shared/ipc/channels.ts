@@ -62,6 +62,8 @@ export const Channels = {
   extSharedSet: 'ext:shared-set', // (packId, patch) → merge into the pack's shared store
   extSharedSecretSet: 'ext:shared-secret-set', // (packId, key, value) → pack-shared encrypted store
   extSharedSecretKeys: 'ext:shared-secret-keys', // (packId) → names of shared secrets that are set
+  extRequestSettings: 'ext:request-settings', // renderer → main: frame ⋯→Settings for a gx: widget
+  extOpenSettings: 'ext:open-settings', // main → guest: reveal the widget's own config panel
   extOpenFile: 'ext:open-file', // main → renderer: a .garret was opened from Finder
   extFlushOpenFiles: 'ext:flush-open-files', // renderer → main: drain opens queued before mount
   // --- floating surface windows (docs/floating-surface-windows.md) ---
@@ -271,6 +273,8 @@ export interface GarretApi {
     sharedSet(packId: string, patch: Record<string, unknown>): Promise<void>
     sharedSecretSet(packId: string, key: string, value: string): Promise<void>
     sharedSecretKeys(packId: string): Promise<string[]>
+    /** Frame ⋯→Settings for a gx: pack → ask the guest (by instanceId) to reveal its config panel. */
+    requestSettings(instanceId: string): Promise<void>
     /** A `.garret` was opened from Finder (double-click / Open With) — deliver its path. */
     onOpenFile(cb: (path: string) => void): () => void
     /** Ask main to drain any `.garret` opens queued before the renderer's listener mounted. */
