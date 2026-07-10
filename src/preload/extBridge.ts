@@ -198,7 +198,8 @@ const runtime = {
     status: () => call('service', 'status', [id]),
     query: (method: string, params?: unknown) => call('service', 'query', [id, method, params])
   }),
-  notify: (title: string, body?: string) => void call('notify', '', [title, body]),
+  notify: (title: string, body?: string, opts?: { url?: string }) =>
+    void call('notify', '', [title, body, opts]),
   openExternal: (url: string) => call('openExternal', '', [url]) as Promise<boolean>,
   clipboard: {
     readText: () => call('clipboard', 'readText', []) as Promise<string>,

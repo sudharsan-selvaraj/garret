@@ -106,7 +106,9 @@ export interface GarretPlatform {
   /** Pack-shared store — present only when the pack declares `shared`; otherwise its calls reject. */
   shared: SharedApi
   service<T extends ServiceClient = ServiceClient>(id: string): T
-  notify(title: string, body?: string): void
+  /** Show a system notification. `opts.url` makes it clickable → opens the link (requires the
+   *  `openExternal` capability; ignored otherwise). */
+  notify(title: string, body?: string, opts?: { url?: string }): void
   openExternal(url: string): Promise<boolean>
   clipboard: { readText(): Promise<string>; writeText(value: string): Promise<void> }
   /** false when the board is ambient/idle — pause rAF/animations, throttle polling. */

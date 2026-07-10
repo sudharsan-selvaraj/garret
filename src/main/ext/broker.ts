@@ -186,7 +186,15 @@ export async function platformCall(
     }
     case 'notify': {
       gate(binding, 'notify')
-      if (Notification.isSupported()) new Notification({ title: String(a0), body: a1 ? String(a1) : undefined }).show()
+      if (!Notification.isSupported()) return
+      const n = new Notification({ title: String(a0), body: a1 ? String(a1) : undefined })
+      // Optional deep-link: clicking the notification opens `opts.url` — but only if the widget
+      // also holds `openExternal` (same gate as g.openExternal) and the target is http(s).
+      const url = (args[2] as { url?: string } | undefined)?.url
+      if (typeof url === 'string' && /^https?:\/\//i.test(url) && binding.capabilities.includes('openExternal')) {
+        n.on('click', () => void shell.openExternal(url))
+      }
+      n.show()
       return
     }
     case 'clipboard': {
