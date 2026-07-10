@@ -11,13 +11,22 @@ export type Tone = 'neutral' | 'accent' | 'success' | 'warning' | 'danger'
 
 /* ── states ─────────────────────────────────────────────────────────────────────────────────── */
 
-/** Centered muted message (supports rich children). */
+/** Centered muted message (supports rich children). The inner wrapper keeps the message a single flow
+ *  so it centers as one block (rather than each inline piece becoming its own flex/grid line). */
 export function EmptyState({ children }: { children: ReactNode }): JSX.Element {
-  return <div className="gx-empty">{children}</div>
+  return (
+    <div className="gx-empty">
+      <div className="gx-empty-msg">{children}</div>
+    </div>
+  )
 }
 /** Error message (in the danger color). */
 export function ErrorState({ children }: { children: ReactNode }): JSX.Element {
-  return <div className="gx-error">{children}</div>
+  return (
+    <div className="gx-error">
+      <div className="gx-empty-msg">{children}</div>
+    </div>
+  )
 }
 
 /* ── layout ─────────────────────────────────────────────────────────────────────────────────── */

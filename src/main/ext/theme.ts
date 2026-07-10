@@ -89,13 +89,19 @@ body {
    make each inline piece a separate item stacked one-per-line. A block keeps it a normal wrapped,
    centered paragraph. */
 .gx-empty {
-  display: block;
-  padding: 28px 28px 18px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px 28px;
   text-align: center;
   color: var(--gx-text-2);
   font-size: 12.5px;
   line-height: 1.6;
 }
+/* The single message wrapper: a block so its inline content (text + <b>/<code>) flows as one
+   paragraph; flex-centered by the parent. max-width keeps it a tidy column on wide widgets. */
+.gx-empty-msg { max-width: 42ch; }
 .gx-empty b { color: var(--gx-text); font-weight: 600; }
 .gx-empty code, .gx-error code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em;
