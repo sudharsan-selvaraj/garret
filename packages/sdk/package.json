@@ -25,7 +25,8 @@
   },
   "files": ["dist"],
   "scripts": {
-    "build": "tsup src/index.ts src/host.ts src/ui.ts src/react.ts --format esm,cjs --dts --clean --treeshake"
+    "build": "tsup src/index.ts src/host.ts src/ui.ts src/react.ts --format esm,cjs --dts --clean --treeshake",
+    "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
     "react": ">=18"
