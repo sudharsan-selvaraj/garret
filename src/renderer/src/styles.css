@@ -1880,15 +1880,7 @@ button[disabled],
   padding: 0 4px;
 }
 
-/* Ticket list */
-.ticket-list {
-  display: flex;
-  flex-direction: column;
-  padding: 6px;
-  gap: 1px;
-  overflow: auto;
-  height: 100%;
-}
+/* Section caption (git-repo). */
 .list-caption {
   font-size: 11px;
   font-weight: 600;
@@ -1896,73 +1888,6 @@ button[disabled],
   text-transform: uppercase;
   color: var(--text-3);
   padding: 6px 8px 4px;
-}
-.ticket {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 8px;
-  background: transparent;
-  border: none;
-  border-radius: 8px;
-  color: var(--text);
-  text-align: left;
-}
-.ticket:hover {
-  background: var(--surface-hover);
-}
-.ticket-dot {
-  flex-shrink: 0;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--text-3);
-}
-.ticket-dot.todo {
-  background: #8e8e93;
-}
-.ticket-dot.progress {
-  background: var(--accent);
-}
-.ticket-dot.done {
-  background: #30d158;
-}
-.ticket-dot.open {
-  background: var(--accent);
-}
-.ticket-dot.merged {
-  background: #bf5af2;
-}
-.ticket-dot.declined {
-  background: var(--danger);
-}
-.ticket-key {
-  flex-shrink: 0;
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--text-2);
-  font-variant-numeric: tabular-nums;
-}
-.ticket-summary {
-  flex: 1;
-  min-width: 0;
-  font-size: 12.5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.ticket-avatar {
-  flex-shrink: 0;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-}
-.ticket-status {
-  flex-shrink: 0;
-  font-size: 10.5px;
-  color: var(--text-3);
-  white-space: nowrap;
 }
 
 /* ---------- Git repos widget (multi-repo rows) ---------- */
@@ -2129,59 +2054,8 @@ button[disabled],
   background: var(--surface-hover);
   color: var(--text);
 }
-.git-row:hover .row-kebab,
-.pr-row:hover .row-kebab {
+.git-row:hover .row-kebab {
   opacity: 1;
-}
-
-/* PR row: the ticket button + an optional ⋯ mute menu beside it. */
-.pr-row {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-.pr-row .ticket {
-  flex: 1;
-  min-width: 0;
-}
-.pr-reviewers {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  flex-shrink: 0;
-}
-.pr-rev-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--text-3);
-}
-.pr-rev-dot.approved {
-  background: #30d158;
-}
-.pr-rev-dot.changes_requested {
-  background: var(--danger);
-}
-.pr-rev-dot.pending {
-  background: var(--text-3);
-}
-.pr-rev-more {
-  font-size: 10px;
-  color: var(--text-3);
-}
-.pr-unmute {
-  margin: 4px 6px 2px;
-  align-self: flex-start;
-  padding: 4px 10px;
-  font-size: 11px;
-  color: var(--text-3);
-  background: transparent;
-  border: none;
-  border-radius: 6px;
-}
-.pr-unmute:hover {
-  color: var(--text);
-  background: var(--surface-hover);
 }
 
 /* repo editor rows in settings */
@@ -2221,136 +2095,13 @@ button[disabled],
   color: var(--danger);
 }
 
-/* ---------- Grouped PR widgets (My PRs / PRs to Review) ---------- */
-.pr-widget {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  overflow: auto;
-  padding: 6px;
-}
-.pr-groups {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.pr-group-head {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  padding: 7px 8px;
-  background: transparent;
-  border: none;
-  border-radius: 7px;
-  color: var(--text-2);
-}
-.pr-group-head:hover {
-  background: var(--surface-hover);
-}
-.pr-group-name {
-  flex: 1;
-  font-size: 11.5px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-align: left;
-}
-.pr-group-count {
-  font-size: 11px;
-  color: var(--text-3);
-  font-variant-numeric: tabular-nums;
-  background: var(--surface-input);
-  border-radius: 999px;
-  padding: 1px 7px;
-}
-.pr-group-body {
-  display: flex;
-  flex-direction: column;
-  padding: 2px 0 6px 6px;
-}
-.pr-author {
-  flex-shrink: 0;
-  font-size: 11px;
-  color: var(--text-2);
-  white-space: nowrap;
-  max-width: 30%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.pr-comments {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  font-size: 11px;
-  color: var(--text-3);
-  font-variant-numeric: tabular-nums;
-}
-
-/* repos textarea + section label in settings */
+/* section label in settings (git-repo) */
 .settings-section-label {
   font-size: 12.5px;
   font-weight: 600;
   color: var(--text);
   padding: 0 2px 7px;
   display: block;
-}
-.repos-input {
-  width: 100%;
-  resize: vertical;
-  min-height: 76px;
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 0.5px solid var(--hairline);
-  border-radius: 9px;
-  color: var(--text);
-  font-size: 13px;
-  font-family: inherit;
-  line-height: 1.5;
-  outline: none;
-}
-.repos-input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.25);
-}
-
-/* Colored status pills (Jira status category / Bitbucket PR state) */
-.status-pill {
-  flex-shrink: 0;
-  max-width: 40%;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.status-pill.todo {
-  background: rgba(142, 142, 147, 0.22);
-  color: #c7c7cc;
-}
-.status-pill.progress,
-.status-pill.open {
-  background: rgba(10, 132, 255, 0.2);
-  color: #4aa8ff;
-}
-.status-pill.done {
-  background: rgba(48, 209, 88, 0.2);
-  color: #30d158;
-}
-.status-pill.merged {
-  background: rgba(191, 90, 242, 0.22);
-  color: #cd7bff;
-}
-.status-pill.declined {
-  background: rgba(255, 69, 58, 0.2);
-  color: #ff6961;
 }
 
 /* ---------- Toolbar icon button (gear) ---------- */

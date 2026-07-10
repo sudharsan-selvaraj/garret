@@ -30,24 +30,6 @@ function Row({ children }: { children: ReactNode }): JSX.Element {
     </div>
   )
 }
-function Pill({ text, color }: { text: string; color: string }): JSX.Element {
-  return (
-    <span
-      style={{
-        marginLeft: 'auto',
-        fontSize: 8.5,
-        fontWeight: 600,
-        padding: '1px 6px',
-        borderRadius: 5,
-        background: color,
-        color: '#fff',
-        whiteSpace: 'nowrap'
-      }}
-    >
-      {text}
-    </span>
-  )
-}
 
 const calendar = (): JSX.Element => (
   <>
@@ -87,13 +69,6 @@ const git = (): JSX.Element => (
       <span style={dim}>feature ↑1 ↓3</span>
     </Row>
   </>
-)
-
-const clock = (): JSX.Element => (
-  <div style={{ textAlign: 'center', padding: '14px 0' }}>
-    <div style={{ fontSize: 30, fontWeight: 600, letterSpacing: '-0.02em' }}>10:24</div>
-    <div style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 2 }}>Wednesday, June 17</div>
-  </div>
 )
 
 const notes = (): JSX.Element => (
@@ -164,7 +139,6 @@ const snippets = (): JSX.Element => (
 const PREVIEWS: Record<string, () => JSX.Element> = {
   calendar,
   'git-repo': git,
-  clock,
   notes,
   weather,
   'dev-tools': devTools,
@@ -172,7 +146,7 @@ const PREVIEWS: Record<string, () => JSX.Element> = {
 }
 
 // Small/object-like widgets stay compact instead of stretching to full width.
-const COMPACT = new Set(['clock', 'weather'])
+const COMPACT = new Set(['weather'])
 
 /**
  * Preview of a widget's layout for the Add dialog: a hand-authored mock for built-ins, or NOTHING
