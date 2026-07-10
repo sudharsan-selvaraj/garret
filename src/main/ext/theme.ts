@@ -86,10 +86,17 @@ body {
 
 /* States */
 .gx-empty {
-  height: 100%; display: grid; place-items: center; padding: 18px; text-align: center;
-  color: var(--gx-text-2); font-size: 12.5px; line-height: 1.5;
+  height: 100%;
+  /* place-CONTENT (not place-items) so the message keeps its natural width instead of shrinking to
+     the widest unbreakable token and wrapping every phrase onto its own line. */
+  display: grid; place-content: center; justify-items: center;
+  padding: 18px 28px; text-align: center; color: var(--gx-text-2); font-size: 12.5px; line-height: 1.6;
 }
 .gx-empty b { color: var(--gx-text); font-weight: 600; }
+.gx-empty code, .gx-error code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em;
+  background: var(--gx-hover); padding: 1px 5px; border-radius: 4px;
+}
 .gx-error { color: var(--gx-danger); font-size: 12px; padding: 12px 16px; line-height: 1.5; }
 
 /* Settings form — System-Settings style grouped rows. */
