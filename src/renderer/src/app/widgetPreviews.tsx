@@ -49,44 +49,6 @@ function Pill({ text, color }: { text: string; color: string }): JSX.Element {
   )
 }
 
-const jira = (): JSX.Element => (
-  <>
-    <Row>
-      <span style={dim}>PROJ-128</span>
-      <span style={ellip}>Fix flaky login test</span>
-      <Pill text="OPEN" color="#48484a" />
-    </Row>
-    <Row>
-      <span style={dim}>PROJ-094</span>
-      <span style={ellip}>Add retry to uploader</span>
-      <Pill text="IN PROGRESS" color="#0a84ff" />
-    </Row>
-    <Row>
-      <span style={dim}>PROJ-051</span>
-      <span style={ellip}>Update API docs</span>
-      <Pill text="DONE" color="#30a14e" />
-    </Row>
-  </>
-)
-
-const prs = (): JSX.Element => (
-  <>
-    <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-3)', padding: '4px 2px' }}>
-      ▾ api-service
-    </div>
-    <Row>
-      <span style={dim}>#142</span>
-      <span style={ellip}>Add pagination to search</span>
-      <Pill text="REVIEW" color="#48484a" />
-    </Row>
-    <Row>
-      <span style={dim}>#118</span>
-      <span style={ellip}>Cache user lookups</span>
-      <Pill text="APPROVED" color="#30a14e" />
-    </Row>
-  </>
-)
-
 const calendar = (): JSX.Element => (
   <>
     <div
@@ -199,34 +161,14 @@ const snippets = (): JSX.Element => (
   </div>
 )
 
-const embed = (): JSX.Element => (
-  <div
-    style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      height: 110,
-      borderRadius: 8,
-      background: 'var(--surface-input)',
-      color: 'var(--text-3)',
-      fontSize: 11
-    }}
-  >
-    embedded web view
-  </div>
-)
-
 const PREVIEWS: Record<string, () => JSX.Element> = {
-  'jira-tickets': jira,
-  'pull-requests': prs,
   calendar,
   'git-repo': git,
   clock,
   notes,
   weather,
   'dev-tools': devTools,
-  snippets,
-  'web-embed': embed
+  snippets
 }
 
 // Small/object-like widgets stay compact instead of stretching to full width.
