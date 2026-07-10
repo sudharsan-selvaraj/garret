@@ -3,15 +3,19 @@ import type { AnyWidgetPlugin, WidgetRenderProps } from '@sdk'
 import { registry } from '@renderer/plugins/registry'
 import { WidgetSurface } from '@renderer/ext/WidgetSurface'
 import { useBoardStore } from '@renderer/canvas/useBoardStore'
+import { useWidgetMenus } from '@renderer/ext/widgetMenus'
 
-// A gx: widget can set its own frame title (g.setTitle) — apply it to that placement's board config
-// so WidgetHost's header renders it. Bound once; the store call works outside React.
-let titleSyncBound = false
-function bindWidgetTitleSync(): void {
-  if (titleSyncBound) return
-  titleSyncBound = true
+// A gx: widget can drive its own frame chrome: a custom title (g.setTitle → board config) and ⋯-menu
+// commands (g.setCommands). Both are relayed from main; bind once (store calls work outside React).
+let hostSyncBound = false
+function bindHostSync(): void {
+  if (hostSyncBound) return
+  hostSyncBound = true
   window.garret.ext.onWidgetTitle((instanceId, title) =>
     useBoardStore.getState().updateConfig(instanceId, { title })
+  )
+  window.garret.ext.onWidgetCommands((instanceId, commands) =>
+    useWidgetMenus.getState().set(instanceId, commands)
   )
 }
 
@@ -44,7 +48,7 @@ async function register(): Promise<void> {
 }
 
 export async function loadExtensions(): Promise<void> {
-  bindWidgetTitleSync()
+  bindHostSync()
   try {
     await register()
   } catch (err) {

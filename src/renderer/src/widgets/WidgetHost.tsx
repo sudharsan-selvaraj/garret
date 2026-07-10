@@ -18,6 +18,9 @@ import { WidgetErrorBoundary } from '@renderer/widgets/WidgetErrorBoundary'
 import { AutoSettingsForm } from '@renderer/widgets/AutoSettingsForm'
 import { WidgetIcon } from '@renderer/widgets/WidgetIcon'
 import { ContextMenu, MenuItem, MenuRow, MenuSeparator } from '@renderer/widgets/ContextMenu'
+import { useWidgetMenus, type WidgetCommand } from '@renderer/ext/widgetMenus'
+
+const EMPTY_COMMANDS: WidgetCommand[] = []
 
 /** Preset tints for the widget color picker (macOS system palette). */
 const COLOR_PRESETS = [
@@ -64,6 +67,9 @@ export function WidgetHost({ widget }: { widget: PlacedWidget }): JSX.Element {
   const [refreshToken, setRefreshToken] = useState(0)
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
   const ctx = useWidgetContext(widget.id, refreshToken)
+  // A sandboxed pack declares its ⋯-menu commands (g.setCommands); the frame renders them generically.
+  const isExt = widget.pluginId.startsWith('gx:')
+  const extCommands = useWidgetMenus((s) => s.byId[widget.id]) ?? EMPTY_COMMANDS
 
   if (!plugin) {
     const isInstalled = widget.pluginId.startsWith('gx:')
@@ -164,28 +170,42 @@ export function WidgetHost({ widget }: { widget: PlacedWidget }): JSX.Element {
 
       {menu && (
         <ContextMenu x={menu.x} y={menu.y} onClose={() => setMenu(null)}>
-          <MenuItem
-            icon={<SlidersHorizontal size={15} strokeWidth={1.75} />}
-            label="Settings"
-            onClick={() => {
-              // A gx: pack renders in a sandboxed webview — the frame can't render its config, so ask
-              // the guest to reveal its own panel. First-party widgets show the in-frame Settings form.
-              if (widget.pluginId.startsWith('gx:')) void window.garret.ext.requestSettings(ctx.instanceId)
-              else setShowSettings(true)
-              setMenu(null)
-            }}
-          />
-          {(manifest.capabilities?.refreshable || widget.pluginId.startsWith('gx:')) && (
-            <MenuItem
-              icon={<RotateCw size={15} strokeWidth={1.75} />}
-              label="Refresh"
-              onClick={() => {
-                // gx: packs reload in their own webview via the signal; built-ins bump refreshToken.
-                if (widget.pluginId.startsWith('gx:')) void window.garret.ext.requestRefresh(ctx.instanceId)
-                else setRefreshToken((n) => n + 1)
-                setMenu(null)
-              }}
-            />
+          {/* A gx: pack renders in a sandboxed webview, so it DECLARES its ⋯-menu commands (settings,
+              refresh, whatever it wants); the frame renders them generically + dispatches back. A
+              first-party widget uses the in-frame Settings form + refreshable capability. */}
+          {isExt ? (
+            extCommands.map((c) => (
+              <MenuItem
+                key={c.id}
+                icon={<SlidersHorizontal size={15} strokeWidth={1.75} />}
+                label={c.label}
+                onClick={() => {
+                  void window.garret.ext.runCommand(ctx.instanceId, c.id)
+                  setMenu(null)
+                }}
+              />
+            ))
+          ) : (
+            <>
+              <MenuItem
+                icon={<SlidersHorizontal size={15} strokeWidth={1.75} />}
+                label="Settings"
+                onClick={() => {
+                  setShowSettings(true)
+                  setMenu(null)
+                }}
+              />
+              {manifest.capabilities?.refreshable && (
+                <MenuItem
+                  icon={<RotateCw size={15} strokeWidth={1.75} />}
+                  label="Refresh"
+                  onClick={() => {
+                    setRefreshToken((n) => n + 1)
+                    setMenu(null)
+                  }}
+                />
+              )}
+            </>
           )}
           <MenuSeparator />
           <MenuItem

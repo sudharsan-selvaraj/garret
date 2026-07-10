@@ -62,10 +62,12 @@ export const Channels = {
   extSharedSet: 'ext:shared-set', // (packId, patch) → merge into the pack's shared store
   extSharedSecretSet: 'ext:shared-secret-set', // (packId, key, value) → pack-shared encrypted store
   extSharedSecretKeys: 'ext:shared-secret-keys', // (packId) → names of shared secrets that are set
-  extRequestSettings: 'ext:request-settings', // renderer → main: frame ⋯→Settings for a gx: widget
-  extOpenSettings: 'ext:open-settings', // main → guest: reveal the widget's own config panel
-  extRequestRefresh: 'ext:request-refresh', // renderer → main: frame ⋯→Refresh for a gx: widget
-  extRefresh: 'ext:refresh', // main → guest: reload the widget's data
+  // Generic widget-command bus: a widget declares frame ⋯-menu actions; the frame renders them and
+  // dispatches the chosen one back. One mechanism for settings/refresh/anything — no per-action wiring.
+  extSetCommands: 'ext:set-commands', // guest → main: declare this placement's menu commands
+  extWidgetCommands: 'ext:widget-commands', // main → board renderer: (instanceId, commands[])
+  extRunCommand: 'ext:run-command', // renderer → main: (instanceId, commandId) — user picked a command
+  extCommand: 'ext:command', // main → guest: (commandId) run it
   extSetTitle: 'ext:set-title', // guest → main: set this placement's frame title
   extWidgetTitle: 'ext:widget-title', // main → board renderer: (instanceId, title) apply to board config
   extOpenFile: 'ext:open-file', // main → renderer: a .garret was opened from Finder
@@ -277,10 +279,10 @@ export interface GarretApi {
     sharedSet(packId: string, patch: Record<string, unknown>): Promise<void>
     sharedSecretSet(packId: string, key: string, value: string): Promise<void>
     sharedSecretKeys(packId: string): Promise<string[]>
-    /** Frame ⋯→Settings for a gx: pack → ask the guest (by instanceId) to reveal its config panel. */
-    requestSettings(instanceId: string): Promise<void>
-    /** Frame ⋯→Refresh for a gx: pack → ask the guest (by instanceId) to reload its data. */
-    requestRefresh(instanceId: string): Promise<void>
+    /** User picked a widget-declared command from the frame ⋯ menu → dispatch to the guest. */
+    runCommand(instanceId: string, commandId: string): Promise<void>
+    /** main → board renderer: a gx: widget's declared ⋯-menu commands (id + label). */
+    onWidgetCommands(cb: (instanceId: string, commands: { id: string; label: string }[]) => void): () => void
     /** main → board renderer: apply a gx: widget's self-set title to the board config. */
     onWidgetTitle(cb: (instanceId: string, title: string) => void): () => void
     /** A `.garret` was opened from Finder (double-click / Open With) — deliver its path. */

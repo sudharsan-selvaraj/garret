@@ -1,6 +1,6 @@
 {
   "name": "@garretapp/sdk",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Build extensions for Garret — one SDK for both web widgets and full-access native extensions. Host runtime (defineHost), UI client + React hooks. See docs/garret.html.",
   "license": "MIT",
   "author": "Sudharsan Selvaraj",

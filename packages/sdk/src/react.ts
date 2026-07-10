@@ -111,20 +111,19 @@ export function useActive(): boolean {
   return active
 }
 
-/** Run `cb` when the host (frame ⋯→Settings) asks this widget to reveal its own config UI. */
-export function useOpenSettings(cb: () => void): void {
+/** Declarative frame ⋯-menu: pass items with inline handlers. Registers them with the host (id +
+ *  label) and runs the matching `run` when the user picks one. One generic mechanism — no bespoke
+ *  per-action hooks. Example: `useWidgetMenu([{ id: 'refresh', label: 'Refresh', run: reload }])`. */
+export function useWidgetMenu(items: { id: string; label: string; run: () => void }[]): void {
   const g = getGarret()
-  const ref = useRef(cb)
-  ref.current = cb
-  useEffect(() => g.onOpenSettings(() => ref.current()), [g])
-}
-
-/** Run `cb` when the host (frame ⋯→Refresh) asks this widget to reload. */
-export function useRefresh(cb: () => void): void {
-  const g = getGarret()
-  const ref = useRef(cb)
-  ref.current = cb
-  useEffect(() => g.onRefresh(() => ref.current()), [g])
+  const ref = useRef(items)
+  ref.current = items
+  const key = items.map((i) => `${i.id}:${i.label}`).join('|')
+  useEffect(() => {
+    g.setCommands(ref.current.map((i) => ({ id: i.id, label: i.label })))
+    return g.onCommand((id) => ref.current.find((i) => i.id === id)?.run())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [g, key])
 }
 
 /** Per-placement config backed by `g.instanceStorage` (isolated per widget instance). Loads once the

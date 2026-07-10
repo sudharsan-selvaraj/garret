@@ -44,6 +44,11 @@ export interface SharedApi {
   storage: StorageApi
   secrets: SecretsApi
 }
+/** A frame ⋯-menu command a widget declares via `setCommands` (dispatched back through `onCommand`). */
+export interface WidgetCommand {
+  id: string
+  label: string
+}
 /** Options for opening a floating sibling surface. All fields optional; sizes in px. */
 export interface SurfaceOpenOptions {
   /** initial props delivered to the opened surface as `g.props`; structured-cloned, so each surface
@@ -107,10 +112,10 @@ export interface GarretPlatform {
   /** false when the board is ambient/idle — pause rAF/animations, throttle polling. */
   active: boolean
   onActiveChange(cb: (active: boolean) => void): () => void
-  /** The host (frame ⋯→Settings) asks this widget to open its own config UI. */
-  onOpenSettings(cb: () => void): () => void
-  /** The host (frame ⋯→Refresh) asks this widget to reload its data. */
-  onRefresh(cb: () => void): () => void
+  /** Declare the commands this widget wants in the frame's ⋯ menu. The host renders them and dispatches
+   *  the chosen one to `onCommand` — one generic mechanism (settings, refresh, or anything you invent). */
+  setCommands(commands: WidgetCommand[]): void
+  onCommand(cb: (id: string) => void): () => void
   /** Set this placement's title in the board frame header (persisted in the board config). */
   setTitle(title: string): void
   /** Open sibling surfaces (same package) as floating windows. Requires the `windows` capability. */
@@ -181,8 +186,8 @@ export function getGarret(): GarretPlatform {
     clipboard: { readText: nope, writeText: nope },
     active: true,
     onActiveChange: () => () => {},
-    onOpenSettings: () => () => {},
-    onRefresh: () => () => {},
+    setCommands: () => {},
+    onCommand: () => () => {},
     setTitle: () => {},
     surfaces: { open: nope, onClosed: () => () => {} },
     window: { setAspectRatio: () => {}, resize: () => {}, close: () => {} },

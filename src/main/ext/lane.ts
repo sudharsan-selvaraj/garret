@@ -356,14 +356,20 @@ export function registerExtHandlers(): void {
   ipcMain.handle(Channels.extSharedSecretKeys, (_e, packId: string) => listSharedSecretKeys(packId))
   // Frame ⋯→Settings for a gx: pack: relay to the guest bound to this placement so it can reveal its
   // own (natively-styled) config panel. Keyed on the bind-verified instanceId, not a guessed id.
-  ipcMain.handle(Channels.extRequestSettings, (_e, instanceId: string) => {
-    for (const [wcId, b] of bound) {
-      if (b.instanceId === instanceId) webContents.fromId(wcId)?.send(Channels.extOpenSettings)
-    }
+  // Generic command bus. Guest declares its ⋯-menu commands → relay to the board renderer (the guest's
+  // host wc) keyed on the bind-verified instanceId. User picks one → dispatch back to the guest.
+  ipcMain.handle(Channels.extSetCommands, (e, commands: { id: string; label: string }[]) => {
+    const b = bound.get(e.sender.id)
+    if (!b) return
+    const safe = (Array.isArray(commands) ? commands : [])
+      .filter((c) => c && typeof c.id === 'string' && typeof c.label === 'string')
+      .slice(0, 12)
+      .map((c) => ({ id: c.id, label: c.label.slice(0, 40) }))
+    e.sender.hostWebContents?.send(Channels.extWidgetCommands, b.instanceId, safe)
   })
-  ipcMain.handle(Channels.extRequestRefresh, (_e, instanceId: string) => {
+  ipcMain.handle(Channels.extRunCommand, (_e, instanceId: string, commandId: string) => {
     for (const [wcId, b] of bound) {
-      if (b.instanceId === instanceId) webContents.fromId(wcId)?.send(Channels.extRefresh)
+      if (b.instanceId === instanceId) webContents.fromId(wcId)?.send(Channels.extCommand, commandId)
     }
   })
   // A gx: guest sets its own frame title → relay to the board renderer (the guest's host wc) which

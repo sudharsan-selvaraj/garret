@@ -23,8 +23,8 @@ const SURFACE_CLOSED = 'ext:surface-closed'
 const SURFACE_SET_ASPECT = 'ext:surface-set-aspect'
 const SURFACE_RESIZE = 'ext:surface-resize'
 const SURFACE_SELF_CLOSE = 'ext:surface-self-close'
-const OPEN_SETTINGS = 'ext:open-settings'
-const REFRESH = 'ext:refresh'
+const SET_COMMANDS = 'ext:set-commands'
+const COMMAND = 'ext:command'
 const SET_TITLE = 'ext:set-title'
 
 const extId = location.hostname
@@ -85,11 +85,9 @@ ipcRenderer.on(CONFIG_CHANGE, (_e: IpcRendererEvent, c: unknown) => {
   configCbs.forEach((cb) => cb(c))
 })
 
-// ── open-settings / refresh signals (frame ⋯ menu → the widget) ─────────────────────────────────
-const openSettingsCbs = new Set<() => void>()
-ipcRenderer.on(OPEN_SETTINGS, () => openSettingsCbs.forEach((cb) => cb()))
-const refreshCbs = new Set<() => void>()
-ipcRenderer.on(REFRESH, () => refreshCbs.forEach((cb) => cb()))
+// ── command bus (frame ⋯ menu → the widget) ──────────────────────────────────────────────────────
+const commandCbs = new Set<(id: string) => void>()
+ipcRenderer.on(COMMAND, (_e: IpcRendererEvent, id: string) => commandCbs.forEach((cb) => cb(id)))
 
 // ── surfaces (floating sibling windows) + launch props + ready ─────────────────────────────────────
 let launchProps: Record<string, unknown> = {}
@@ -209,15 +207,12 @@ const runtime = {
     activeCbs.add(cb)
     return () => activeCbs.delete(cb)
   },
-  // The host (frame ⋯→Settings) asks this widget to open its own config UI.
-  onOpenSettings(cb: () => void): () => void {
-    openSettingsCbs.add(cb)
-    return () => openSettingsCbs.delete(cb)
-  },
-  // The host (frame ⋯→Refresh) asks this widget to reload its data.
-  onRefresh(cb: () => void): () => void {
-    refreshCbs.add(cb)
-    return () => refreshCbs.delete(cb)
+  // Declare the commands this widget wants in the frame's ⋯ menu (id + label). The frame renders them
+  // and dispatches the chosen one to onCommand — one generic mechanism for settings/refresh/anything.
+  setCommands: (commands: { id: string; label: string }[]) => void ipcRenderer.invoke(SET_COMMANDS, commands),
+  onCommand(cb: (id: string) => void): () => void {
+    commandCbs.add(cb)
+    return () => commandCbs.delete(cb)
   },
   // Set this placement's title in the board frame header (persisted in the board config).
   setTitle: (title: string) => void ipcRenderer.invoke(SET_TITLE, title),
