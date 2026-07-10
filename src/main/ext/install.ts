@@ -570,15 +570,17 @@ function bundledPacksDir(): string {
 /** Install/refresh every bundled `.garret` (idempotent: skips one already installed at the same hash).
  *  Best-effort per pack; a bad bundled pack never blocks startup. Call once after the ext lane inits. */
 export async function installBundledPacks(): Promise<void> {
-  let files: string[]
+  let files: string[] = []
   try {
     files = (await readdir(bundledPacksDir())).filter((f) => f.endsWith('.garret'))
   } catch {
-    return // no bundled packs dir (dev before any are added) → nothing to do
+    /* no bundled packs dir (dev before any are added) — still reconcile below */
   }
+  const shipped = new Set<string>()
   for (const f of files) {
     const plan = await planPackInstallFromFile(join(bundledPacksDir(), f))
     if (!plan.ok) continue
+    shipped.add(plan.id)
     try {
       const prior = await readPackRecord(plan.id)
       if (!prior || prior.sha256 !== plan.sourceHash) {
@@ -587,5 +589,16 @@ export async function installBundledPacks(): Promise<void> {
     } finally {
       await cleanupPackStaging(plan.source)
     }
+  }
+  // Reconcile: a pack previously bundled but no longer shipped (removed from the bundled dir) becomes
+  // a normal, user-managed pack — keep its code/data, just drop the non-removable `bundled` flag so
+  // the user can disable/remove it. Re-sign since `bundled` is in the record MAC.
+  for (const p of await listInstalledPacks()) {
+    if (shipped.has(p.id)) continue
+    const rec = await readPackRecord(p.id)
+    if (!rec?.bundled) continue
+    rec.bundled = false
+    rec.mac = signPackRecord(rec) ?? undefined
+    await writePackRecordAtomic(p.id, rec)
   }
 }
