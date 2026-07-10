@@ -88,19 +88,21 @@ body {
 /* Block flow (NOT grid/flex): the message is inline content — text + <b>/<code> — and grid/flex would
    make each inline piece a separate item stacked one-per-line. A block keeps it a normal wrapped,
    centered paragraph. */
+/* Default: BLOCK flow — the message (text + <b>/<code>) flows as one wrapped, centered paragraph.
+   Never grid/flex at this level or each inline piece becomes its own line. */
 .gx-empty {
   height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 18px 28px;
+  display: block;
+  padding: 22px 28px;
   text-align: center;
   color: var(--gx-text-2);
   font-size: 12.5px;
   line-height: 1.6;
 }
-/* The single message wrapper: a block so its inline content (text + <b>/<code>) flows as one
-   paragraph; flex-centered by the parent. max-width keeps it a tidy column on wide widgets. */
+/* When the message is wrapped in a single .gx-empty-msg (SDK EmptyState/ErrorState), flex-center it
+   vertically too — safe because there's exactly one child, so nothing splits. Old unwrapped packs
+   keep the block-flow paragraph above (top-aligned, still correct). */
+.gx-empty:has(> .gx-empty-msg) { display: flex; align-items: center; justify-content: center; }
 .gx-empty-msg { max-width: 42ch; }
 .gx-empty b { color: var(--gx-text); font-weight: 600; }
 .gx-empty code, .gx-error code {
