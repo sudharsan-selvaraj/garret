@@ -25,7 +25,9 @@ export const WIDGET_THEME_CSS = `
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
 body {
-  background: #1c1c1e;
+  /* Transparent by default so the Garret frame's tint/opacity shows through the whole widget. A
+     widget that wants its own surface sets its own body background. */
+  background: transparent;
   color: var(--gx-text);
   font-family: var(--gx-font);
   font-size: 13px;

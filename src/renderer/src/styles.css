@@ -457,7 +457,9 @@ button[disabled],
   height: 100%;
   border: none;
   display: inline-flex;
-  background: #fff;
+  /* Transparent so a pack guest's transparent body lets the frame's tint/opacity show through the
+     whole widget. Guests that want their own background paint it themselves (e.g. Sticky Note). */
+  background: transparent;
 }
 /* Floating surface window: an optional host titlebar (drag/close) + the guest below it. */
 .surface-root {
