@@ -119,6 +119,14 @@ export function useOpenSettings(cb: () => void): void {
   useEffect(() => g.onOpenSettings(() => ref.current()), [g])
 }
 
+/** Run `cb` when the host (frame ⋯→Refresh) asks this widget to reload. */
+export function useRefresh(cb: () => void): void {
+  const g = getGarret()
+  const ref = useRef(cb)
+  ref.current = cb
+  useEffect(() => g.onRefresh(() => ref.current()), [g])
+}
+
 /** Per-placement config backed by `g.instanceStorage` (isolated per widget instance). Loads once the
  *  runtime binds (calls before bind reject); `set` writes through to storage + state. `loaded` gates
  *  the first data fetch so you don't fetch with defaults before the saved config arrives. */

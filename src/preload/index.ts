@@ -114,6 +114,12 @@ const api: GarretApi = {
       ipcRenderer.invoke(Channels.extSharedSecretSet, packId, key, value),
     sharedSecretKeys: (packId: string) => ipcRenderer.invoke(Channels.extSharedSecretKeys, packId),
     requestSettings: (instanceId: string) => ipcRenderer.invoke(Channels.extRequestSettings, instanceId),
+    requestRefresh: (instanceId: string) => ipcRenderer.invoke(Channels.extRequestRefresh, instanceId),
+    onWidgetTitle: (cb: (instanceId: string, title: string) => void) => {
+      const listener = (_e: unknown, id: string, title: string): void => cb(id, title)
+      ipcRenderer.on(Channels.extWidgetTitle, listener)
+      return () => ipcRenderer.removeListener(Channels.extWidgetTitle, listener)
+    },
     onOpenFile: (cb) => {
       const listener = (_e: unknown, path: string): void => cb(path)
       ipcRenderer.on(Channels.extOpenFile, listener)

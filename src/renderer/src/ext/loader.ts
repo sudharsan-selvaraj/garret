@@ -2,6 +2,18 @@ import { createElement } from 'react'
 import type { AnyWidgetPlugin, WidgetRenderProps } from '@sdk'
 import { registry } from '@renderer/plugins/registry'
 import { WidgetSurface } from '@renderer/ext/WidgetSurface'
+import { useBoardStore } from '@renderer/canvas/useBoardStore'
+
+// A gx: widget can set its own frame title (g.setTitle) — apply it to that placement's board config
+// so WidgetHost's header renders it. Bound once; the store call works outside React.
+let titleSyncBound = false
+function bindWidgetTitleSync(): void {
+  if (titleSyncBound) return
+  titleSyncBound = true
+  window.garret.ext.onWidgetTitle((instanceId, title) =>
+    useBoardStore.getState().updateConfig(instanceId, { title })
+  )
+}
 
 /**
  * Register enabled extensions (both tiers) as placeable plugins — one loader for the unified path.
@@ -32,6 +44,7 @@ async function register(): Promise<void> {
 }
 
 export async function loadExtensions(): Promise<void> {
+  bindWidgetTitleSync()
   try {
     await register()
   } catch (err) {

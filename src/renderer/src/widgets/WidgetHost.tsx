@@ -175,12 +175,14 @@ export function WidgetHost({ widget }: { widget: PlacedWidget }): JSX.Element {
               setMenu(null)
             }}
           />
-          {manifest.capabilities?.refreshable && (
+          {(manifest.capabilities?.refreshable || widget.pluginId.startsWith('gx:')) && (
             <MenuItem
               icon={<RotateCw size={15} strokeWidth={1.75} />}
               label="Refresh"
               onClick={() => {
-                setRefreshToken((n) => n + 1)
+                // gx: packs reload in their own webview via the signal; built-ins bump refreshToken.
+                if (widget.pluginId.startsWith('gx:')) void window.garret.ext.requestRefresh(ctx.instanceId)
+                else setRefreshToken((n) => n + 1)
                 setMenu(null)
               }}
             />

@@ -64,6 +64,10 @@ export const Channels = {
   extSharedSecretKeys: 'ext:shared-secret-keys', // (packId) → names of shared secrets that are set
   extRequestSettings: 'ext:request-settings', // renderer → main: frame ⋯→Settings for a gx: widget
   extOpenSettings: 'ext:open-settings', // main → guest: reveal the widget's own config panel
+  extRequestRefresh: 'ext:request-refresh', // renderer → main: frame ⋯→Refresh for a gx: widget
+  extRefresh: 'ext:refresh', // main → guest: reload the widget's data
+  extSetTitle: 'ext:set-title', // guest → main: set this placement's frame title
+  extWidgetTitle: 'ext:widget-title', // main → board renderer: (instanceId, title) apply to board config
   extOpenFile: 'ext:open-file', // main → renderer: a .garret was opened from Finder
   extFlushOpenFiles: 'ext:flush-open-files', // renderer → main: drain opens queued before mount
   // --- floating surface windows (docs/floating-surface-windows.md) ---
@@ -275,6 +279,10 @@ export interface GarretApi {
     sharedSecretKeys(packId: string): Promise<string[]>
     /** Frame ⋯→Settings for a gx: pack → ask the guest (by instanceId) to reveal its config panel. */
     requestSettings(instanceId: string): Promise<void>
+    /** Frame ⋯→Refresh for a gx: pack → ask the guest (by instanceId) to reload its data. */
+    requestRefresh(instanceId: string): Promise<void>
+    /** main → board renderer: apply a gx: widget's self-set title to the board config. */
+    onWidgetTitle(cb: (instanceId: string, title: string) => void): () => void
     /** A `.garret` was opened from Finder (double-click / Open With) — deliver its path. */
     onOpenFile(cb: (path: string) => void): () => void
     /** Ask main to drain any `.garret` opens queued before the renderer's listener mounted. */

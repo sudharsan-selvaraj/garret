@@ -24,6 +24,8 @@ const SURFACE_SET_ASPECT = 'ext:surface-set-aspect'
 const SURFACE_RESIZE = 'ext:surface-resize'
 const SURFACE_SELF_CLOSE = 'ext:surface-self-close'
 const OPEN_SETTINGS = 'ext:open-settings'
+const REFRESH = 'ext:refresh'
+const SET_TITLE = 'ext:set-title'
 
 const extId = location.hostname
 const instanceId = new URLSearchParams(location.search).get('instance') || 'unknown'
@@ -83,9 +85,11 @@ ipcRenderer.on(CONFIG_CHANGE, (_e: IpcRendererEvent, c: unknown) => {
   configCbs.forEach((cb) => cb(c))
 })
 
-// ── open-settings signal (frame ⋯→Settings → reveal the widget's own config panel) ─────────────────
+// ── open-settings / refresh signals (frame ⋯ menu → the widget) ─────────────────────────────────
 const openSettingsCbs = new Set<() => void>()
 ipcRenderer.on(OPEN_SETTINGS, () => openSettingsCbs.forEach((cb) => cb()))
+const refreshCbs = new Set<() => void>()
+ipcRenderer.on(REFRESH, () => refreshCbs.forEach((cb) => cb()))
 
 // ── surfaces (floating sibling windows) + launch props + ready ─────────────────────────────────────
 let launchProps: Record<string, unknown> = {}
@@ -210,6 +214,13 @@ const runtime = {
     openSettingsCbs.add(cb)
     return () => openSettingsCbs.delete(cb)
   },
+  // The host (frame ⋯→Refresh) asks this widget to reload its data.
+  onRefresh(cb: () => void): () => void {
+    refreshCbs.add(cb)
+    return () => refreshCbs.delete(cb)
+  },
+  // Set this placement's title in the board frame header (persisted in the board config).
+  setTitle: (title: string) => void ipcRenderer.invoke(SET_TITLE, title),
   surfaces,
   // Controls for THIS UI's own surface window (no-op for board widgets — main scopes it to the
   // embedder). A surface uses this once it knows its content size (e.g. the device resolution).

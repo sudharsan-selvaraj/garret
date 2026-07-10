@@ -361,6 +361,17 @@ export function registerExtHandlers(): void {
       if (b.instanceId === instanceId) webContents.fromId(wcId)?.send(Channels.extOpenSettings)
     }
   })
+  ipcMain.handle(Channels.extRequestRefresh, (_e, instanceId: string) => {
+    for (const [wcId, b] of bound) {
+      if (b.instanceId === instanceId) webContents.fromId(wcId)?.send(Channels.extRefresh)
+    }
+  })
+  // A gx: guest sets its own frame title → relay to the board renderer (the guest's host wc) which
+  // applies it to that placement's board config. Keyed on the bind-verified instanceId.
+  ipcMain.handle(Channels.extSetTitle, (e, title: string) => {
+    const b = bound.get(e.sender.id)
+    if (b) e.sender.hostWebContents?.send(Channels.extWidgetTitle, b.instanceId, String(title ?? '').slice(0, 120))
+  })
 
   // ── marketplace (GitHub registry index → one-click install) ─────────────────────────────────────
   ipcMain.handle(Channels.extMarketplace, () => fetchMarketplaceIndex())

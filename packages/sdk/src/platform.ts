@@ -109,6 +109,10 @@ export interface GarretPlatform {
   onActiveChange(cb: (active: boolean) => void): () => void
   /** The host (frame ⋯→Settings) asks this widget to open its own config UI. */
   onOpenSettings(cb: () => void): () => void
+  /** The host (frame ⋯→Refresh) asks this widget to reload its data. */
+  onRefresh(cb: () => void): () => void
+  /** Set this placement's title in the board frame header (persisted in the board config). */
+  setTitle(title: string): void
   /** Open sibling surfaces (same package) as floating windows. Requires the `windows` capability. */
   surfaces: SurfaceApi
   /** Controls for this UI's own surface window (no-op for a board-placed widget). */
@@ -178,6 +182,8 @@ export function getGarret(): GarretPlatform {
     active: true,
     onActiveChange: () => () => {},
     onOpenSettings: () => () => {},
+    onRefresh: () => () => {},
+    setTitle: () => {},
     surfaces: { open: nope, onClosed: () => () => {} },
     window: { setAspectRatio: () => {}, resize: () => {}, close: () => {} },
     onReady: (cb: (props: Record<string, unknown>) => void) => {
