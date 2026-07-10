@@ -147,7 +147,7 @@ export function ManageExtensions(): JSX.Element {
                   </span>
                 </div>
                 <div className="mw-card-actions" onMouseDown={(ev) => ev.stopPropagation()}>
-                  {m.installed ? (
+                  {m.installed && m.installedVersion === m.version ? (
                     <span className="mw-chip">Installed</span>
                   ) : (
                     <button
@@ -155,7 +155,13 @@ export function ManageExtensions(): JSX.Element {
                       disabled={installing === m.id}
                       onClick={() => void installFromMarket(m)}
                     >
-                      {installing === m.id ? 'Installing…' : 'Install'}
+                      {installing === m.id
+                        ? m.installed
+                          ? 'Updating…'
+                          : 'Installing…'
+                        : m.installed
+                          ? `Update → v${m.version}`
+                          : 'Install'}
                     </button>
                   )}
                 </div>

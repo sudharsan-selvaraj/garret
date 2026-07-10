@@ -63,6 +63,8 @@ export interface MarketplaceEntry {
   hasHost: boolean
   /** already installed locally. */
   installed: boolean
+  /** the locally-installed version, if installed — lets the UI offer "Update" when it differs. */
+  installedVersion?: string
 }
 
 /** A validated pack-install proposal. Install is one-click; `hasHost` drives the passive warning. */

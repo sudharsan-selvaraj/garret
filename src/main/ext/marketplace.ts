@@ -23,7 +23,7 @@ export async function fetchMarketplaceIndex(): Promise<MarketplaceEntry[]> {
     : Array.isArray((raw as { widgets?: unknown }).widgets)
       ? (raw as { widgets: unknown[] }).widgets
       : []
-  const installed = new Set((await listInstalledPacks()).map((p) => p.id))
+  const installedVersions = new Map((await listInstalledPacks()).map((p) => [p.id, p.version]))
   const out: MarketplaceEntry[] = []
   for (const e of list) {
     const x = (e ?? {}) as Record<string, unknown>
@@ -38,7 +38,8 @@ export async function fetchMarketplaceIndex(): Promise<MarketplaceEntry[]> {
       version: typeof x.version === 'string' ? x.version : '0.0.0',
       url: x.url,
       hasHost: x.hasHost === true,
-      installed: installed.has(x.id)
+      installed: installedVersions.has(x.id),
+      installedVersion: installedVersions.get(x.id)
     })
   }
   return out
