@@ -97,7 +97,9 @@ async function serve(request: Request): Promise<Response> {
       headers: {
         'Content-Type': 'text/css',
         'Content-Security-Policy': csp(false),
-        'Cache-Control': 'public, max-age=86400',
+        // Never cache: the theme ships WITH the app, so a cached copy would pin an old look after an
+        // app update. It's a tiny same-origin (garret://) asset — refetching per load is free.
+        'Cache-Control': 'no-store',
         'X-Content-Type-Options': 'nosniff'
       }
     })

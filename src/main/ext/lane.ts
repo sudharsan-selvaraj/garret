@@ -133,7 +133,11 @@ async function revokePack(packId: string): Promise<void> {
 
 export function registerExtHandlers(): void {
   registerExtProtocol(session.defaultSession.protocol)
-  registerExtProtocol(session.fromPartition(EXT_PARTITION).protocol)
+  const extSession = session.fromPartition(EXT_PARTITION)
+  registerExtProtocol(extSession.protocol)
+  // Drop any stale HTTP-cached widget assets (all local garret:// → refetch is instant). Notably
+  // evicts a previously long-cached ~theme.css so app-shipped theme updates take effect on launch.
+  void extSession.clearCache()
   setUiResolver(async (id) => {
     const w = (await resolveEnabledWidgetSpecs()).find((x) => originHost(x) === id)
     return w ? { dir: w.widget.uiDir, surfaces: surfaceDirs(w), embed: w.capabilities.includes('embed') } : null
