@@ -85,12 +85,16 @@ body {
 }
 
 /* States */
+/* Block flow (NOT grid/flex): the message is inline content — text + <b>/<code> — and grid/flex would
+   make each inline piece a separate item stacked one-per-line. A block keeps it a normal wrapped,
+   centered paragraph. */
 .gx-empty {
-  height: 100%;
-  /* place-CONTENT (not place-items) so the message keeps its natural width instead of shrinking to
-     the widest unbreakable token and wrapping every phrase onto its own line. */
-  display: grid; place-content: center; justify-items: center;
-  padding: 18px 28px; text-align: center; color: var(--gx-text-2); font-size: 12.5px; line-height: 1.6;
+  display: block;
+  padding: 28px 28px 18px;
+  text-align: center;
+  color: var(--gx-text-2);
+  font-size: 12.5px;
+  line-height: 1.6;
 }
 .gx-empty b { color: var(--gx-text); font-weight: 600; }
 .gx-empty code, .gx-error code {
