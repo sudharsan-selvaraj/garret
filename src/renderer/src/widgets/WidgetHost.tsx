@@ -1,5 +1,6 @@
 import { useState, type CSSProperties } from 'react'
 import {
+  Circle,
   Copy,
   CornerUpRight,
   Lock,
@@ -21,6 +22,13 @@ import { ContextMenu, MenuItem, MenuRow, MenuSeparator } from '@renderer/widgets
 import { useWidgetMenus, type WidgetCommand } from '@renderer/ext/widgetMenus'
 
 const EMPTY_COMMANDS: WidgetCommand[] = []
+
+/** Default ⋯-menu icons for common declared-command ids; unknown ids fall back to a neutral icon.
+ *  A widget just declares {id,label}; the frame owns the iconography (design-system convention). */
+function commandIcon(id: string): JSX.Element {
+  const Icon = id === 'refresh' ? RotateCw : id === 'settings' ? SlidersHorizontal : Circle
+  return <Icon size={15} strokeWidth={1.75} />
+}
 
 /** Preset tints for the widget color picker (macOS system palette). */
 const COLOR_PRESETS = [
@@ -177,7 +185,7 @@ export function WidgetHost({ widget }: { widget: PlacedWidget }): JSX.Element {
             extCommands.map((c) => (
               <MenuItem
                 key={c.id}
-                icon={<SlidersHorizontal size={15} strokeWidth={1.75} />}
+                icon={commandIcon(c.id)}
                 label={c.label}
                 onClick={() => {
                   void window.garret.ext.runCommand(ctx.instanceId, c.id)
