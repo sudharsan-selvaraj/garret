@@ -43,6 +43,10 @@ ipcRenderer.on(HOST_FRAME, (_e: IpcRendererEvent, msg: WireMessage) => {
 })
 let bound = false
 const sendQueue: WireMessage[] = []
+// Latest declared commands / title, buffered until bind — a call before bind would otherwise be
+// dropped by main (no binding yet) and never re-sent (e.g. useWidgetMenu runs on mount, pre-bind).
+let pendingCommands: { id: string; label: string }[] | null = null
+let pendingTitle: string | null = null
 const hostTransport = {
   send(msg: WireMessage): void {
     if (bound) ipcRenderer.send(HOST_SEND, msg)
@@ -209,13 +213,19 @@ const runtime = {
   },
   // Declare the commands this widget wants in the frame's ⋯ menu (id + label). The frame renders them
   // and dispatches the chosen one to onCommand — one generic mechanism for settings/refresh/anything.
-  setCommands: (commands: { id: string; label: string }[]) => void ipcRenderer.invoke(SET_COMMANDS, commands),
+  setCommands: (commands: { id: string; label: string }[]) => {
+    pendingCommands = commands
+    if (bound) void ipcRenderer.invoke(SET_COMMANDS, commands)
+  },
   onCommand(cb: (id: string) => void): () => void {
     commandCbs.add(cb)
     return () => commandCbs.delete(cb)
   },
   // Set this placement's title in the board frame header (persisted in the board config).
-  setTitle: (title: string) => void ipcRenderer.invoke(SET_TITLE, title),
+  setTitle: (title: string) => {
+    pendingTitle = title
+    if (bound) void ipcRenderer.invoke(SET_TITLE, title)
+  },
   surfaces,
   // Controls for THIS UI's own surface window (no-op for board widgets — main scopes it to the
   // embedder). A surface uses this once it knows its content size (e.g. the device resolution).
@@ -263,6 +273,9 @@ void (async () => {
     if (res?.ok) {
       bound = true
       for (const msg of sendQueue.splice(0)) ipcRenderer.send(HOST_SEND, msg)
+      // Flush anything declared before bind (commands/title) that main would have dropped.
+      if (pendingCommands) void ipcRenderer.invoke(SET_COMMANDS, pendingCommands)
+      if (pendingTitle != null) void ipcRenderer.invoke(SET_TITLE, pendingTitle)
     }
   } catch {
     /* not bound — host calls will surface UNAVAILABLE via the SDK client */
