@@ -109,7 +109,7 @@ export function startCalendarMonitor(): void {
   timer = setInterval(() => void tick(), intervalMs)
 }
 
-export function stopCalendarMonitor(): void {
+function stopCalendarMonitor(): void {
   if (timer) clearInterval(timer)
   timer = null
   clearReminders()

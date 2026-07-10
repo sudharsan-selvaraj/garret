@@ -21,13 +21,13 @@ interface Group {
 
 /** Dev-tier external widgets are namespaced `ext:` by the registry. Everything without a known
  *  third-party prefix is a first-party built-in. */
-export function isThirdParty(w: AnyWidgetPlugin): boolean {
+function isThirdParty(w: AnyWidgetPlugin): boolean {
   return w.manifest.id.startsWith('ext:')
 }
 
 /** Unified installed widgets (`gx:`) — a widget is a widget; web/native is not a user-facing
  *  category. */
-export function isExtWidget(w: AnyWidgetPlugin): boolean {
+function isExtWidget(w: AnyWidgetPlugin): boolean {
   return w.manifest.id.startsWith('gx:')
 }
 

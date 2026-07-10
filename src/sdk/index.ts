@@ -19,7 +19,6 @@ export const services = sdk.services
 export const openExternal = sdk.openExternal
 
 export { WidgetStatus } from 'garret-widget-sdk'
-export type { PolledState } from 'garret-widget-sdk'
 
 // Pure surface (types, field builders, defaults, validators, defineWidget,
 // canonicalKey, GarretClient, …) comes straight from core.

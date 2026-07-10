@@ -9,14 +9,14 @@ import { WIDGET_THEME_CSS } from '@main/ext/theme'
  * and the host holds the real power anyway). `connect-src 'none'` in both — network goes through the
  * broker (`g.fetch`) or the host, never the UI directly.
  */
-export const EXT_SCHEME = 'garret'
+const EXT_SCHEME = 'garret'
 /** The session partition every extension guest webview loads under (board + surface windows). The
  *  single source of truth — imported by the lane + surface-window manager (renderer hardcodes it). */
 export const EXT_PARTITION = 'persist:garret-ext'
 /** The isolated session a widget's embedded external `<webview>` (`embed` capability) loads under —
  *  never the ext partition, so untrusted sites can't touch widget storage/cookies. No Garret preload. */
 export const EXT_EMBED_PARTITION = 'persist:garret-embed'
-export const extSchemePrivilege = {
+const extSchemePrivilege = {
   scheme: EXT_SCHEME,
   privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: false }
 }

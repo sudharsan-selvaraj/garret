@@ -95,7 +95,7 @@ function v6Blocked(raw: string): boolean {
 }
 
 /** True if an IP literal is in a blocked (private/local) range — unknown forms are blocked. */
-export function isBlockedIp(ip: string): boolean {
+function isBlockedIp(ip: string): boolean {
   const kind = isIP(ip)
   if (kind === 4) return v4Blocked(ip)
   if (kind === 6) return v6Blocked(ip)
@@ -103,7 +103,7 @@ export function isBlockedIp(ip: string): boolean {
 }
 
 /** A host is allowed if it equals, or is a subdomain of, a declared host. Never substring. */
-export function hostAllowed(hostname: string, allowedHosts: string[]): boolean {
+function hostAllowed(hostname: string, allowedHosts: string[]): boolean {
   const h = hostname.toLowerCase().replace(/\.$/, '')
   return allowedHosts.some((raw) => {
     const s = raw.toLowerCase().replace(/^\*\./, '').replace(/\.$/, '')

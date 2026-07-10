@@ -45,7 +45,7 @@ const ALLOWED_EXT = new Set([
 ])
 
 /** Sandbox tier: web assets only, 20 MB / 200 files. */
-export const SANDBOX_POLICY: UnpackPolicy = {
+const SANDBOX_POLICY: UnpackPolicy = {
   maxBytes: 20 * 1024 * 1024,
   maxFiles: 200,
   allow: (ext) => ALLOWED_EXT.has(ext)

@@ -1,7 +1,6 @@
 import { normalize, join, sep } from 'node:path'
 import { lstat, readFile } from 'node:fs/promises'
 import type { SettingsField } from '@shared/types/ext'
-export type { SettingsField }
 
 /**
  * Parse + validate `garret.manifest.json` into the trusted spec. One primitive: a Widget (no tiers).
@@ -13,7 +12,7 @@ export const MANIFEST_FILE = 'garret.manifest.json'
 const ID_RE = /^[a-z0-9][a-z0-9._-]*$/
 
 // ── v2 pack identity (locked; see docs/widget-packs-and-distribution.md) ─────────────────────────
-export const PACK_API_VERSION = 2
+const PACK_API_VERSION = 2
 /** A single dns-label-ish segment: lowercase alnum, internal hyphens. */
 const SEG_RE = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/
 /** A settings/config field key — a plain identifier (camelCase, snake, kebab all fine). It's only a

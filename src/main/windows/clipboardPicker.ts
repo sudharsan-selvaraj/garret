@@ -48,7 +48,7 @@ export function createClipboardPicker(): BrowserWindow {
 }
 
 /** Summon the picker centered on the active display, over everything. */
-export function showClipboardPicker(): void {
+function showClipboardPicker(): void {
   if (!picker) return
   rememberFrontmostApp() // capture the app to paste back into
 

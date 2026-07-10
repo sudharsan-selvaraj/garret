@@ -120,11 +120,6 @@ export function initClipboard(onChange: () => void): void {
   timer = setInterval(tick, POLL_MS)
 }
 
-export function stopClipboard(): void {
-  if (timer) clearInterval(timer)
-  timer = null
-}
-
 export function listClipboard(): ClipItem[] {
   return history
 }

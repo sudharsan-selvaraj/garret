@@ -12,7 +12,6 @@ import type {
   PackInstallPlan,
   PackSourceKind,
   InstalledPack,
-  WidgetRuntimeInfo,
   WidgetMeta
 } from '@shared/types/ext'
 
@@ -26,7 +25,7 @@ import type {
 
 const RECORD_FILE = '.garret-ext.json'
 
-export function extDir(): string {
+function extDir(): string {
   return join(app.getPath('userData'), 'ext')
 }
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -38,7 +37,7 @@ export function extDir(): string {
 const PACK_ID_RE = /^[a-z0-9-]+(?:\.[a-z0-9-]+)+$/
 const WIDGET_ID_RE = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/
 
-export function packDir(packId: string): string {
+function packDir(packId: string): string {
   return join(extDir(), packId)
 }
 export function widgetDataDir(packId: string, widgetId: string): string {
@@ -161,11 +160,11 @@ function packMacPayload(r: PackRecord): string {
       .sort((a, b) => a.fullId.localeCompare(b.fullId))
   })
 }
-export function signPackRecord(r: PackRecord): string | null {
+function signPackRecord(r: PackRecord): string | null {
   const key = recordMacKey()
   return key ? createHmac('sha256', key).update(packMacPayload(r)).digest('hex') : null
 }
-export function packRecordMacOk(r: PackRecord): boolean {
+function packRecordMacOk(r: PackRecord): boolean {
   const key = recordMacKey()
   if (!key || !r.mac) return false
   const expected = createHmac('sha256', key).update(packMacPayload(r)).digest('hex')
@@ -184,7 +183,7 @@ export async function readPackRecord(packId: string): Promise<PackRecord | null>
     return null
   }
 }
-export async function writePackRecordAtomic(packId: string, rec: PackRecord): Promise<void> {
+async function writePackRecordAtomic(packId: string, rec: PackRecord): Promise<void> {
   const path = packRecordPath(packId)
   const tmp = `${path}.${randomUUID().slice(0, 8)}.tmp`
   await writeFile(tmp, JSON.stringify(rec, null, 2))
@@ -248,7 +247,7 @@ function queue<T>(fn: () => Promise<T>): Promise<T> {
 
 /** A widget's own origin — widgetId is the FIRST host label (has no dots), packId the rest, so
  *  `host.split('.', 1)` resolves it unambiguously. Per-widget origin ⇒ per-widget storage partition. */
-export const widgetOrigin = (packId: string, widgetId: string): string => `garret://${widgetId}.${packId}/`
+const widgetOrigin = (packId: string, widgetId: string): string => `garret://${widgetId}.${packId}/`
 
 const widgetMetaFrom = (spec: PackSpec): WidgetMeta[] =>
   spec.widgets.map((w) => ({
@@ -488,36 +487,6 @@ export async function listInstalledPacks(): Promise<InstalledPack[]> {
       })),
       sharedSettingsSchema: spec.shared?.settingsSchema
     })
-  }
-  return out
-}
-
-/** The widgets the board may load + run: from enabled + authentic + untampered packs. Per-widget
- *  caps come from the signed record (authoritative ceiling). The only function the loader/host trusts. */
-export async function resolveEnabledWidgets(): Promise<WidgetRuntimeInfo[]> {
-  const packs = await listInstalledPacks()
-  const out: WidgetRuntimeInfo[] = []
-  for (const pack of packs) {
-    if (!pack.enabled) continue
-    const spec = await parsePack(packDir(pack.id))
-    if ('error' in spec) continue
-    const rec = await readPackRecord(pack.id)
-    if (!rec) continue
-    const hasShared = spec.shared !== undefined
-    for (const w of spec.widgets) {
-      out.push({
-        fullId: w.fullId,
-        packId: pack.id,
-        widgetId: w.id,
-        name: w.name,
-        uiOrigin: widgetOrigin(pack.id, w.id),
-        uiDir: w.uiDir,
-        nodeEntry: w.nodeEntry,
-        capabilities: rec.widgets.find((x) => x.id === w.id)?.capabilities ?? w.capabilities,
-        defaultSize: w.defaultSize,
-        hasShared
-      })
-    }
   }
   return out
 }

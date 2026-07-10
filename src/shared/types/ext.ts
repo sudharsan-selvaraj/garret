@@ -118,22 +118,6 @@ export interface InstalledPack {
   sharedSettingsSchema?: SettingsField[]
 }
 
-/** What the board loader + host launch need for ONE placeable widget of an enabled pack. */
-export interface WidgetRuntimeInfo {
-  fullId: string
-  packId: string
-  widgetId: string
-  name: string
-  /** garret://<widgetId>.<packId>/ — this widget's own origin (per-widget storage partition). */
-  uiOrigin: string
-  uiDir: string
-  nodeEntry?: string
-  capabilities: string[]
-  defaultSize?: { w: number; h: number }
-  /** the pack declares a shared settings namespace → this widget's host gets GARRET_PACK_SHARED_DIR. */
-  hasShared: boolean
-}
-
 /** A validated install proposal (mapped from a pack plan for the existing install IPC). */
 export interface ExtInstallPlan {
   ok: boolean

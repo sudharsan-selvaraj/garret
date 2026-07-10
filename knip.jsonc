@@ -1,0 +1,21 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": [
+        "src/main/index.ts",
+        "src/preload/index.ts",
+        "src/preload/extBridge.ts",
+        "src/renderer/src/main.tsx",
+        "electron.vite.config.ts"
+      ],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "packages/core": { "entry": ["src/index.ts"], "project": ["src/**/*.ts"] },
+    "packages/sdk": {
+      "entry": ["src/index.ts", "src/host.ts", "src/ui.ts", "src/react.ts"],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "packages/widget-sdk": { "entry": ["src/index.ts"], "project": ["src/**/*.ts"] }
+  }
+}
