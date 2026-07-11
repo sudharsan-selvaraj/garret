@@ -71,82 +71,13 @@ const git = (): JSX.Element => (
   </>
 )
 
-const notes = (): JSX.Element => (
-  <div style={{ fontSize: 11.5, color: 'var(--text-2)', lineHeight: 1.5, padding: 2 }}>
-    Ideas…<br />– draft release notes<br />– follow up with team
-  </div>
-)
-
-const weather = (): JSX.Element => (
-  <div style={{ textAlign: 'center', padding: '10px 0' }}>
-    <div style={{ fontSize: 28, fontWeight: 600 }}>18°</div>
-    <div style={{ fontSize: 11, color: 'var(--text-2)' }}>Partly cloudy · San Francisco</div>
-  </div>
-)
-
-const devTools = (): JSX.Element => (
-  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-    <div
-      style={{
-        fontSize: 10.5,
-        padding: '6px 8px',
-        borderRadius: 6,
-        background: 'var(--surface-input)',
-        color: 'var(--text-2)'
-      }}
-    >
-      Auto-detect · JWT Decode
-    </div>
-    <div
-      style={{
-        fontFamily: 'ui-monospace, Menlo, monospace',
-        fontSize: 10,
-        padding: '6px 8px',
-        borderRadius: 6,
-        background: 'var(--surface-input)',
-        color: 'var(--text)'
-      }}
-    >
-      {'{ "alg": "HS256", "exp": … }'}
-    </div>
-  </div>
-)
-
-const snippets = (): JSX.Element => (
-  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-    {['git commit --amend', 'kubectl logs -f'].map((s) => (
-      <div
-        key={s}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 7,
-          fontFamily: 'ui-monospace, Menlo, monospace',
-          fontSize: 11,
-          padding: '6px 8px',
-          borderRadius: 7,
-          background: 'rgba(255,255,255,0.04)',
-          boxShadow: 'inset 0 0 0 0.5px var(--hairline)'
-        }}
-      >
-        <span style={{ color: 'var(--accent)' }}>›</span>
-        <span style={ellip}>{s}</span>
-      </div>
-    ))}
-  </div>
-)
-
 const PREVIEWS: Record<string, () => JSX.Element> = {
   calendar,
-  'git-repo': git,
-  notes,
-  weather,
-  'dev-tools': devTools,
-  snippets
+  'git-repo': git
 }
 
 // Small/object-like widgets stay compact instead of stretching to full width.
-const COMPACT = new Set(['weather'])
+const COMPACT = new Set<string>()
 
 /**
  * Preview of a widget's layout for the Add dialog: a hand-authored mock for built-ins, or NOTHING
