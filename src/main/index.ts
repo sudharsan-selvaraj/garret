@@ -6,7 +6,6 @@ import { persistence } from '@main/persistence/store'
 import { createTrayIcon } from '@main/tray/icon'
 import { initClipboard } from '@main/clipboard/manager'
 import { registerClipboardHandlers } from '@main/clipboard/ipc'
-import { startCalendarMonitor } from '@main/calendar/monitor'
 import {
   createClipboardPicker,
   notifyClipboardPicker,
@@ -175,8 +174,7 @@ app.whenReady().then(() => {
 
   registerIpcHandlers({
     setHudHotkey: registerHudHotkey,
-    setClipboardHotkey: registerClipboardHotkey,
-    refreshCalendarMonitor: startCalendarMonitor
+    setClipboardHotkey: registerClipboardHotkey
   })
   registerClipboardHandlers()
 
@@ -290,9 +288,6 @@ app.whenReady().then(() => {
   // Clipboard manager: history capture + the (hidden) picker panel.
   createClipboardPicker()
   initClipboard(notifyClipboardPicker)
-
-  // Background calendar notifications + reminders (idle unless enabled + connected).
-  startCalendarMonitor()
 
   globalShortcut.register('CommandOrControl+Shift+Q', () => app.quit())
   const prefs = persistence.getPreferences()

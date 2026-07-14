@@ -17,8 +17,6 @@ export interface IpcHooks {
   setHudHotkey(accelerator: string): boolean
   /** Apply a new clipboard-manager hotkey. Returns false if it couldn't be registered. */
   setClipboardHotkey(accelerator: string): boolean
-  /** (Re)start the background calendar monitor (after prefs or Google connect/disconnect). */
-  refreshCalendarMonitor(): void
 }
 
 /** Binds the shared IPC channels to their main-process handlers. Call once on ready. */
@@ -82,12 +80,10 @@ export function registerIpcHandlers(hooks: IpcHooks): void {
   ipcMain.handle(Channels.serviceConnect, async (_e, id: string, creds: Record<string, unknown>) => {
     const status = await getService(id).connect(creds)
     if (status.connected) scheduler.clearServiceGate(id) // re-enable polling after reconnect
-    if (id === 'google') hooks.refreshCalendarMonitor()
     return status
   })
   ipcMain.handle(Channels.serviceDisconnect, async (_e, id: string) => {
     const status = await getService(id).disconnect()
-    if (id === 'google') hooks.refreshCalendarMonitor()
     return status
   })
 
@@ -105,13 +101,6 @@ export function registerIpcHandlers(hooks: IpcHooks): void {
       return { ok: false, prefs: persistence.getPreferences() }
     }
     const prefs = persistence.setPreferences(patch)
-    if (
-      'calendarNotifyChanges' in patch ||
-      'calendarRemindBefore' in patch ||
-      'calendarSyncMin' in patch
-    ) {
-      hooks.refreshCalendarMonitor()
-    }
     if ('openAtLogin' in patch && app.isPackaged) {
       app.setLoginItemSettings({ openAtLogin: prefs.openAtLogin })
     }

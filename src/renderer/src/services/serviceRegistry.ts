@@ -1,5 +1,4 @@
-import { CalendarDays } from 'lucide-react'
-import { field, type ServiceDefinition } from '@sdk'
+import { type ServiceDefinition } from '@sdk'
 
 /** Registry of service definitions (the groups widgets belong to). */
 class ServiceRegistry {
@@ -18,29 +17,9 @@ class ServiceRegistry {
 
 export const serviceRegistry = new ServiceRegistry()
 
-/** Built-in service definitions. New services (Google, …) register here. */
+/** Built-in service definitions register here. (Google moved to the garret.google pack.) */
 let done = false
 export function registerServices(): void {
   if (done) return
-  serviceRegistry.register({
-    id: 'google',
-    name: 'Google',
-    icon: CalendarDays,
-    description:
-      'Google Calendar (read-only). Create a Desktop OAuth client in Google Cloud, then sign in.',
-    requiresConnection: true,
-    connectionSchema: {
-      clientId: field.text({
-        label: 'Client ID',
-        required: true,
-        placeholder: '…apps.googleusercontent.com'
-      }),
-      clientSecret: field.password({
-        label: 'Client secret',
-        required: true,
-        placeholder: 'GOCSPX-…'
-      })
-    }
-  })
   done = true
 }

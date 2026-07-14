@@ -31,33 +31,6 @@ function Row({ children }: { children: ReactNode }): JSX.Element {
   )
 }
 
-const calendar = (): JSX.Element => (
-  <>
-    <div
-      style={{
-        display: 'flex',
-        gap: 8,
-        padding: '6px 8px',
-        borderLeft: '2px solid var(--accent)',
-        background: 'rgba(10,132,255,0.12)',
-        borderRadius: 6,
-        fontSize: 11
-      }}
-    >
-      <span style={{ ...dim, color: 'var(--accent)', fontWeight: 600 }}>NOW</span>
-      <span style={ellip}>Team sync</span>
-    </div>
-    <Row>
-      <span style={dim}>10:30</span>
-      <span style={ellip}>Project review</span>
-    </Row>
-    <Row>
-      <span style={dim}>14:00</span>
-      <span style={ellip}>1:1</span>
-    </Row>
-  </>
-)
-
 const git = (): JSX.Element => (
   <>
     <Row>
@@ -72,7 +45,6 @@ const git = (): JSX.Element => (
 )
 
 const PREVIEWS: Record<string, () => JSX.Element> = {
-  calendar,
   'git-repo': git
 }
 
