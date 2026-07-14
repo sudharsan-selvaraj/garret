@@ -107,6 +107,46 @@ export function Accordion({
   )
 }
 
+/** A thin status strip shown ABOVE content that already has data: a "couldn't refresh" notice
+ *  (stale-while-error) or a subtle "refreshing" hint. Renders nothing when fresh + idle. Pair with
+ *  `usePoll` — pass its `{ error, loading, refresh }`. */
+export function StatusStrip({
+  error,
+  loading,
+  onRetry
+}: {
+  error?: string
+  loading?: boolean
+  onRetry?: () => void
+}): JSX.Element | null {
+  if (error) {
+    return (
+      <div className="gx-status gx-status--error">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.58 9M1.42 9a15.91 15.91 0 0 1 4.7-2.88M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01" />
+        </svg>
+        <span>Couldn’t refresh — showing last update</span>
+        {onRetry && (
+          <button className="gx-status-retry" onClick={onRetry}>
+            Retry
+          </button>
+        )}
+      </div>
+    )
+  }
+  if (loading) {
+    return (
+      <div className="gx-status">
+        <svg className="gx-status-spin" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+        </svg>
+        <span>Refreshing…</span>
+      </div>
+    )
+  }
+  return null
+}
+
 /* ── feedback ───────────────────────────────────────────────────────────────────────────────── */
 
 /** A small pill; `tone` sets the color. */
@@ -209,5 +249,48 @@ export function Switch({ on, onChange }: { on: boolean; onChange: (v: boolean) =
     <button className={`gx-switch${on ? ' gx-switch--on' : ''}`} role="switch" aria-checked={on} onClick={() => onChange(!on)}>
       <span className="gx-switch-knob" />
     </button>
+  )
+}
+
+/** One declarative settings field for `AutoForm`. */
+export type FieldSpec =
+  | { key: string; label: string; type: 'text' | 'secret'; placeholder?: string }
+  | { key: string; label: string; type: 'number' }
+  | { key: string; label: string; type: 'select'; options: [value: string, label: string][] }
+  | { key: string; label: string; type: 'switch' }
+
+/** Render a settings form from a declarative schema — a convenience over hand-composing Field +
+ *  inputs. `value` supplies current values by key; `onChange` gets a shallow patch. Compose freely
+ *  with your own Fields (wrap in FieldGroup / SettingsPanel as you like). */
+export function AutoForm<T extends Record<string, unknown>>({
+  schema,
+  value,
+  onChange
+}: {
+  schema: FieldSpec[]
+  value: T
+  onChange: (patch: Partial<T>) => void
+}): JSX.Element {
+  return (
+    <FieldGroup>
+      {schema.map((f) => (
+        <Field key={f.key} label={f.label}>
+          {f.type === 'select' ? (
+            <Select value={String(value[f.key] ?? '')} options={f.options} onChange={(v) => onChange({ [f.key]: v } as Partial<T>)} />
+          ) : f.type === 'switch' ? (
+            <Switch on={Boolean(value[f.key])} onChange={(v) => onChange({ [f.key]: v } as Partial<T>)} />
+          ) : f.type === 'number' ? (
+            <NumberInput value={value[f.key] as number | undefined} onCommit={(v) => onChange({ [f.key]: v } as Partial<T>)} />
+          ) : (
+            <TextInput
+              value={value[f.key] as string | undefined}
+              placeholder={f.placeholder}
+              secret={f.type === 'secret'}
+              onCommit={(v) => onChange({ [f.key]: v } as Partial<T>)}
+            />
+          )}
+        </Field>
+      ))}
+    </FieldGroup>
   )
 }

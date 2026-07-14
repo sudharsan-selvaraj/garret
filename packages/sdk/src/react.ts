@@ -168,7 +168,56 @@ export function useInstanceConfig<T extends Record<string, unknown>>(
   return { cfg, set, loaded }
 }
 
-// Native UI components (theme-styled markup) — SettingsPanel, StatusPill, TicketRow, etc.
+/** Declarative polling: runs `fn` on mount + whenever `deps` change, then every `intervalMs`. Gated on
+ *  board activity — pauses when the board is idle UNLESS `background` is set, in which case it keeps
+ *  polling at a throttled floor (`idleFloorMs`, default 5 min) so alerts/data stay fresh while you're
+ *  not looking (no extra process — the widget's own webview). Stale-while-error: keeps the last data on
+ *  failure and surfaces `error`. Pair with `<StatusStrip error={error} loading={loading} onRetry={refresh} />`. */
+export function usePoll<T>(
+  fn: () => Promise<T>,
+  opts: { intervalMs: number; deps?: unknown[]; enabled?: boolean; background?: boolean; idleFloorMs?: number }
+): { data: T | undefined; error: string; loading: boolean; refresh: () => void } {
+  const { intervalMs, deps = [], enabled = true, background = false, idleFloorMs = 300_000 } = opts
+  const active = useActive()
+  const [data, setData] = useState<T | undefined>(undefined)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const fnRef = useRef(fn)
+  fnRef.current = fn
+
+  const run = useCallback(async () => {
+    setLoading(true)
+    try {
+      setData(await fnRef.current())
+      setError('')
+    } catch (e) {
+      setError((e as Error)?.message || 'Request failed')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  // Fetch on mount + whenever deps change (while enabled).
+  useEffect(() => {
+    if (enabled) void run()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, run, ...deps])
+
+  // Interval: pause when idle unless `background`; idle polls run at the throttled floor.
+  useEffect(() => {
+    if (!enabled || !(intervalMs > 0)) return
+    const period = active ? intervalMs : Math.max(intervalMs, idleFloorMs)
+    const t = setInterval(() => {
+      if (active || background) void run()
+    }, period)
+    return () => clearInterval(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, intervalMs, active, background, idleFloorMs, run])
+
+  return { data, error, loading, refresh: run }
+}
+
+// Native UI components (theme-styled markup) — SettingsPanel, StatusStrip, AutoForm, etc.
 export * from './components'
 
 /** Launch props for a spawned surface window (`g.surfaces.open(..., { props })`). `{}` for the board

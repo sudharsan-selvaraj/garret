@@ -54,6 +54,20 @@ body {
 .gx-item--interactive:hover { background: var(--gx-hover); }
 .gx-item-content { flex: 1; min-width: 0; }
 
+/* Status strip — stale-while-error / refreshing hint (StatusStrip component). */
+.gx-status {
+  display: flex; align-items: center; gap: 6px; margin: 4px 8px 6px; padding: 5px 9px;
+  border-radius: 7px; font-size: 11px; color: var(--gx-text-2); background: var(--gx-hover);
+}
+.gx-status--error { color: #ffb340; background: rgba(255, 159, 10, 0.12); }
+.gx-status span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gx-status-retry {
+  flex-shrink: 0; border: none; background: transparent; color: inherit; font-weight: 600;
+  font-size: 11px; text-decoration: underline; cursor: pointer;
+}
+.gx-status-spin { animation: gx-spin 0.8s linear infinite; }
+@keyframes gx-spin { to { transform: rotate(360deg); } }
+
 /* Badge — a small pill; tone sets the color. */
 .gx-badge {
   flex-shrink: 0; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 600;
