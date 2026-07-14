@@ -1,5 +1,4 @@
 import { useEffect } from 'react'
-import { registerBuiltins } from '@renderer/plugins/builtins'
 import { loadExternalWidgets } from '@renderer/plugins/externalLoader'
 import { loadExtensions } from '@renderer/ext/loader'
 import { registerServices } from '@renderer/services/serviceRegistry'
@@ -13,8 +12,7 @@ import { SettingsDialog } from '@renderer/app/SettingsDialog'
 import { AddDialog } from '@renderer/app/AddDialog'
 import { OpenFileConsent } from '@renderer/ext/OpenFileConsent'
 
-// Register built-in plugins + services once, at module load.
-registerBuiltins()
+// Register services once, at module load.
 registerServices()
 
 export default function App(): JSX.Element {

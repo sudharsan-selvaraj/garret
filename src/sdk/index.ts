@@ -18,8 +18,6 @@ export const useFileWatch = sdk.useFileWatch
 export const services = sdk.services
 export const openExternal = sdk.openExternal
 
-export { WidgetStatus } from 'garret-widget-sdk'
-
 // Pure surface (types, field builders, defaults, validators, defineWidget,
 // canonicalKey, GarretClient, …) comes straight from core.
 export * from 'garret-core'
