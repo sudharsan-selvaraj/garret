@@ -19,6 +19,7 @@ import {
   type WindowMode
 } from '@main/windows/createWindow'
 import { registerExtScheme, EXT_EMBED_PARTITION } from '@main/ext/protocol'
+import { startNotifier } from '@main/ext/notifier'
 import { registerExtHandlers, broadcastActive, syncUiDirs } from '@main/ext/lane'
 import { installBundledPacks } from '@main/ext/install'
 import { registerWcvSpike } from '@main/spike/wcvSpike'
@@ -288,6 +289,9 @@ app.whenReady().then(() => {
   // Clipboard manager: history capture + the (hidden) picker panel.
   createClipboardPicker()
   initClipboard(notifyClipboardPicker)
+
+  // Shared background notifier for packs that declare a `notifier` + opt in (no widget need be placed).
+  startNotifier()
 
   globalShortcut.register('CommandOrControl+Shift+Q', () => app.quit())
   const prefs = persistence.getPreferences()

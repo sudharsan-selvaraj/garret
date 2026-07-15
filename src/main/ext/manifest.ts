@@ -1,6 +1,6 @@
 import { normalize, join, sep } from 'node:path'
 import { lstat, readFile } from 'node:fs/promises'
-import type { SettingsField } from '@shared/types/ext'
+import type { SettingsField, NotifierSpec } from '@shared/types/ext'
 
 /**
  * Parse + validate `garret.manifest.json` into the trusted spec. One primitive: a Widget (no tiers).
@@ -105,6 +105,7 @@ export interface WidgetSpec {
   defaultSize?: { w: number; h: number }
   surfaces?: Record<string, SurfaceSpec>
   settingsSchema?: SettingsField[]
+  notifier?: NotifierSpec
 }
 
 export interface PackSpec {
@@ -246,7 +247,33 @@ async function parseWidget(base: string, packId: string, raw: unknown): Promise<
     capabilities,
     defaultSize: pxSize(w.defaultSize),
     surfaces,
-    settingsSchema: parseSettingsSchema((w.settings as { schema?: unknown })?.schema)
+    settingsSchema: parseSettingsSchema((w.settings as { schema?: unknown })?.schema),
+    notifier: parseNotifier(w.notifier)
+  }
+}
+
+/** Best-effort parse of the optional declarative background-notifier spec. A malformed notifier is
+ *  dropped (returns undefined) rather than failing the whole install — it just won't fire. */
+function parseNotifier(v: unknown): NotifierSpec | undefined {
+  if (typeof v !== 'object' || v === null) return undefined
+  const n = v as Partial<NotifierSpec>
+  const req = n.request as NotifierSpec['request'] | undefined
+  if (!req || typeof req.url !== 'string') return undefined
+  if (typeof n.idField !== 'string' || typeof n.titleTemplate !== 'string') return undefined
+  return {
+    auth: n.auth,
+    request: {
+      url: req.url,
+      method: typeof req.method === 'string' ? req.method : undefined,
+      headers: req.headers,
+      body: typeof req.body === 'string' ? req.body : undefined
+    },
+    itemsPath: typeof n.itemsPath === 'string' ? n.itemsPath : undefined,
+    idField: n.idField,
+    titleTemplate: n.titleTemplate,
+    bodyTemplate: typeof n.bodyTemplate === 'string' ? n.bodyTemplate : undefined,
+    urlTemplate: typeof n.urlTemplate === 'string' ? n.urlTemplate : undefined,
+    intervalMin: typeof n.intervalMin === 'number' ? n.intervalMin : undefined
   }
 }
 

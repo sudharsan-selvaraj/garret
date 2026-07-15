@@ -16,6 +16,29 @@ export interface SettingsField {
   placeholder?: string
 }
 
+/** Declarative background-notifier spec (manifest `notifier`). A single shared main-process runner
+ *  polls this on a schedule — even when the widget isn't placed/mounted — diffs new items vs a seen
+ *  set, and fires a click-through notification. Templates: `{shared.KEY}` / `{secret.KEY}` in auth +
+ *  request; `{item.dot.path}` in the title/body/url. No webview, one scheduler → no per-widget cost.
+ *  Requires the widget's `notify` capability (and `openExternal` for click-through) + the pack's
+ *  `shared` store (opt-in flag + credentials live there). */
+export interface NotifierSpec {
+  /** Authorization header, computed at runtime from the pack's shared store. */
+  auth?: { type: 'basic'; user: string; pass: string } | { type: 'bearer'; token: string }
+  request: { url: string; method?: string; headers?: Record<string, string>; body?: string }
+  /** dot-path to the array of items in the JSON response (omit if the root is the array). */
+  itemsPath?: string
+  /** field (dot-path) within each item that uniquely identifies it. */
+  idField: string
+  /** notification title (per-item `{item.…}` templates). */
+  titleTemplate: string
+  bodyTemplate?: string
+  /** click-through target (`{item.…}` / `{shared.…}`). */
+  urlTemplate?: string
+  /** poll cadence in minutes (default 5; floored to 5 when the board is idle). */
+  intervalMin?: number
+}
+
 // ── packs (multiple widgets per package) ─────────────────────────────────────────────────────────
 
 /** Per-widget summary in the pack's install record. Capabilities are enforced per widget at the
