@@ -1,4 +1,4 @@
-import type { AnyWidgetPlugin } from '@sdk'
+import type { AnyWidgetPlugin } from '@renderer/plugins/types'
 
 /**
  * The plugin registry. Core code only knows about this — it never imports a

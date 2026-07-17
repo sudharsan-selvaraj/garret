@@ -1,7 +1,6 @@
 import { app, BrowserWindow, globalShortcut, ipcMain, Menu, session, shell, Tray } from 'electron'
 import { Channels } from '@shared/ipc/channels'
 import { registerIpcHandlers } from '@main/ipc/registerHandlers'
-import { initScheduler, setBoardActive } from '@main/poll/scheduler'
 import { persistence } from '@main/persistence/store'
 import { createTrayIcon } from '@main/tray/icon'
 import { initClipboard } from '@main/clipboard/manager'
@@ -59,10 +58,8 @@ function setHud(active: boolean): void {
     pinToDesktopLevel(win)
   }
   win.webContents.send(Channels.hudState, active)
-  // Power: HUD up = the board is the user's focus → poll at full rate + refresh; dismissed = it's
-  // ambient (usually behind apps) → the scheduler stretches intervals. See docs/architecture.md §6.
-  setBoardActive(active)
-  broadcastActive(active) // renderer half: widget UIs pause rAF/animations via useActive()
+  // Tell widget UIs whether the board is active so they pause rAF/animations + throttle polling.
+  broadcastActive(active)
   updateTrayMenu()
 }
 
@@ -267,8 +264,6 @@ app.whenReady().then(() => {
       cb({ responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [HOST_CSP] } })
     })
   }
-  initScheduler()
-
   registerExtHandlers() // unified extension system (garret-sdk) — one path for web + native
   // Auto-install/refresh app-shipped packs, THEN refresh the scheme's ui-dir cache so a freshly
   // (re)installed bundled pack serves its current files (installBundledPacks bypasses the lane).
@@ -277,13 +272,12 @@ app.whenReady().then(() => {
 
   win = createWindow(WINDOW_MODE)
 
-  // Power: the desktop board starts ambient (usually behind apps), so begin in the throttled state
-  // — the first poll for each widget still runs immediately on subscribe; only the repeat cadence is
-  // stretched until the HUD is raised. Focus/blur are a bonus signal (may not fire on the panel).
+  // The desktop board starts ambient (behind apps). Tell widget UIs so they throttle polling +
+  // pause animations until focused. Focus/blur are a bonus signal (may not fire on the panel).
   if (WINDOW_MODE === 'desktop') {
-    setBoardActive(false)
-    win.on('focus', () => setBoardActive(true))
-    win.on('blur', () => setBoardActive(false))
+    broadcastActive(false)
+    win.on('focus', () => broadcastActive(true))
+    win.on('blur', () => broadcastActive(false))
   }
 
   // Clipboard manager: history capture + the (hidden) picker panel.

@@ -1,4 +1,4 @@
-import type { WidgetIconType } from '@sdk'
+import type { WidgetIconType } from '@renderer/plugins/types'
 
 interface Props {
   icon?: WidgetIconType

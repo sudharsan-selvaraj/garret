@@ -5,7 +5,6 @@ import { randomBytes } from 'node:crypto'
 import { GarretError } from '@garretapp/sdk'
 import { widgetDataDir, sharedDataDir } from '@main/ext/install'
 import { getSecret, setSecret, deleteSecret } from '@main/ext/secrets'
-import { getService } from '@main/services/registry'
 
 /**
  * The capability broker — every platform call (`useGarret().*`) is checked HERE, in main, against
@@ -175,14 +174,6 @@ export async function platformCall(
         headers: Object.fromEntries(res.headers),
         bodyBytes: new Uint8Array(await res.arrayBuffer())
       }
-    }
-    case 'service': {
-      const id = String(a0)
-      gate(binding, `service:${id}`)
-      const svc = getService(id)
-      if (op === 'status') return svc.status()
-      if (op === 'query') return svc.query(a1 as string, (args[2] ?? {}) as Record<string, unknown>)
-      break
     }
     case 'notify': {
       gate(binding, 'notify')

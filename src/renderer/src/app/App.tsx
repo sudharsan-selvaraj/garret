@@ -1,19 +1,13 @@
 import { useEffect } from 'react'
-import { loadExternalWidgets } from '@renderer/plugins/externalLoader'
 import { loadExtensions } from '@renderer/ext/loader'
-import { registerServices } from '@renderer/services/serviceRegistry'
 import { useBoardStore } from '@renderer/canvas/useBoardStore'
 import { useUiStore } from '@renderer/app/useUiStore'
 import { useDesktopClickThrough } from '@renderer/app/useDesktopClickThrough'
-import { useNotificationWatches } from '@renderer/app/useNotificationWatches'
 import { WidgetCanvas } from '@renderer/canvas/WidgetCanvas'
 import { Toolbar } from '@renderer/app/Toolbar'
 import { SettingsDialog } from '@renderer/app/SettingsDialog'
 import { AddDialog } from '@renderer/app/AddDialog'
 import { OpenFileConsent } from '@renderer/ext/OpenFileConsent'
-
-// Register services once, at module load.
-registerServices()
 
 export default function App(): JSX.Element {
   const hydrate = useBoardStore((s) => s.hydrate)
@@ -24,12 +18,11 @@ export default function App(): JSX.Element {
   const openSettings = useUiStore((s) => s.openSettings)
 
   useDesktopClickThrough()
-  useNotificationWatches()
 
   useEffect(() => {
-    // Register widgets (dev-tier external + installed extensions) BEFORE hydrating so saved
-    // instances resolve from the registry on first render.
-    void Promise.allSettled([loadExternalWidgets(), loadExtensions()]).finally(() => void hydrate())
+    // Register installed packs BEFORE hydrating so saved instances resolve from the registry on
+    // first render.
+    void loadExtensions().finally(() => void hydrate())
   }, [hydrate])
 
   // Spanning board: when displays change, pull any now-orphaned widget back on-screen.

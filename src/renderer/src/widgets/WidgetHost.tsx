@@ -11,12 +11,9 @@ import {
   Trash2
 } from 'lucide-react'
 import type { PlacedWidget } from '@shared/types/board'
-import { sdk } from '@sdk'
 import { registry } from '@renderer/plugins/registry'
 import { useBoardStore } from '@renderer/canvas/useBoardStore'
-import { useWidgetContext } from '@renderer/widgets/useWidgetContext'
 import { WidgetErrorBoundary } from '@renderer/widgets/WidgetErrorBoundary'
-import { AutoSettingsForm } from '@renderer/widgets/AutoSettingsForm'
 import { WidgetIcon } from '@renderer/widgets/WidgetIcon'
 import { ContextMenu, MenuItem, MenuRow, MenuSeparator } from '@renderer/widgets/ContextMenu'
 import { useWidgetMenus, type WidgetCommand } from '@renderer/ext/widgetMenus'
@@ -71,31 +68,22 @@ export function WidgetHost({ widget }: { widget: PlacedWidget }): JSX.Element {
   const copyWidgetTo = useBoardStore((s) => s.copyWidgetTo)
   const moveWidgetTo = useBoardStore((s) => s.moveWidgetTo)
 
-  const [showSettings, setShowSettings] = useState(false)
-  const [refreshToken, setRefreshToken] = useState(0)
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
-  const ctx = useWidgetContext(widget.id, refreshToken)
+  const ctx = { instanceId: widget.id }
   // A sandboxed pack declares its ⋯-menu commands (g.setCommands); the frame renders them generically.
-  const isExt = widget.pluginId.startsWith('gx:')
   const extCommands = useWidgetMenus((s) => s.byId[widget.id]) ?? EMPTY_COMMANDS
 
   if (!plugin) {
-    const isInstalled = widget.pluginId.startsWith('gx:')
     return (
       <div className="widget widget-error">
-        <strong>{isInstalled ? 'Widget unavailable' : 'Unknown widget'}</strong>
-        <code>
-          {isInstalled
-            ? 'Removed or disabled — manage it in Settings → Widgets.'
-            : `No plugin registered for “${widget.pluginId}”.`}
-        </code>
+        <strong>Widget unavailable</strong>
+        <code>Removed or disabled — manage it in Settings → Widgets.</code>
         <button onClick={() => removeWidget(widget.id)}>Remove</button>
       </div>
     )
   }
 
-  const { manifest, render: Render, Settings } = plugin
-  const onChange = (patch: Record<string, unknown>): void => updateConfig(widget.id, patch)
+  const { manifest, render: Render } = plugin
   const openMenu = (e: React.MouseEvent): void => {
     e.preventDefault()
     setMenu({ x: e.clientX, y: e.clientY })
@@ -109,10 +97,9 @@ export function WidgetHost({ widget }: { widget: PlacedWidget }): JSX.Element {
     background: widget.color ? hexToRgba(widget.color, bgAlpha) : `rgba(34, 34, 36, ${bgAlpha})`
   }
 
-  // Headless: no header chrome. The whole card becomes the drag handle (except
-  // while editing settings, so form inputs stay usable); settings live in the menu.
+  // Headless: no header chrome. The whole card becomes the drag handle; settings live in the menu.
   const headless = manifest.capabilities?.headless ?? false
-  const bodyDrag = headless && !showSettings ? ' widget-drag' : ''
+  const bodyDrag = headless ? ' widget-drag' : ''
 
   // Per-instance title override (e.g. name a Snippets widget "Git"); falls back
   // to the plugin's name. Any widget can set config.title.
@@ -149,72 +136,26 @@ export function WidgetHost({ widget }: { widget: PlacedWidget }): JSX.Element {
       )}
 
       <div className={`widget-body${bodyDrag}`}>
-        {showSettings ? (
-          <div className="widget-settings">
-            <div className="settings-scroll">
-              {Settings ? (
-                <Settings config={widget.config} ctx={ctx} sdk={sdk} onChange={onChange} />
-              ) : (
-                <AutoSettingsForm
-                  schema={manifest.configSchema}
-                  config={widget.config}
-                  onChange={onChange}
-                />
-              )}
-            </div>
-            <footer className="settings-footer">
-              <span className="settings-saved">Changes save automatically</span>
-              <button className="settings-done" onClick={() => setShowSettings(false)}>
-                Done
-              </button>
-            </footer>
-          </div>
-        ) : (
-          <WidgetErrorBoundary widgetName={manifest.name}>
-            <Render config={widget.config} ctx={ctx} sdk={sdk} />
-          </WidgetErrorBoundary>
-        )}
+        <WidgetErrorBoundary widgetName={manifest.name}>
+          <Render config={widget.config} ctx={ctx} />
+        </WidgetErrorBoundary>
       </div>
 
       {menu && (
         <ContextMenu x={menu.x} y={menu.y} onClose={() => setMenu(null)}>
-          {/* A gx: pack renders in a sandboxed webview, so it DECLARES its ⋯-menu commands (settings,
-              refresh, whatever it wants); the frame renders them generically + dispatches back. A
-              first-party widget uses the in-frame Settings form + refreshable capability. */}
-          {isExt ? (
-            extCommands.map((c) => (
-              <MenuItem
-                key={c.id}
-                icon={commandIcon(c.id)}
-                label={c.label}
-                onClick={() => {
-                  void window.garret.ext.runCommand(ctx.instanceId, c.id)
-                  setMenu(null)
-                }}
-              />
-            ))
-          ) : (
-            <>
-              <MenuItem
-                icon={<SlidersHorizontal size={15} strokeWidth={1.75} />}
-                label="Settings"
-                onClick={() => {
-                  setShowSettings(true)
-                  setMenu(null)
-                }}
-              />
-              {manifest.capabilities?.refreshable && (
-                <MenuItem
-                  icon={<RotateCw size={15} strokeWidth={1.75} />}
-                  label="Refresh"
-                  onClick={() => {
-                    setRefreshToken((n) => n + 1)
-                    setMenu(null)
-                  }}
-                />
-              )}
-            </>
-          )}
+          {/* A pack renders in a sandboxed webview, so it DECLARES its ⋯-menu commands (settings,
+              refresh, whatever it wants) via g.setCommands; the frame renders them + dispatches back. */}
+          {extCommands.map((c) => (
+            <MenuItem
+              key={c.id}
+              icon={commandIcon(c.id)}
+              label={c.label}
+              onClick={() => {
+                void window.garret.ext.runCommand(ctx.instanceId, c.id)
+                setMenu(null)
+              }}
+            />
+          ))}
           <MenuSeparator />
           <MenuItem
             icon={

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { BoardState, PlacedWidget } from '@shared/types/board'
-import { defaultConfig } from '@sdk'
+import { defaultConfig } from '@renderer/plugins/types'
 import { registry } from '@renderer/plugins/registry'
 
 interface Frame {

@@ -1,5 +1,5 @@
 import { createElement } from 'react'
-import type { AnyWidgetPlugin, WidgetRenderProps } from '@sdk'
+import type { AnyWidgetPlugin, WidgetRenderProps } from '@renderer/plugins/types'
 import { registry } from '@renderer/plugins/registry'
 import { WidgetSurface } from '@renderer/ext/WidgetSurface'
 import { useBoardStore } from '@renderer/canvas/useBoardStore'

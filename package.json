@@ -14,7 +14,6 @@
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit",
     "knip": "knip",
-    "build:packages": "npm run build -w garret-core && npm run build -w garret-widget-sdk",
     "setup:electron": "node node_modules/electron/install.js",
     "build:native": "cd native && node-gyp rebuild --target=31.7.7 --arch=arm64 --dist-url=https://electronjs.org/headers --devdir=../.electron-gyp",
     "build:icon": "bash scripts/make-icon.sh",
@@ -26,8 +25,6 @@
   },
   "dependencies": {
     "electron-store": "^8.2.0",
-    "garret-core": "*",
-    "garret-widget-sdk": "*",
     "lucide-react": "^0.460.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

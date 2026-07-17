@@ -1,7 +1,5 @@
 import type { BoardState, PlacedWidget } from '../types/board'
 import type { WindowMode } from '../types/window'
-import type { ServiceStatus } from '../types/services'
-import type { PollUpdate, WatchSpec } from '../types/poll'
 import type { Preferences } from '../types/preferences'
 import type { ClipItem } from '../types/clipboard'
 import type {
@@ -11,7 +9,6 @@ import type {
   MarketplaceEntry,
   InstalledPack
 } from '../types/ext'
-import type { WatchOptions } from 'garret-core'
 
 /**
  * The single source of truth for the main ↔ renderer contract.
@@ -31,9 +28,6 @@ export const Channels = {
   layoutsRename: 'layouts:rename',
   layoutsDelete: 'layouts:delete',
   layoutsAddWidget: 'layouts:add-widget',
-  pluginsListExternal: 'plugins:list-external',
-  pluginsFetch: 'plugins:fetch',
-  pluginsOpenExternal: 'plugins:open-external',
   // --- unified extension system (garret-sdk) ---
   extList: 'ext:list', // board loader → { preloadUrl, extensions: ExtRuntimeInfo[] }
   extBind: 'ext:bind', // guest self-binds: (extensionId, instanceId) → { ok, hasHost, props }
@@ -88,24 +82,11 @@ export const Channels = {
   wcvSpikeBounds: 'wcv-spike:bounds',
   wcvSpikeVisible: 'wcv-spike:visible',
   wcvSpikeDestroy: 'wcv-spike:destroy',
-  serviceStatus: 'service:status',
-  serviceConnect: 'service:connect',
-  serviceDisconnect: 'service:disconnect',
-  serviceQuery: 'service:query',
   openExternal: 'shell:open-external',
   openPath: 'shell:open-path',
   openInEditor: 'shell:open-in-editor',
   pickDirectory: 'dialog:pick-directory',
   pickGarretFile: 'dialog:pick-garret',
-  layoutsAllWidgets: 'layouts:all-widgets',
-  pollSubscribe: 'poll:subscribe',
-  pollUnsubscribe: 'poll:unsubscribe',
-  pollRefresh: 'poll:refresh',
-  pollUpdate: 'poll:update',
-  notifySyncWatches: 'notify:sync-watches',
-  watchSubscribe: 'watch:subscribe',
-  watchUnsubscribe: 'watch:unsubscribe',
-  watchEvent: 'watch:event',
   hudState: 'hud:state',
   hudSet: 'hud:set',
   prefsGet: 'prefs:get',
@@ -120,9 +101,6 @@ export const Channels = {
   clipboardAxStatus: 'clipboard:ax-status',
   clipboardOpenAx: 'clipboard:open-ax'
 } as const
-
-/** Options for the file watcher (single source: garret-core). */
-export type { WatchOptions }
 
 /** Snapshot of available layouts and which one is active. */
 export interface LayoutsInfo {
@@ -165,32 +143,6 @@ export interface GarretApi {
     delete(name: string): Promise<BoardState>
     /** Append a widget to another (non-active) layout — for copy/move between layouts. */
     addWidget(name: string, widget: PlacedWidget): Promise<void>
-    /** All placed widgets across every layout (for registering notification watches). */
-    allWidgets(): Promise<PlacedWidget[]>
-  }
-  /** Central poll scheduler — live, coalesced, auto-refreshing query results. */
-  poll: {
-    subscribe(
-      subId: string,
-      key: string,
-      serviceId: string,
-      method: string,
-      params: Record<string, unknown>,
-      intervalMs: number
-    ): Promise<PollUpdate>
-    unsubscribe(subId: string): void
-    refresh(key: string): void
-    onUpdate(cb: (u: PollUpdate) => void): () => void
-  }
-  /** Background notification watches (registered from the saved board). */
-  notify: {
-    syncWatches(watches: WatchSpec[]): void
-  }
-  /** File-system watcher — fires when any watched path changes (debounced). */
-  watch: {
-    subscribe(watchId: string, paths: string[], opts: WatchOptions): void
-    unsubscribe(watchId: string): void
-    onEvent(cb: (watchId: string) => void): () => void
   }
   /** HUD mode — summon the widget layer over everything via global hotkey. */
   hud: {
@@ -225,32 +177,6 @@ export interface GarretApi {
     openAccessibilitySettings(): void
     /** Fired when history changes or the picker is (re)shown — re-fetch the list. */
     onChanged(cb: () => void): () => void
-  }
-  /**
-   * Backend service integrations (Jira, Bitbucket, …). Auth + data live in main;
-   * the renderer only ever sees status + query results, never credentials.
-   */
-  services: {
-    status(serviceId: string): Promise<ServiceStatus>
-    connect(serviceId: string, creds: Record<string, unknown>): Promise<ServiceStatus>
-    disconnect(serviceId: string): Promise<ServiceStatus>
-    query<T = unknown>(serviceId: string, method: string, params: Record<string, unknown>): Promise<T>
-  }
-  /** Dev-tier external widgets loaded from the `external-widgets/` folder. */
-  plugins: {
-    listExternal(): Promise<{ name: string; source: string }[]>
-    /**
-     * Host-mediated HTTP (no CORS) — the network chokepoint for widgets. Pass
-     * `allowedHosts` (the sandbox path) to gate the request to a widget's declared hosts
-     * + the resolved-IP rebind guard; omit it only for the trusted dev tier.
-     */
-    fetch(
-      url: string,
-      init?: { method?: string; headers?: Record<string, string>; body?: string },
-      opts?: { allowedHosts?: string[] }
-    ): Promise<{ ok: boolean; status: number; data?: unknown; error?: string }>
-    /** Open a URL in the browser AFTER a native confirm dialog; resolves true if opened. */
-    openExternalConfirmed(url: string): Promise<boolean>
   }
   /** Unified extension system (garret-sdk). Board-side API; guests use window.__garret (extBridge). */
   ext: {

@@ -16,13 +16,9 @@
     "baseUrl": ".",
     "paths": {
       "@shared/*": ["src/shared/*"],
-      "@sdk": ["src/sdk"],
-      "@sdk/*": ["src/sdk/*"],
       "@main/*": ["src/main/*"],
       "@renderer/*": ["src/renderer/src/*"],
       "@plugins/*": ["src/plugins/*"],
-      "garret-core": ["packages/core/src"],
-      "garret-widget-sdk": ["packages/widget-sdk/src"],
       "@garretapp/sdk": ["packages/sdk/src/index.ts"],
       "@garretapp/sdk/host": ["packages/sdk/src/host.ts"],
       "@garretapp/sdk/ui": ["packages/sdk/src/ui.ts"],

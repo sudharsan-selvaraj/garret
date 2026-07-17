@@ -18,32 +18,7 @@ const api: GarretApi = {
     create: (name) => ipcRenderer.invoke(Channels.layoutsCreate, name),
     rename: (from, to) => ipcRenderer.invoke(Channels.layoutsRename, from, to),
     delete: (name) => ipcRenderer.invoke(Channels.layoutsDelete, name),
-    addWidget: (name, widget) => ipcRenderer.invoke(Channels.layoutsAddWidget, name, widget),
-    allWidgets: () => ipcRenderer.invoke(Channels.layoutsAllWidgets)
-  },
-  poll: {
-    subscribe: (subId, key, serviceId, method, params, intervalMs) =>
-      ipcRenderer.invoke(Channels.pollSubscribe, subId, key, serviceId, method, params, intervalMs),
-    unsubscribe: (subId) => ipcRenderer.send(Channels.pollUnsubscribe, subId),
-    refresh: (key) => ipcRenderer.send(Channels.pollRefresh, key),
-    onUpdate: (cb) => {
-      const listener = (_e: unknown, u: Parameters<typeof cb>[0]): void => cb(u)
-      ipcRenderer.on(Channels.pollUpdate, listener)
-      return () => ipcRenderer.removeListener(Channels.pollUpdate, listener)
-    }
-  },
-  notify: {
-    syncWatches: (watches) => ipcRenderer.send(Channels.notifySyncWatches, watches)
-  },
-  watch: {
-    subscribe: (watchId, paths, opts) =>
-      ipcRenderer.send(Channels.watchSubscribe, watchId, paths, opts),
-    unsubscribe: (watchId) => ipcRenderer.send(Channels.watchUnsubscribe, watchId),
-    onEvent: (cb) => {
-      const listener = (_e: unknown, watchId: string): void => cb(watchId)
-      ipcRenderer.on(Channels.watchEvent, listener)
-      return () => ipcRenderer.removeListener(Channels.watchEvent, listener)
-    }
+    addWidget: (name, widget) => ipcRenderer.invoke(Channels.layoutsAddWidget, name, widget)
   },
   hud: {
     set: (active) => ipcRenderer.send(Channels.hudSet, active),
@@ -77,17 +52,6 @@ const api: GarretApi = {
       ipcRenderer.on(Channels.clipboardChanged, listener)
       return () => ipcRenderer.removeListener(Channels.clipboardChanged, listener)
     }
-  },
-  services: {
-    status: (id) => ipcRenderer.invoke(Channels.serviceStatus, id),
-    connect: (id, creds) => ipcRenderer.invoke(Channels.serviceConnect, id, creds),
-    disconnect: (id) => ipcRenderer.invoke(Channels.serviceDisconnect, id),
-    query: (id, method, params) => ipcRenderer.invoke(Channels.serviceQuery, id, method, params)
-  },
-  plugins: {
-    listExternal: () => ipcRenderer.invoke(Channels.pluginsListExternal),
-    fetch: (url, init, opts) => ipcRenderer.invoke(Channels.pluginsFetch, url, init, opts),
-    openExternalConfirmed: (url) => ipcRenderer.invoke(Channels.pluginsOpenExternal, url)
   },
   ext: {
     list: () => ipcRenderer.invoke(Channels.extList),
