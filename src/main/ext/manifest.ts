@@ -5,13 +5,13 @@ import type { SettingsField, NotifierSpec } from '@shared/types/ext'
 /**
  * Parse + validate `garret.manifest.json` into the trusted spec. One primitive: a Widget (no tiers).
  * A widget optionally ships a `host` (raw Node → `hasHost`, the warning); `capabilities` is a
- * broker-enforced functional allowlist. See docs/widget-packs-and-distribution.md.
+ * broker-enforced functional allowlist. See docs/guide/07-sdk-reference.md.
  */
 
 export const MANIFEST_FILE = 'garret.manifest.json'
 const ID_RE = /^[a-z0-9][a-z0-9._-]*$/
 
-// ── v2 pack identity (locked; see docs/widget-packs-and-distribution.md) ─────────────────────────
+// ── v2 pack identity (locked; see docs/guide/07-sdk-reference.md) ─────────────────────────
 const PACK_API_VERSION = 2
 /** A single dns-label-ish segment: lowercase alnum, internal hyphens. */
 const SEG_RE = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/
@@ -79,7 +79,6 @@ function normalizeCapability(c: unknown): string | null {
   if (typeof c !== 'string') return null
   if (SIMPLE_CAPS.has(c)) return c
   if (/^network:\S+$/.test(c)) return `network:${c.slice(8).toLowerCase()}`
-  if (/^service:[a-z0-9._-]+$/i.test(c)) return c.toLowerCase()
   return null
 }
 
@@ -87,7 +86,7 @@ function normalizeCapability(c: unknown): string | null {
 // PACKS (multiple widgets per package). apiVersion 2 is THE manifest format (v1 single-widget
 // manifests are rejected with a repack hint). A pack has a publisher-namespaced id; each widget has
 // its own ui/host/caps/tier/surfaces and a permanent full id `${packId}/${widgetId}`. See
-// docs/widget-packs-and-distribution.md.
+// docs/guide/07-sdk-reference.md.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 export interface WidgetSpec {

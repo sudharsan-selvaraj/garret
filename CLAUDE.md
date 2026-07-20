@@ -14,4 +14,4 @@ Apply this to every settings pane, dialog, manager, and widget surface. When a s
 
 ## Workflow
 
-At the end of every implementation phase, run an adversarial staff-engineer critic that reviews the phase's code against the architecture (`docs/architecture.md`, `docs/garret.html`): fidelity to the locked decisions, plus real bugs, security holes, and races. Fix all blockers before starting the next phase.
+At the end of every implementation phase, run an adversarial staff-engineer critic that reviews the phase's code against the architecture (`docs/guide/03-architecture.md` and the rest of `docs/guide/`): fidelity to the locked decisions, plus real bugs, security holes, and races. Fix all blockers before starting the next phase.

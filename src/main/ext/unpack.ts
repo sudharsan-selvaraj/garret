@@ -52,10 +52,9 @@ const SANDBOX_POLICY: UnpackPolicy = {
 }
 
 /**
- * Native tier: full-access extensions ship arbitrary JS/assets + a raw-Node host, so allow
- * everything EXCEPT compiled native addons (`.node` — rejected for ABI/packaging reasons, see
- * native-extensions-design §9; it is NOT a security boundary — an enabled extension has full
- * access anyway). Symlinks are still rejected below. Caps are looser but bounded (100 MB / 4000).
+ * Host packs ship arbitrary JS/assets + a raw-Node host, so allow everything EXCEPT compiled native
+ * addons (`.node` — rejected for ABI/packaging reasons; NOT a security boundary — a host pack has
+ * full access anyway). Symlinks are still rejected below. Caps are looser but bounded (100 MB / 4000).
  */
 export const NATIVE_POLICY: UnpackPolicy = {
   maxBytes: 100 * 1024 * 1024,

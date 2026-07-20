@@ -85,7 +85,7 @@ export function createWindow(mode: WindowMode): BrowserWindow {
       nodeIntegration: false,
       // Let Chromium throttle timers/rAF when the window is actually occluded (covered by apps).
       // This is the OS-driven half of the power story; the poll scheduler's HUD-gated interval
-      // stretch (setBoardActive) is the main-process half Chromium can't see. See architecture.md §6.
+      // stretch (setBoardActive) is the main-process half Chromium can't see. See docs/guide/03-architecture.md §Powering.
       backgroundThrottling: true,
       // Required for embedding third-party sites that block iframes (Calendar/Jira).
       webviewTag: true,

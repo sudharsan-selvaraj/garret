@@ -20,7 +20,7 @@ import type {
  * (`.garret-ext.json`) is HMAC-signed (anti-local-tamper, not author auth); code lives under
  * `<userData>/ext/<id>/`, state under `<userData>/ext-data/<id>/` (separate from the hashed code).
  * Web tier installs enabled (one-click, safe); full tier installs DISABLED (consent, default-OFF).
- * See docs/architecture.md § 5 + § Pre-SDK resolutions.
+ * See docs/guide/03-architecture.md § 5 + § Pre-SDK resolutions.
  */
 
 const RECORD_FILE = '.garret-ext.json'

@@ -49,7 +49,7 @@ import {
 /**
  * The unified extension lane (main): the renderer↔main↔host relay, the capability-broker IPC, the
  * board loader, and install/manage. One host per placed instance (keyed by the UI webview's
- * webContents id). See docs/architecture.md § 2 + § 5.
+ * webContents id). See docs/guide/03-architecture.md § 2 + § 5.
  */
 
 // webContents id → the extension bound to that widget webview (for the broker + host routing).

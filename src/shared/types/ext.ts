@@ -2,7 +2,7 @@
  * Extension types. One primitive: a Widget. No tiers, no consent — install is one-click; the only
  * risk signal is `hasHost` (a widget shipping a raw-Node host → a passive "can access your computer"
  * warning). Capabilities remain a broker-enforced functional allowlist, not a consent gate. See
- * docs/widget-packs-and-distribution.md.
+ * docs/guide/07-sdk-reference.md.
  */
 
 /** A declarative settings field → Garret renders an isolated settings pane per widget; values persist

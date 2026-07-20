@@ -3,7 +3,7 @@ import { Channels } from '@shared/ipc/channels'
 
 /**
  * THROWAWAY SPIKE (dev-only, gated by GARRET_WCV_SPIKE=1) — measures the cost of driving a
- * `WebContentsView` from the renderer's layout, the open question in docs/architecture.md §3
+ * `WebContentsView` from the renderer's layout, the open question in docs/guide/03-architecture.md §3
  * (renderer primitive: `<webview>` vs `WebContentsView`).
  *
  * A `WebContentsView` is NOT a DOM node — it's an OS layer attached to the window in main and

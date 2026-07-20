@@ -10,7 +10,7 @@ import { getSecret, setSecret, deleteSecret } from '@main/ext/secrets'
  * The capability broker — every platform call (`useGarret().*`) is checked HERE, in main, against
  * the extension's declared capabilities + tier. A compromised renderer can't skip a check it never
  * runs. Storage/secrets hit the same per-extension data dir the SDK host's `ctx.*` uses, so UI and
- * host share state. See docs/architecture.md § 5.
+ * host share state. See docs/guide/03-architecture.md § 5.
  */
 export interface Binding {
   packId: string
