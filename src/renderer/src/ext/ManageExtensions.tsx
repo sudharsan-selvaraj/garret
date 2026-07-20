@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Blocks, FolderOpen, HardDriveDownload, ShieldAlert, Store, Trash2 } from 'lucide-react'
+import { Blocks, FolderOpen, HardDriveDownload, ShieldAlert, Sparkles, Trash2 } from 'lucide-react'
 import type { ExtInstallPlan, InstalledExtension, MarketplaceEntry } from '@shared/types/ext'
 import { resyncExtensions } from '@renderer/ext/loader'
 import { InstallDialog, EnableDialog, needsEnableConsent } from '@renderer/ext/ExtDialogs'
@@ -16,8 +16,28 @@ function accessSummary(e: InstalledExtension): string {
   return parts.join(' · ') || 'No special access'
 }
 
-/** Settings → Widgets. One list — a widget is a widget; system access surfaces only when you turn
- *  it on. */
+/** A colourful rounded app-icon tile (monogram) derived from the pack name — packs don't ship icons,
+ *  so we generate a stable, distinct tile per pack (App Store-ish). */
+function PackTile({ name, size = 40 }: { name: string; size?: number }): JSX.Element {
+  const ch = (name.trim()[0] || '?').toUpperCase()
+  const hue = [...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % 360
+  return (
+    <span
+      className="mw-mono"
+      style={{
+        width: size,
+        height: size,
+        fontSize: size * 0.44,
+        background: `linear-gradient(140deg, hsl(${hue} 62% 54%), hsl(${(hue + 42) % 360} 58% 42%))`
+      }}
+    >
+      {ch}
+    </span>
+  )
+}
+
+/** Settings → Widgets. App-Store layout: a Discover grid of installable packs + an Installed list
+ *  you manage. Each pack shows in exactly one place. */
 export function ManageExtensions(): JSX.Element {
   const [exts, setExts] = useState<InstalledExtension[]>([])
   const [plan, setPlan] = useState<ExtInstallPlan | null>(null)
@@ -35,7 +55,7 @@ export function ManageExtensions(): JSX.Element {
     try {
       setMarket(await window.garret.ext.marketplace())
     } catch {
-      /* offline / no index yet — the marketplace section just stays empty */
+      /* offline / no index yet — Discover just stays hidden */
     }
   }, [])
   useEffect(() => {
@@ -80,6 +100,7 @@ export function ManageExtensions(): JSX.Element {
       if (!res.ok) return setError(res.error ?? 'Install failed')
       await resyncExtensions()
       await refresh()
+      await loadMarket()
     } finally {
       setBusy(false)
     }
@@ -118,7 +139,13 @@ export function ManageExtensions(): JSX.Element {
     await window.garret.ext.remove(e.id)
     await resyncExtensions()
     await refresh()
+    await loadMarket()
   }
+
+  // Discover = registry packs you don't have. Updates fold into the installed card.
+  const discover = market.filter((m) => !m.installed)
+  const updateFor = (e: InstalledExtension): MarketplaceEntry | undefined =>
+    market.find((m) => m.id === e.id && m.installed && m.installedVersion !== m.version)
 
   return (
     <div className="mw">
@@ -126,86 +153,84 @@ export function ManageExtensions(): JSX.Element {
         <h2 className="mw-title">Widgets</h2>
       </div>
 
-      {market.length > 0 && (
-        <div className="mw-section">
+      {discover.length > 0 && (
+        <section className="mw-section">
           <h3 className="mw-subtitle">
-            <Store size={13} strokeWidth={1.75} /> Marketplace
+            <Sparkles size={13} strokeWidth={1.75} /> Discover
           </h3>
-          <div className="mw-list">
-            {market.map((m) => (
-              <div key={m.id} className="mw-card">
-                <div className="mw-card-main mw-card-main--static">
-                  <span className="mw-card-body">
-                    <span className="mw-card-title">
-                      {m.name} <span className="mw-ver">v{m.version}</span>
-                    </span>
-                    {m.description && <span className="mw-card-desc">{m.description}</span>}
-                    <span className="mw-card-meta">
-                      <span className="mw-cap">{m.publisher}</span>
-                      {m.hasHost && <span className="mw-chip mw-chip--danger">Accesses your computer</span>}
-                    </span>
+          <div className="mw-grid">
+            {discover.map((m) => (
+              <div key={m.id} className="mw-tile">
+                <PackTile name={m.name} size={44} />
+                <div className="mw-tile-body">
+                  <span className="mw-tile-name">{m.name}</span>
+                  <span className="mw-tile-pub">
+                    {m.publisher}
+                    {m.hasHost && <span className="mw-chip mw-chip--danger">Accesses your computer</span>}
                   </span>
+                  {m.description && <p className="mw-tile-desc">{m.description}</p>}
                 </div>
-                <div className="mw-card-actions" onMouseDown={(ev) => ev.stopPropagation()}>
-                  {m.installed && m.installedVersion === m.version ? (
-                    <span className="mw-chip">Installed</span>
-                  ) : (
-                    <button
-                      className="mw-install"
-                      disabled={installing === m.id}
-                      onClick={() => void installFromMarket(m)}
-                    >
-                      {installing === m.id
-                        ? m.installed
-                          ? 'Updating…'
-                          : 'Installing…'
-                        : m.installed
-                          ? `Update → v${m.version}`
-                          : 'Install'}
-                    </button>
-                  )}
-                </div>
+                <button
+                  className="mw-get"
+                  disabled={installing === m.id}
+                  onClick={() => void installFromMarket(m)}
+                >
+                  {installing === m.id ? '…' : 'Get'}
+                </button>
               </div>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
-      {exts.length === 0 ? (
-        <div className="mw-empty">
-          <Blocks size={28} strokeWidth={1.5} />
-          <p className="mw-empty-title">No widgets yet</p>
-          <p className="mw-empty-sub">Add a widget someone shared with you.</p>
-        </div>
-      ) : (
-        <div className="mw-list">
-          {exts.map((e) => {
-            const broken = e.tampered || !e.integrityOk
-            return (
-              <div key={e.id} className={`mw-card${e.enabled ? '' : ' mw-card--off'}`}>
-                <div className="mw-card-main mw-card-main--static">
-                  <span className="mw-card-body">
+      <section className="mw-section">
+        <h3 className="mw-subtitle">
+          <Blocks size={13} strokeWidth={1.75} /> Installed
+        </h3>
+        {exts.length === 0 ? (
+          <div className="mw-empty">
+            <Blocks size={28} strokeWidth={1.5} />
+            <p className="mw-empty-title">No widgets installed</p>
+            <p className="mw-empty-sub">Install one from Discover, or add a widget someone shared.</p>
+          </div>
+        ) : (
+          <div className="mw-list">
+            {exts.map((e) => {
+              const broken = e.tampered || !e.integrityOk
+              const upd = updateFor(e)
+              return (
+                <div key={e.id} className={`mw-card${e.enabled ? '' : ' mw-card--off'}`}>
+                  <PackTile name={e.name} size={38} />
+                  <div className="mw-card-body">
                     <span className="mw-card-title">
                       {e.name} <span className="mw-ver">v{e.version}</span>
                     </span>
-                    {e.description && <span className="mw-card-desc">{e.description}</span>}
                     <span className="mw-card-meta">
                       <span className="mw-cap">{accessSummary(e)}</span>
                       {broken && <span className="mw-chip mw-chip--danger">Integrity failed</span>}
                     </span>
-                  </span>
+                  </div>
+                  <div className="mw-card-actions" onMouseDown={(ev) => ev.stopPropagation()}>
+                    {upd && (
+                      <button
+                        className="mw-update"
+                        disabled={installing === upd.id}
+                        onClick={() => void installFromMarket(upd)}
+                      >
+                        {installing === upd.id ? 'Updating…' : `Update → v${upd.version}`}
+                      </button>
+                    )}
+                    <Toggle on={e.enabled} disabled={broken && !e.enabled} onChange={() => void toggle(e)} />
+                    <button className="mw-icon-btn" title="Remove" onClick={() => void remove(e)}>
+                      <Trash2 size={15} strokeWidth={1.75} />
+                    </button>
+                  </div>
                 </div>
-                <div className="mw-card-actions" onMouseDown={(ev) => ev.stopPropagation()}>
-                  <Toggle on={e.enabled} disabled={broken && !e.enabled} onChange={() => void toggle(e)} />
-                  <button className="mw-icon-btn" title="Remove" onClick={() => void remove(e)}>
-                    <Trash2 size={15} strokeWidth={1.75} />
-                  </button>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
+              )
+            })}
+          </div>
+        )}
+      </section>
 
       <div className="mw-install-row">
         <button
