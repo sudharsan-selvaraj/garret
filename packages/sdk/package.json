@@ -1,9 +1,14 @@
 {
   "name": "@garretapp/sdk",
   "version": "0.2.0",
-  "description": "Build extensions for Garret — one SDK for both web widgets and full-access native extensions. Host runtime (defineHost), UI client + React hooks. See docs/garret.html.",
+  "description": "Build widget packs for Garret — UI client + React hooks/components and an optional Node host runtime (defineHost).",
   "license": "MIT",
   "author": "Sudharsan Selvaraj",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sudharsan-selvaraj/garret.git",
+    "directory": "packages/sdk"
+  },
   "type": "module",
   "exports": {
     ".": {
