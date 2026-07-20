@@ -26,6 +26,11 @@ function bindHostSync(): void {
  */
 async function register(): Promise<void> {
   const { preloadUrl, extensions } = await window.garret.ext.list()
+  // Idempotent: clear any prior gx: registrations first so a re-run (React StrictMode double-invoke
+  // in dev, or a reload) re-registers cleanly instead of logging "duplicate plugin id ignored".
+  for (const p of registry.list()) {
+    if (p.manifest.id.startsWith('gx:')) registry.unregister(p.manifest.id)
+  }
   for (const e of extensions) {
     registry.register({
       apiVersion: 1,
