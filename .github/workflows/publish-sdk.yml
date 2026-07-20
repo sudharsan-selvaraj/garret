@@ -1,11 +1,9 @@
 name: Publish SDK
 
-# Publish the widget SDK packages to npm. Cut a release by pushing a tag like
-# `sdk-v0.1.0` (separate from the app's `v*` tags), or run manually.
+# Publish @garretapp/sdk to npm. Cut a release by pushing a tag like `sdk-v0.2.0`
+# (separate from the app's `v*` tags), or run manually.
 #
-# Prerequisites (one-time):
-#   - Add an npm automation token as the `NPM_TOKEN` repo secret.
-#   - The package names (garret-core, garret-widget-sdk) are claimed on first publish.
+# Prerequisite (one-time): add an npm automation token as the `NPM_TOKEN` repo secret.
 on:
   push:
     tags:
@@ -18,34 +16,28 @@ permissions:
 
 jobs:
   publish:
-    runs-on: ubuntu-latest # pure TS packages — no native/electron build needed
+    runs-on: ubuntu-latest # pure TS package — no native/electron build needed
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '22'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Install (skip electron postinstall — not needed to build the packages)
+      - name: Install (skip electron postinstall — not needed to build the SDK)
         run: npm ci --ignore-scripts
 
-      - name: Sync package versions to the tag
+      - name: Sync version to the tag
         if: startsWith(github.ref, 'refs/tags/sdk-v')
         run: |
           VERSION="${GITHUB_REF_NAME#sdk-v}"
-          npm version "$VERSION" --no-git-tag-version --allow-same-version \
-            -w garret-core -w garret-widget-sdk
+          npm version "$VERSION" --no-git-tag-version --allow-same-version -w @garretapp/sdk
 
-      - name: Build packages
-        run: npm run build:packages
+      - name: Build SDK
+        run: npm run build -w @garretapp/sdk
 
-      - name: Publish garret-core
-        run: npm publish -w garret-core --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish garret-widget-sdk
-        run: npm publish -w garret-widget-sdk --provenance --access public
+      - name: Publish @garretapp/sdk
+        run: npm publish -w @garretapp/sdk --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
