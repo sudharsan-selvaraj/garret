@@ -15,7 +15,7 @@ garret-widgets/
   packs/<pack>/              # source: garret.manifest.json + ui/ (+ host/, shared/)
   scripts/build.mjs          # bundles every pack → dist/<id>.garret
   .github/workflows/release.yml   # CI: build + attach .garret to the "packs" release
-  .npmrc                     # pins registry.npmjs.org (public) for @garretapp/sdk, react, lucide
+  .npmrc                     # pins the public npm registry so installs are reproducible
 ```
 
 ## Build
@@ -77,18 +77,18 @@ version differs. Set `hasHost: true` for packs that ship a host (drives the inst
 ## Publishing the SDK
 
 `@garretapp/sdk` is a normal public-npm package (in this app repo under `packages/sdk`). To cut a
-release: bump `packages/sdk/package.json` `version`, then
+release: bump `packages/sdk/package.json` `version`, authenticate to npm (`npm login`, or an
+`NPM_TOKEN` in CI), then:
 
 ```bash
 cd packages/sdk
-npm publish --userconfig ~/.npm-ss --registry https://registry.npmjs.org --access public
+npm publish --access public
 ```
 
-The `--userconfig`/`--registry` override is required because the default registry is a corporate
-mirror — publish (and packs' `npm ci`) must resolve from **registry.npmjs.org**, or CI 401s.
-
-> **CI gotcha:** if you `npm install` a dep with the default registry, `package-lock.json` picks up
-> the corporate mirror's URLs and CI `npm ci` fails. Always install with `--registry https://registry.npmjs.org`
-> in these repos, and check `grep -c jfrog package-lock.json` is `0`.
+> **If your machine defaults to a private/proxy npm registry** (common in corporate setups), make
+> sure both publishing and installs resolve from the public registry, e.g. pass
+> `--registry https://registry.npmjs.org` (and use an npm userconfig scoped to your public-npm token).
+> Otherwise `package-lock.json` can capture proxy URLs and CI `npm ci` will fail to fetch — keep the
+> lockfile pointed at `registry.npmjs.org`.
 
 Next: [SDK reference →](07-sdk-reference.md)
