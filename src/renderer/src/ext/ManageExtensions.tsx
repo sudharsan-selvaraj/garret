@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Blocks, FolderOpen, HardDriveDownload, ShieldAlert, Sparkles, Trash2 } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { marked } from 'marked'
+import DOMPurify from 'dompurify'
+import { Blocks, ChevronLeft, FolderOpen, HardDriveDownload, ShieldAlert, Sparkles, Trash2 } from 'lucide-react'
 import type { ExtInstallPlan, InstalledExtension, MarketplaceEntry } from '@shared/types/ext'
 import { resyncExtensions } from '@renderer/ext/loader'
 import { InstallDialog, EnableDialog, needsEnableConsent } from '@renderer/ext/ExtDialogs'
@@ -11,14 +13,16 @@ function accessSummary(e: InstalledExtension): string {
   if (e.hasHost) return 'Can access your computer'
   const parts: string[] = []
   if (e.capabilities.some((c) => c.startsWith('network:'))) parts.push('Network')
-  if (e.capabilities.some((c) => c.startsWith('service:'))) parts.push('Account')
-  if (e.capabilities.includes('storage') || e.capabilities.includes('secrets')) parts.push('Storage')
+  if (e.capabilities.includes('secrets') || e.capabilities.includes('storage')) parts.push('Storage')
+  if (e.capabilities.includes('openExternal')) parts.push('Links')
   return parts.join(' · ') || 'No special access'
 }
 
-/** A colourful rounded app-icon tile (monogram) derived from the pack name — packs don't ship icons,
- *  so we generate a stable, distinct tile per pack (App Store-ish). */
-function PackTile({ name, size = 40 }: { name: string; size?: number }): JSX.Element {
+/** Pack icon: the real bundled/hosted image if present, else a stable colourful monogram tile. */
+function PackIcon({ src, name, size = 40 }: { src?: string; name: string; size?: number }): JSX.Element {
+  if (src) {
+    return <img className="mw-icon-img" src={src} alt="" style={{ width: size, height: size }} draggable={false} />
+  }
   const ch = (name.trim()[0] || '?').toUpperCase()
   const hue = [...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % 360
   return (
@@ -36,8 +40,27 @@ function PackTile({ name, size = 40 }: { name: string; size?: number }): JSX.Ele
   )
 }
 
-/** Settings → Widgets. App-Store layout: a Discover grid of installable packs + an Installed list
- *  you manage. Each pack shows in exactly one place. */
+/** Render trusted-but-sanitized README markdown. No scripts/raw event handlers; links open externally. */
+function Readme({ md }: { md: string }): JSX.Element {
+  const html = useMemo(() => DOMPurify.sanitize(marked.parse(md, { async: false }) as string), [md])
+  const onClick = (e: React.MouseEvent): void => {
+    const a = (e.target as HTMLElement).closest('a')
+    const href = a?.getAttribute('href')
+    if (href && /^https?:\/\//i.test(href)) {
+      e.preventDefault()
+      void window.garret.openExternal(href)
+    }
+  }
+  return <div className="mw-readme" onClick={onClick} dangerouslySetInnerHTML={{ __html: html }} />
+}
+
+type Selection =
+  | { kind: 'installed'; ext: InstalledExtension }
+  | { kind: 'market'; entry: MarketplaceEntry }
+  | null
+
+/** Settings → Widgets. App-Store layout: a Discover grid + an Installed list, and a details view
+ *  (icon · meta · README) you click into. Each pack shows in exactly one place. */
 export function ManageExtensions(): JSX.Element {
   const [exts, setExts] = useState<InstalledExtension[]>([])
   const [plan, setPlan] = useState<ExtInstallPlan | null>(null)
@@ -47,6 +70,7 @@ export function ManageExtensions(): JSX.Element {
   const [dev, setDev] = useState(false)
   const [market, setMarket] = useState<MarketplaceEntry[]>([])
   const [installing, setInstalling] = useState<string | null>(null)
+  const [selected, setSelected] = useState<Selection>(null)
 
   const refresh = useCallback(async () => {
     setExts(await window.garret.ext.listInstalled())
@@ -114,7 +138,7 @@ export function ManageExtensions(): JSX.Element {
     if (e.enabled) {
       await window.garret.ext.setEnabled(e.id, false)
     } else if (needsEnableConsent(e)) {
-      setEnabling(e) // system access / account / secrets / open network → confirm first
+      setEnabling(e)
       return
     } else {
       const res = await window.garret.ext.setEnabled(e.id, true)
@@ -137,15 +161,37 @@ export function ManageExtensions(): JSX.Element {
   const remove = async (e: InstalledExtension): Promise<void> => {
     if (!window.confirm(`Remove “${e.name}”?`)) return
     await window.garret.ext.remove(e.id)
+    setSelected(null)
     await resyncExtensions()
     await refresh()
     await loadMarket()
   }
 
-  // Discover = registry packs you don't have. Updates fold into the installed card.
   const discover = market.filter((m) => !m.installed)
   const updateFor = (e: InstalledExtension): MarketplaceEntry | undefined =>
     market.find((m) => m.id === e.id && m.installed && m.installedVersion !== m.version)
+
+  // Keep an open detail view in sync with the latest install/toggle state.
+  const liveSelection: Selection = selected
+    ? selected.kind === 'installed'
+      ? { kind: 'installed', ext: exts.find((e) => e.id === selected.ext.id) ?? selected.ext }
+      : selected
+    : null
+
+  if (liveSelection) {
+    return (
+      <PackDetail
+        sel={liveSelection}
+        installing={installing}
+        update={liveSelection.kind === 'installed' ? updateFor(liveSelection.ext) : undefined}
+        onBack={() => setSelected(null)}
+        onInstall={installFromMarket}
+        onToggle={toggle}
+        onRemove={remove}
+        error={error}
+      />
+    )
+  }
 
   return (
     <div className="mw">
@@ -160,8 +206,14 @@ export function ManageExtensions(): JSX.Element {
           </h3>
           <div className="mw-grid">
             {discover.map((m) => (
-              <div key={m.id} className="mw-tile">
-                <PackTile name={m.name} size={44} />
+              <div
+                key={m.id}
+                className="mw-tile"
+                role="button"
+                tabIndex={0}
+                onClick={() => setSelected({ kind: 'market', entry: m })}
+              >
+                <PackIcon src={m.icon} name={m.name} size={44} />
                 <div className="mw-tile-body">
                   <span className="mw-tile-name">{m.name}</span>
                   <span className="mw-tile-pub">
@@ -170,13 +222,16 @@ export function ManageExtensions(): JSX.Element {
                   </span>
                   {m.description && <p className="mw-tile-desc">{m.description}</p>}
                 </div>
-                <button
+                <span
                   className="mw-get"
-                  disabled={installing === m.id}
-                  onClick={() => void installFromMarket(m)}
+                  role="button"
+                  onClick={(ev) => {
+                    ev.stopPropagation()
+                    void installFromMarket(m)
+                  }}
                 >
                   {installing === m.id ? '…' : 'Get'}
-                </button>
+                </span>
               </div>
             ))}
           </div>
@@ -199,8 +254,14 @@ export function ManageExtensions(): JSX.Element {
               const broken = e.tampered || !e.integrityOk
               const upd = updateFor(e)
               return (
-                <div key={e.id} className={`mw-card${e.enabled ? '' : ' mw-card--off'}`}>
-                  <PackTile name={e.name} size={38} />
+                <div
+                  key={e.id}
+                  className={`mw-card${e.enabled ? '' : ' mw-card--off'}`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelected({ kind: 'installed', ext: e })}
+                >
+                  <PackIcon src={e.iconData} name={e.name} size={38} />
                   <div className="mw-card-body">
                     <span className="mw-card-title">
                       {e.name} <span className="mw-ver">v{e.version}</span>
@@ -210,21 +271,21 @@ export function ManageExtensions(): JSX.Element {
                       {broken && <span className="mw-chip mw-chip--danger">Integrity failed</span>}
                     </span>
                   </div>
-                  <div className="mw-card-actions" onMouseDown={(ev) => ev.stopPropagation()}>
+                  <span className="mw-card-actions" onClick={(ev) => ev.stopPropagation()} onMouseDown={(ev) => ev.stopPropagation()}>
                     {upd && (
-                      <button
+                      <span
                         className="mw-update"
-                        disabled={installing === upd.id}
+                        role="button"
                         onClick={() => void installFromMarket(upd)}
                       >
                         {installing === upd.id ? 'Updating…' : `Update → v${upd.version}`}
-                      </button>
+                      </span>
                     )}
                     <Toggle on={e.enabled} disabled={broken && !e.enabled} onChange={() => void toggle(e)} />
-                    <button className="mw-icon-btn" title="Remove" onClick={() => void remove(e)}>
+                    <span className="mw-icon-btn" role="button" title="Remove" onClick={() => void remove(e)}>
                       <Trash2 size={15} strokeWidth={1.75} />
-                    </button>
-                  </div>
+                    </span>
+                  </span>
                 </div>
               )
             })}
@@ -258,6 +319,112 @@ export function ManageExtensions(): JSX.Element {
       {enabling && (
         <EnableDialog ext={enabling} busy={busy} onConfirm={() => void confirmEnable()} onCancel={() => setEnabling(null)} />
       )}
+    </div>
+  )
+}
+
+/* ── Details view (App Store product page) ─────────────────────────────────────────────────────── */
+
+function PackDetail({
+  sel,
+  update,
+  installing,
+  onBack,
+  onInstall,
+  onToggle,
+  onRemove,
+  error
+}: {
+  sel: NonNullable<Selection>
+  update?: MarketplaceEntry
+  installing: string | null
+  onBack: () => void
+  onInstall: (m: MarketplaceEntry) => void
+  onToggle: (e: InstalledExtension) => void
+  onRemove: (e: InstalledExtension) => void
+  error: string | null
+}): JSX.Element {
+  const isInstalled = sel.kind === 'installed'
+  const name = isInstalled ? sel.ext.name : sel.entry.name
+  const publisher = isInstalled ? undefined : sel.entry.publisher
+  const version = isInstalled ? sel.ext.version : sel.entry.version
+  const iconSrc = isInstalled ? sel.ext.iconData : sel.entry.icon
+  const description = isInstalled ? sel.ext.description : sel.entry.description
+  const hasHost = isInstalled ? sel.ext.hasHost : sel.entry.hasHost
+  const access = isInstalled ? accessSummary(sel.ext) : hasHost ? 'Can access your computer' : undefined
+
+  const [readme, setReadme] = useState<string | null | undefined>(undefined) // undefined = loading
+  useEffect(() => {
+    let alive = true
+    const arg = isInstalled ? { id: sel.ext.id } : sel.entry.readme ? { url: sel.entry.readme } : null
+    const has = isInstalled ? sel.ext.hasReadme : !!sel.entry.readme
+    if (!arg || !has) {
+      setReadme(null)
+      return
+    }
+    setReadme(undefined)
+    void window.garret.ext.readme(arg).then((r) => alive && setReadme(r))
+    return () => {
+      alive = false
+    }
+  }, [sel, isInstalled])
+
+  return (
+    <div className="mw mw-detail">
+      <button className="mw-back" onClick={onBack}>
+        <ChevronLeft size={16} strokeWidth={2} /> Widgets
+      </button>
+
+      <div className="mw-hero">
+        <PackIcon src={iconSrc} name={name} size={72} />
+        <div className="mw-hero-body">
+          <h2 className="mw-hero-name">{name}</h2>
+          <div className="mw-hero-meta">
+            {publisher && <span>{publisher}</span>}
+            <span>v{version}</span>
+            {access && <span>{access}</span>}
+          </div>
+          {description && <p className="mw-hero-desc">{description}</p>}
+          {hasHost && (
+            <span className="mw-chip mw-chip--danger">
+              <ShieldAlert size={11} strokeWidth={2} /> Runs code on your computer
+            </span>
+          )}
+        </div>
+        <div className="mw-hero-actions">
+          {sel.kind === 'market' ? (
+            <button className="mw-install" disabled={installing === sel.entry.id} onClick={() => onInstall(sel.entry)}>
+              {installing === sel.entry.id ? 'Installing…' : 'Get'}
+            </button>
+          ) : (
+            <>
+              {update && (
+                <button className="mw-install" disabled={installing === update.id} onClick={() => onInstall(update)}>
+                  {installing === update.id ? 'Updating…' : `Update → v${update.version}`}
+                </button>
+              )}
+              <div className="mw-hero-manage">
+                <Toggle on={sel.ext.enabled} onChange={() => onToggle(sel.ext)} />
+                <button className="mw-install mw-install--ghost" onClick={() => onRemove(sel.ext)}>
+                  <Trash2 size={14} strokeWidth={1.75} /> Remove
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {error && <p className="mw-error">{error}</p>}
+
+      <div className="mw-detail-body">
+        {readme === undefined ? (
+          <p className="mw-detail-loading">Loading…</p>
+        ) : readme ? (
+          <Readme md={readme} />
+        ) : (
+          <p className="mw-detail-loading">{description || 'No description provided.'}</p>
+        )}
+      </div>
     </div>
   )
 }
