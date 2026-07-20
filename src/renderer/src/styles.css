@@ -1145,9 +1145,9 @@ button[disabled],
   overflow: auto;
 }
 
-/* Settings dialog: master-detail */
+/* Settings dialog: master-detail. Wide enough for a 2-column widget grid. */
 .dialog-settings {
-  width: min(760px, 92vw);
+  width: min(1040px, 94vw);
 }
 .settings-master {
   display: flex;
@@ -1826,8 +1826,8 @@ button[disabled],
 }
 
 .mw-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
   gap: 10px;
 }
 .mw-card {
@@ -2199,8 +2199,9 @@ button[disabled],
   line-height: 1.5;
 }
 
-/* README markdown (sanitized). */
+/* README markdown (sanitized). Capped width keeps line length readable in the wide dialog. */
 .mw-readme {
+  max-width: 760px;
   color: var(--text);
   font-size: 13px;
   line-height: 1.6;
