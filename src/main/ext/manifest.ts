@@ -114,7 +114,10 @@ export interface PackSpec {
   name: string
   version: string
   description?: string
+  /** pack icon — a relative image path in the pack (e.g. `icon.png`). */
   icon?: string
+  /** pack README — a relative markdown path in the pack (default `README.md`). */
+  readme?: string
   widgets: WidgetSpec[]
   /** opt-in pack-shared settings schema (values live in `ext-data/<packId>/_shared/`). */
   shared?: { settingsSchema?: SettingsField[] }
@@ -324,6 +327,7 @@ export async function parsePack(dir: string): Promise<PackSpec | { error: string
     version: typeof m.version === 'string' ? m.version : '0.0.0',
     description: typeof m.description === 'string' ? m.description : undefined,
     icon: typeof m.icon === 'string' ? m.icon : undefined,
+    readme: typeof m.readme === 'string' ? m.readme : undefined,
     widgets,
     shared,
     capabilities

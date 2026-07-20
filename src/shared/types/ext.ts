@@ -88,6 +88,10 @@ export interface MarketplaceEntry {
   installed: boolean
   /** the locally-installed version, if installed — lets the UI offer "Update" when it differs. */
   installedVersion?: string
+  /** https URL of the pack's icon image (shown in Discover before install). */
+  icon?: string
+  /** https URL of the pack's README markdown (fetched on demand for the details view). */
+  readme?: string
 }
 
 /** A validated pack-install proposal. Install is one-click; `hasHost` drives the passive warning. */
@@ -128,7 +132,12 @@ export interface InstalledPack {
   name: string
   version: string
   description?: string
+  /** manifest icon path (relative, in the pack). */
   icon?: string
+  /** the icon resolved to a data URL for rendering (undefined if the pack ships none). */
+  iconData?: string
+  /** true if the pack bundles a README.md (fetch its text via ext.readme). */
+  hasReadme?: boolean
   source: string
   /** any widget ships a host → the pack carries the host-access warning. */
   hasHost: boolean
@@ -166,6 +175,10 @@ export interface InstalledExtension {
   version: string
   description?: string
   icon?: string
+  /** the icon resolved to a data URL for rendering (undefined if the pack ships none). */
+  iconData?: string
+  /** true if the pack bundles a README.md (fetch its text via ext.readme). */
+  hasReadme?: boolean
   source: string
   capabilities: string[]
   hasHost: boolean

@@ -441,6 +441,71 @@ export async function removePack(packId: string): Promise<void> {
   await rm(join(app.getPath('userData'), 'ext-data', packId), { recursive: true, force: true })
 }
 
+// ── pack assets: icon (→ data URL) + README (→ text), traversal-guarded ─────────────────────────
+const ICON_MAX = 512 * 1024
+const README_MAX = 512 * 1024
+const README_NAMES = ['README.md', 'readme.md', 'Readme.md']
+const ICON_MIME: Record<string, string> = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.svg': 'image/svg+xml',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif'
+}
+
+/** Resolve a pack-relative asset path, refusing anything that escapes the pack dir. */
+function packAssetPath(packId: string, rel: string): string | null {
+  if (!rel || rel.startsWith('/') || /(^|\/)\.\.(\/|$)/.test(rel)) return null
+  const base = packDir(packId)
+  const p = normalize(join(base, rel))
+  return p === base || p.startsWith(base + sep) ? p : null
+}
+
+/** The pack's icon as a data URL (from spec.icon), or undefined. */
+async function packIconDataUrl(packId: string, iconRel: string | undefined): Promise<string | undefined> {
+  if (!iconRel) return undefined
+  const p = packAssetPath(packId, iconRel)
+  const mime = p && ICON_MIME[extname(p).toLowerCase()]
+  if (!p || !mime) return undefined
+  try {
+    const buf = await readFile(p)
+    return buf.length > ICON_MAX ? undefined : `data:${mime};base64,${buf.toString('base64')}`
+  } catch {
+    return undefined
+  }
+}
+
+/** The pack's README path (spec.readme, else a README.md at the root), or null. */
+async function packReadmePath(packId: string, readmeRel: string | undefined): Promise<string | null> {
+  for (const c of readmeRel ? [readmeRel] : README_NAMES) {
+    const p = packAssetPath(packId, c)
+    if (p) {
+      try {
+        await lstat(p)
+        return p
+      } catch {
+        /* next candidate */
+      }
+    }
+  }
+  return null
+}
+
+/** Read an installed pack's bundled README markdown (bounded), or null. */
+export async function readPackReadme(packId: string): Promise<string | null> {
+  if (!PACK_ID_RE.test(packId)) return null
+  const spec = await parsePack(packDir(packId))
+  if ('error' in spec) return null
+  const p = await packReadmePath(packId, spec.readme)
+  if (!p) return null
+  try {
+    return (await readFile(p, 'utf8')).slice(0, README_MAX)
+  } catch {
+    return null
+  }
+}
+
 export async function listInstalledPacks(): Promise<InstalledPack[]> {
   let entries: string[]
   try {
@@ -463,6 +528,8 @@ export async function listInstalledPacks(): Promise<InstalledPack[]> {
     if (!rec) continue
     const integrityOk = rec.id === packId && packRecordMacOk(rec)
     const tampered = (await currentHash(packId)) !== rec.sha256
+    const iconData = await packIconDataUrl(packId, spec.icon)
+    const hasReadme = (await packReadmePath(packId, spec.readme)) !== null
     out.push({
       id: packId,
       publisher: spec.publisher,
@@ -470,6 +537,8 @@ export async function listInstalledPacks(): Promise<InstalledPack[]> {
       version: rec.version,
       description: spec.description,
       icon: spec.icon,
+      iconData,
+      hasReadme,
       source: rec.source,
       hasHost: rec.widgets.some((w) => w.hasHost),
       capabilities: rec.capabilities,

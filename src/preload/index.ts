@@ -63,6 +63,7 @@ const api: GarretApi = {
     setEnabled: (id, on) => ipcRenderer.invoke(Channels.extSetEnabled, id, on),
     remove: (id) => ipcRenderer.invoke(Channels.extRemove, id),
     marketplace: () => ipcRenderer.invoke(Channels.extMarketplace),
+    readme: (arg: { id?: string; url?: string }) => ipcRenderer.invoke(Channels.extReadme, arg),
     installUrl: (url: string) => ipcRenderer.invoke(Channels.extInstallUrl, url),
     packs: () => ipcRenderer.invoke(Channels.extPacks),
     settingsGet: (fullId: string) => ipcRenderer.invoke(Channels.extSettingsGet, fullId),

@@ -32,6 +32,7 @@ import {
   commitPackInstall,
   cleanupPackStaging,
   listInstalledPacks,
+  readPackReadme,
   setPackEnabled,
   removePack,
   readPackRecord,
@@ -104,6 +105,8 @@ const toInstalled = (p: InstalledPack): InstalledExtension => ({
   version: p.version,
   description: p.description,
   icon: p.icon,
+  iconData: p.iconData,
+  hasReadme: p.hasReadme,
   source: p.source,
   capabilities: p.capabilities,
   hasHost: p.hasHost,
@@ -381,6 +384,20 @@ export function registerExtHandlers(): void {
 
   // ── marketplace (GitHub registry index → one-click install) ─────────────────────────────────────
   ipcMain.handle(Channels.extMarketplace, () => fetchMarketplaceIndex())
+  // README for the details view: bundled file for an installed pack (`id`), else fetch a marketplace
+  // entry's `readme` URL (bounded). Returns markdown text or null.
+  ipcMain.handle(Channels.extReadme, async (_e, arg: { id?: string; url?: string }) => {
+    if (arg?.url && /^https:\/\//i.test(arg.url)) {
+      try {
+        const res = await fetch(arg.url)
+        if (!res.ok) return null
+        return (await res.text()).slice(0, 512 * 1024)
+      } catch {
+        return null
+      }
+    }
+    return arg?.id ? readPackReadme(arg.id) : null
+  })
   ipcMain.handle(Channels.extInstallUrl, async (_e, url: string) => {
     const plan = await planPackInstallFromUrl(url)
     if (!plan.ok) return { ok: false, error: plan.error }

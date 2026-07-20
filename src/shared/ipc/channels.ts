@@ -46,6 +46,7 @@ export const Channels = {
   extSetEnabled: 'ext:set-enabled',
   extRemove: 'ext:remove',
   extMarketplace: 'ext:marketplace', // () → MarketplaceEntry[] (fetch the GitHub registry index)
+  extReadme: 'ext:readme', // ({id?}→bundled | {url?}→fetched) → README markdown | null
   extInstallUrl: 'ext:install-url', // (url) → install a marketplace pack's .garret (one-click)
   extPacks: 'ext:packs', // () → InstalledPack[] (per-pack + per-widget detail, for the settings sidebar)
   extSettingsGet: 'ext:settings-get', // (fullId) → the widget's stored settings values
@@ -190,6 +191,8 @@ export interface GarretApi {
     remove(id: string): Promise<void>
     /** Fetch the marketplace registry index (curated GitHub repo). */
     marketplace(): Promise<MarketplaceEntry[]>
+    /** README markdown for the details view — bundled (`{id}`) or fetched (`{url}`); null if none. */
+    readme(arg: { id?: string; url?: string }): Promise<string | null>
     /** One-click install a marketplace pack by its prebuilt-.garret URL. */
     installUrl(url: string): Promise<{ ok: boolean; error?: string }>
     /** Installed packs with per-widget detail + settings schemas (for the settings sidebar). */

@@ -39,7 +39,9 @@ export async function fetchMarketplaceIndex(): Promise<MarketplaceEntry[]> {
       url: x.url,
       hasHost: x.hasHost === true,
       installed: installedVersions.has(x.id),
-      installedVersion: installedVersions.get(x.id)
+      installedVersion: installedVersions.get(x.id),
+      icon: typeof x.icon === 'string' && /^https:\/\//i.test(x.icon) ? x.icon : undefined,
+      readme: typeof x.readme === 'string' && /^https:\/\//i.test(x.readme) ? x.readme : undefined
     })
   }
   return out
