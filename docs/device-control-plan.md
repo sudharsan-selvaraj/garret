@@ -170,4 +170,3 @@ Phase C was validated structurally (typecheck + bundle) but not live. Confirm wi
 2. **Audio:** **included** (Android 11+; older devices fall back to video-only, not an error).
 3. **`scrcpy-server.jar`:** bundled in the plugin as a pushed asset (Apache-2.0).
 4. **Library:** ya-webadb for both tracking and mirror (no adbkit — avoids mixing two adb libraries).
-</content>

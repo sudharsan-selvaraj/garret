@@ -81,7 +81,9 @@ Declared per widget; enforced by the broker on every `g.*` call.
 | `surfaces.open(id, { key, title, props })` | Open a declared floating surface. |
 | `onReady(cb)` | Fires when the widget binds (prefer `useInstanceConfig`'s `loaded`). |
 
-## Hooks (`@garretapp/sdk/react`)
+## Hooks
+
+Import from `@garretapp/sdk/react`.
 
 | Hook | Use |
 |------|-----|
@@ -95,9 +97,10 @@ Declared per widget; enforced by the broker on every `g.*` call.
 | `useStream(factory, deps, opts?)` | Consume a host stream. |
 | `useConfig()` / `useProps()` | Low-level config / surface launch-props. |
 
-## Components (`@garretapp/sdk/react`)
+## Components
 
-Generic, theme-styled building blocks (no widget-specific UI) — compose them into your own layout.
+Import from `@garretapp/sdk/react`. Generic, theme-styled building blocks (no widget-specific UI) —
+compose them into your own layout.
 
 - **States:** `EmptyState`, `ErrorState`, `StatusStrip` (stale-while-error / refreshing).
 - **Layout:** `Scroll`, `Item` (leading/content/trailing row), `Accordion`.
@@ -108,9 +111,9 @@ Generic, theme-styled building blocks (no widget-specific UI) — compose them i
 All emit `--gx-*` classes styled by the shared `~theme.css` served on the widget's origin — so widgets
 look native without shipping a design system.
 
-## Host runtime (`@garretapp/sdk/host`)
+## Host runtime
 
-`defineHost<Api, Events>((ctx) => methods)` — `ctx` provides:
+From `@garretapp/sdk/host`. `defineHost<Api, Events>((ctx) => methods)` — `ctx` provides:
 
 | `ctx.*` | |
 |---------|--|

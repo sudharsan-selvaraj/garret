@@ -28,7 +28,8 @@ npm run knip        # dead-code / unused-dependency report
    "runs code on your computer" notice first.
 3. Back in **Add widget**, the pack's widgets appear under their pack's group — **Add** one to the board.
 4. Configure it: open the widget's **⋯ → Settings**, and for account-based packs, its pane in
-   **Settings → <Pack>** (e.g. enter your Atlassian email + API token once; all its widgets share it).
+   its pane in **Settings** (listed under the pack's name — e.g. enter your Atlassian email + API
+   token once; all its widgets share it).
 
 Placed widgets persist across restarts and across **layouts** (named board arrangements you can switch
 between). Right-click a widget for lock / opacity / colour / move-to-layout / remove.

@@ -42,7 +42,7 @@ export default defineHost<Api, Events>((ctx) => ({
 
 `ctx` gives the host: `storage`, `secrets`, `shared`, `fetch`, `spawn`/`spawnShell`/`resolveBinary`,
 `emit` (push events), `stream` (push chunks), `onDispose`, `log`. See
-[SDK reference §Host runtime](07-sdk-reference.md#host-runtime-garretappsdkhost).
+[SDK reference §Host runtime](07-sdk-reference.md#host-runtime).
 
 ## Calling the host from the UI
 
