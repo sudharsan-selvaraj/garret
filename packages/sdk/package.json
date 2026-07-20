@@ -1,6 +1,6 @@
 {
   "name": "@garretapp/sdk",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Build widget packs for Garret — UI client + React hooks/components and an optional Node host runtime (defineHost).",
   "license": "MIT",
   "author": "Sudharsan Selvaraj",
@@ -12,23 +12,49 @@
   "type": "module",
   "exports": {
     ".": {
-      "import": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
-      "require": { "types": "./dist/index.d.cts", "default": "./dist/index.cjs" }
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     },
     "./host": {
-      "import": { "types": "./dist/host.d.ts", "default": "./dist/host.js" },
-      "require": { "types": "./dist/host.d.cts", "default": "./dist/host.cjs" }
+      "import": {
+        "types": "./dist/host.d.ts",
+        "default": "./dist/host.js"
+      },
+      "require": {
+        "types": "./dist/host.d.cts",
+        "default": "./dist/host.cjs"
+      }
     },
     "./ui": {
-      "import": { "types": "./dist/ui.d.ts", "default": "./dist/ui.js" },
-      "require": { "types": "./dist/ui.d.cts", "default": "./dist/ui.cjs" }
+      "import": {
+        "types": "./dist/ui.d.ts",
+        "default": "./dist/ui.js"
+      },
+      "require": {
+        "types": "./dist/ui.d.cts",
+        "default": "./dist/ui.cjs"
+      }
     },
     "./react": {
-      "import": { "types": "./dist/react.d.ts", "default": "./dist/react.js" },
-      "require": { "types": "./dist/react.d.cts", "default": "./dist/react.cjs" }
+      "import": {
+        "types": "./dist/react.d.ts",
+        "default": "./dist/react.js"
+      },
+      "require": {
+        "types": "./dist/react.d.cts",
+        "default": "./dist/react.cjs"
+      }
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup src/index.ts src/host.ts src/ui.ts src/react.ts --format esm,cjs --dts --clean --treeshake",
     "prepublishOnly": "npm run build"
@@ -37,6 +63,8 @@
     "react": ">=18"
   },
   "peerDependenciesMeta": {
-    "react": { "optional": true }
+    "react": {
+      "optional": true
+    }
   }
 }
