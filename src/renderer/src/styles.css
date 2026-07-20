@@ -1188,8 +1188,12 @@ button[disabled],
   padding: 22px;
   overflow: auto;
 }
-.svc-detail {
-  max-width: 460px;
+/* Form panes (General, per-pack settings) read as a centered column — the wide dialog is for the
+   Widgets grid; forms shouldn't stretch. The Widgets pane (.mw) keeps the full width. */
+.svc-detail,
+.ws {
+  max-width: 620px;
+  margin: 0 auto;
 }
 .svc-detail .svc-error {
   margin-top: 10px;
