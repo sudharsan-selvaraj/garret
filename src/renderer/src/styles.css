@@ -566,22 +566,6 @@ button[disabled],
 }
 
 /* ---------- Settings ---------- */
-.widget-settings {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-.settings-scroll {
-  flex: 1;
-  overflow: auto;
-  padding: 20px;
-}
-.settings-form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  max-width: 580px;
-}
 .settings-item {
   display: flex;
   flex-direction: column;
@@ -701,43 +685,6 @@ button[disabled],
   font-size: 12.5px;
 }
 
-/* Footer */
-.settings-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 16px;
-  border-top: 0.5px solid var(--hairline);
-  background: rgba(0, 0, 0, 0.18);
-}
-.settings-saved {
-  font-size: 11.5px;
-  color: var(--text-3);
-}
-.settings-done {
-  height: 28px;
-  padding: 0 16px;
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  font-weight: 500;
-  font-size: 13px;
-  cursor: default;
-  /* Native push-button depth: top specular highlight + faint drop shadow. */
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.25),
-    0 1px 2px rgba(0, 0, 0, 0.35);
-  transition: background 0.15s ease;
-}
-.settings-done:hover {
-  background: var(--accent-hover);
-}
-.settings-done:active {
-  background: var(--accent);
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
-}
 
 /* While dragging/resizing, let mouse events pass to the parent (not the webview). */
 .free-canvas.is-interacting .widget-webview {
@@ -1108,44 +1055,12 @@ button[disabled],
   }
 }
 
-/* ---------- Service (data) widgets ---------- */
-.svc-empty {
-  height: 100%;
-  display: grid;
-  place-items: center;
-  padding: 18px;
-  text-align: center;
-  color: var(--text-2);
-  font-size: 12.5px;
-}
-
-/* Multi-row settings group (connect form / filters) needs row dividers. */
+/* ---------- Settings panes (General / Widgets / pack) ---------- */
+/* Multi-row settings group needs row dividers. */
 .settings-group .settings-row + .settings-row {
   box-shadow: inset 0 0.5px 0 var(--hairline);
 }
 
-.svc-connected {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: 9px;
-  background: rgba(48, 209, 88, 0.12);
-  font-size: 12.5px;
-}
-.svc-connected b {
-  font-weight: 600;
-}
-.svc-btn {
-  background: var(--surface-input);
-  border: none;
-  color: var(--text);
-  padding: 6px 12px;
-  border-radius: 7px;
-  font-size: 12px;
-  font-weight: 500;
-}
 .svc-error {
   color: var(--danger);
   font-size: 11.5px;
@@ -1268,15 +1183,6 @@ button[disabled],
   text-align: left;
   font-weight: 500;
 }
-.svc-badge {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--text-3);
-}
-.svc-badge.on {
-  background: #30d158;
-}
 .settings-detail {
   flex: 1;
   padding: 22px;
@@ -1284,14 +1190,6 @@ button[disabled],
 }
 .svc-detail {
   max-width: 460px;
-}
-/* Align the connection inputs by giving labels a fixed column (dialog only). */
-.svc-detail .settings-row-label {
-  width: 84px;
-}
-/* Breathing room between the connection form and the Connect button. */
-.svc-detail .settings-done {
-  margin-top: 18px;
 }
 .svc-detail .svc-error {
   margin-top: 10px;

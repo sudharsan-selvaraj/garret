@@ -59,7 +59,6 @@ function isLight(hex: string): boolean {
 export function WidgetHost({ widget }: { widget: PlacedWidget }): JSX.Element {
   const plugin = registry.get(widget.pluginId)
   const removeWidget = useBoardStore((s) => s.removeWidget)
-  const updateConfig = useBoardStore((s) => s.updateConfig)
   const setOpacity = useBoardStore((s) => s.setOpacity)
   const setLocked = useBoardStore((s) => s.setLocked)
   const setColor = useBoardStore((s) => s.setColor)
