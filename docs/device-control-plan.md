@@ -1,8 +1,9 @@
 # Device Control plugin — design & plan
 
-**Status: design, pre-implementation.** Evolves `examples/sdk/adb-devices` into a full device-control
-plugin: a live device **list** surface + one floating **mirror** surface per device (screen + control),
-built on the unified SDK + the floating-surface-windows primitive ([[floating-surface-windows]]).
+**Status: shipped.** The device-control pack now lives in the pack registry as **Android Device
+Management** (`garret-widgets` → `packs/adb-devices`, widget "Device control"). This doc is the design
+record: a live device **list** surface + one floating **mirror** surface per device (screen + control),
+built on the SDK + the floating-surface-windows primitive ([[floating-surface-windows]]).
 
 ## Decision log
 
