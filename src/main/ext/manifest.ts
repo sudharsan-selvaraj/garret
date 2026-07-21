@@ -97,6 +97,8 @@ export interface WidgetSpec {
   name: string
   description?: string
   icon?: string
+  /** pack-relative preview image (screenshot) shown in the Add-widget gallery. */
+  preview?: string
   uiDir: string
   /** present ⇒ the widget ships a raw-Node host (system access → the warning). */
   nodeEntry?: string
@@ -244,6 +246,7 @@ async function parseWidget(base: string, packId: string, raw: unknown): Promise<
     name: w.name,
     description: typeof w.description === 'string' ? w.description : undefined,
     icon: typeof w.icon === 'string' ? w.icon : undefined,
+    preview: typeof w.preview === 'string' ? w.preview : undefined,
     uiDir,
     nodeEntry,
     capabilities,

@@ -1296,15 +1296,15 @@ button[disabled],
 /* Add dialog: widgets grouped by service */
 /* Add dialog — master/detail: group nav on the left, that group's widgets (preview + Add) on the right */
 .dialog-add {
-  width: min(820px, 94vw);
+  width: min(980px, 94vw);
 }
 .dialog-add .dialog-body {
   padding: 0;
 }
 .add-master {
   display: flex;
-  min-height: 460px;
-  max-height: 72vh;
+  min-height: 520px;
+  max-height: 78vh;
 }
 .add-nav {
   width: 216px;
@@ -1358,6 +1358,13 @@ button[disabled],
 .add-nav-item.active {
   background: var(--accent);
 }
+.add-nav-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
 .add-nav-name {
   flex: 1;
   min-width: 0;
@@ -1391,64 +1398,127 @@ button[disabled],
   letter-spacing: 0.04em;
   color: var(--text-3);
 }
-.add-section-connect {
-  margin-left: auto;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--accent);
-  background: rgba(10, 132, 255, 0.16);
-  border: none;
-  padding: 4px 10px;
-  border-radius: 7px;
-  text-transform: none;
-  letter-spacing: 0;
+/* ---- Add-widget gallery: preview cards ---- */
+.add-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+  gap: 14px;
+  padding: 10px 0 4px;
 }
-.add-section-ok {
-  margin-left: auto;
-  font-size: 11px;
-  font-weight: 500;
-  color: #30d158;
-  text-transform: none;
-  letter-spacing: 0;
-}
-.add-item {
+.add-card {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 14px 2px;
+  border: 0.5px solid var(--hairline);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--surface-2, rgba(255, 255, 255, 0.02));
+  transition:
+    border-color 0.14s ease,
+    transform 0.14s ease,
+    box-shadow 0.14s ease;
 }
-.add-item + .add-item {
-  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.05);
+.add-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--hairline));
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
 }
-.add-item-bar {
+.add-card-preview {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  box-shadow: inset 0 -0.5px 0 var(--hairline);
+}
+.add-card-shot {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+}
+/* Branded placeholder when a widget ships no preview screenshot. */
+.add-card-ph {
+  width: 100%;
+  height: 100%;
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  background:
+    radial-gradient(120% 120% at 50% 0%, rgba(255, 255, 255, 0.05), transparent 70%),
+    var(--surface-input, rgba(255, 255, 255, 0.03));
+  color: var(--text-3);
 }
-.add-item-titles {
+.add-card-ph-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  object-fit: cover;
+  opacity: 0.92;
+}
+.add-card-ph-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+.add-card-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 9.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 2px 7px;
+  border-radius: var(--r-pill);
+  color: #ff9f0a;
+  background: color-mix(in srgb, #ff9f0a 20%, rgba(0, 0, 0, 0.55));
+  backdrop-filter: blur(6px);
+}
+.add-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 11px 13px 12px;
+}
+.add-card-titles {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 3px;
 }
-.add-item-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.add-card-name {
+  font-size: 13px;
+  font-weight: 600;
   color: var(--text);
 }
-.add-item-name {
-  font-size: 13.5px;
-  font-weight: 600;
-}
-.add-item-desc {
-  font-size: 12px;
+.add-card-desc {
+  font-size: 11.5px;
+  line-height: 1.4;
   color: var(--text-2);
-  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
-.add-item-btn {
-  flex-shrink: 0;
+.add-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.add-card-size {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.add-card-btn {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -1460,47 +1530,8 @@ button[disabled],
   border: none;
   border-radius: 7px;
 }
-.add-item-btn:hover {
+.add-card-btn:hover {
   background: var(--accent-hover);
-}
-.add-item-btn--connect {
-  color: var(--accent);
-  background: rgba(10, 132, 255, 0.16);
-}
-.add-preview-card {
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 12px;
-  padding: 12px 14px;
-  min-height: 96px;
-}
-.add-preview-card--compact {
-  max-width: 260px;
-}
-/* Section sub-note (e.g. the Installed "unverified" caption). */
-.add-section-note {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 10.5px;
-  font-weight: 500;
-  color: var(--text-3);
-  text-transform: none;
-  letter-spacing: 0;
-}
-/* Per-item "unverified" badge on third-party widgets. */
-.add-item-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 9.5px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  padding: 1px 6px;
-  border-radius: var(--r-pill);
-  color: #ff9f0a;
-  background: color-mix(in srgb, #ff9f0a 16%, transparent);
 }
 
 /* ---- General settings: toggle switch + clear button ---- */
@@ -2487,10 +2518,6 @@ button[disabled],
 }
 .consent-install--danger:hover {
   background: color-mix(in srgb, var(--danger) 88%, #000);
-}
-.add-item-badge--danger {
-  color: var(--danger);
-  background: color-mix(in srgb, var(--danger) 16%, transparent);
 }
 .mw-banner--wide {
   align-items: flex-start;

@@ -441,8 +441,10 @@ export async function removePack(packId: string): Promise<void> {
   await rm(join(app.getPath('userData'), 'ext-data', packId), { recursive: true, force: true })
 }
 
-// ── pack assets: icon (→ data URL) + README (→ text), traversal-guarded ─────────────────────────
+// ── pack assets: icon + preview (→ data URL) + README (→ text), traversal-guarded ────────────────
 const ICON_MAX = 512 * 1024
+// Widget preview screenshots are larger than icons but still bundled+inlined, so keep a firm ceiling.
+const PREVIEW_MAX = 2 * 1024 * 1024
 const README_MAX = 512 * 1024
 const README_NAMES = ['README.md', 'readme.md', 'Readme.md']
 const ICON_MIME: Record<string, string> = {
@@ -462,19 +464,33 @@ function packAssetPath(packId: string, rel: string): string | null {
   return p === base || p.startsWith(base + sep) ? p : null
 }
 
-/** The pack's icon as a data URL (from spec.icon), or undefined. */
-async function packIconDataUrl(packId: string, iconRel: string | undefined): Promise<string | undefined> {
-  if (!iconRel) return undefined
-  const p = packAssetPath(packId, iconRel)
+/** A pack-relative image as a data URL, size-bounded + traversal-guarded, or undefined. */
+async function packImageDataUrl(
+  packId: string,
+  rel: string | undefined,
+  max: number
+): Promise<string | undefined> {
+  if (!rel) return undefined
+  const p = packAssetPath(packId, rel)
   const mime = p && ICON_MIME[extname(p).toLowerCase()]
   if (!p || !mime) return undefined
   try {
     const buf = await readFile(p)
-    return buf.length > ICON_MAX ? undefined : `data:${mime};base64,${buf.toString('base64')}`
+    return buf.length > max ? undefined : `data:${mime};base64,${buf.toString('base64')}`
   } catch {
     return undefined
   }
 }
+
+/** The pack's icon as a data URL (from spec.icon), or undefined. */
+const packIconDataUrl = (packId: string, iconRel: string | undefined): Promise<string | undefined> =>
+  packImageDataUrl(packId, iconRel, ICON_MAX)
+
+/** A widget's preview screenshot as a data URL (from widget.preview), or undefined. */
+export const packWidgetPreviewDataUrl = (
+  packId: string,
+  previewRel: string | undefined
+): Promise<string | undefined> => packImageDataUrl(packId, previewRel, PREVIEW_MAX)
 
 /** The pack's README path (spec.readme, else a README.md at the root), or null. */
 async function packReadmePath(packId: string, readmeRel: string | undefined): Promise<string | null> {
@@ -545,10 +561,13 @@ export async function listInstalledPacks(): Promise<InstalledPack[]> {
       enabled: rec.enabled && integrityOk && !tampered,
       tampered,
       integrityOk,
+      // NB: no previewData here — the Add-widget gallery reads previews via ext:list (resolveEnabled
+      // → packWidgetPreviewDataUrl), so resolving them here too would just double a large payload.
       widgets: spec.widgets.map((w) => ({
         fullId: w.fullId,
         id: w.id,
         name: w.name,
+        description: w.description,
         hasHost: w.nodeEntry !== undefined,
         capabilities: rec.widgets.find((x) => x.id === w.id)?.capabilities ?? w.capabilities,
         defaultSize: w.defaultSize,

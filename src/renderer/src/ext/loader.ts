@@ -24,32 +24,44 @@ function bindHostSync(): void {
  * `ext:<id>` namespacing can't collide with built-ins. main's ext:list returns only enabled +
  * authentic + untampered extensions.
  */
-async function register(): Promise<void> {
-  const { preloadUrl, extensions } = await window.garret.ext.list()
-  // Idempotent: clear any prior gx: registrations first so a re-run (React StrictMode double-invoke
-  // in dev, or a reload) re-registers cleanly instead of logging "duplicate plugin id ignored".
+type ExtEntry = Awaited<ReturnType<typeof window.garret.ext.list>>['extensions'][number]
+
+/** Build a placeable plugin from a listed extension. Single source of truth for both the initial
+ *  load and post-install resync so the picker metadata (description/preview) can't drift. */
+function pluginFor(e: ExtEntry, preloadUrl: string): AnyWidgetPlugin {
+  return {
+    apiVersion: 1,
+    manifest: {
+      id: `gx:${e.id}`,
+      name: e.name,
+      description: e.description,
+      preview: e.previewData,
+      defaultSize: e.defaultSize ?? { w: 4, h: 4 },
+      configSchema: {}
+    },
+    render: ({ ctx }: WidgetRenderProps) =>
+      createElement(WidgetSurface, {
+        extensionId: e.id,
+        instanceId: ctx.instanceId,
+        uiUrl: e.uiUrl,
+        preloadUrl,
+        embed: e.capabilities.includes('embed')
+      })
+  } as AnyWidgetPlugin
+}
+
+/** Drop all gx: registrations then register the given entries — idempotent so a re-run (React
+ *  StrictMode double-invoke in dev, or a reload) re-registers cleanly with no "duplicate id" noise. */
+function swap(extensions: ExtEntry[], preloadUrl: string): void {
   for (const p of registry.list()) {
     if (p.manifest.id.startsWith('gx:')) registry.unregister(p.manifest.id)
   }
-  for (const e of extensions) {
-    registry.register({
-      apiVersion: 1,
-      manifest: {
-        id: `gx:${e.id}`,
-        name: e.name,
-        defaultSize: e.defaultSize ?? { w: 4, h: 4 },
-        configSchema: {}
-      },
-      render: ({ ctx }: WidgetRenderProps) =>
-        createElement(WidgetSurface, {
-          extensionId: e.id,
-          instanceId: ctx.instanceId,
-          uiUrl: e.uiUrl,
-          preloadUrl,
-          embed: e.capabilities.includes('embed')
-        })
-    } as AnyWidgetPlugin)
-  }
+  for (const e of extensions) registry.register(pluginFor(e, preloadUrl))
+}
+
+async function register(): Promise<void> {
+  const { preloadUrl, extensions } = await window.garret.ext.list()
+  swap(extensions, preloadUrl)
 }
 
 export async function loadExtensions(): Promise<void> {
@@ -71,21 +83,5 @@ export async function resyncExtensions(): Promise<void> {
     console.warn('[ext] resync failed', err)
     return
   }
-  for (const p of registry.list()) {
-    if (p.manifest.id.startsWith('gx:')) registry.unregister(p.manifest.id)
-  }
-  for (const e of listed.extensions) {
-    registry.register({
-      apiVersion: 1,
-      manifest: { id: `gx:${e.id}`, name: e.name, defaultSize: e.defaultSize ?? { w: 4, h: 4 }, configSchema: {} },
-      render: ({ ctx }: WidgetRenderProps) =>
-        createElement(WidgetSurface, {
-          extensionId: e.id,
-          instanceId: ctx.instanceId,
-          uiUrl: e.uiUrl,
-          preloadUrl: listed.preloadUrl,
-          embed: e.capabilities.includes('embed')
-        })
-    } as AnyWidgetPlugin)
-  }
+  swap(listed.extensions, listed.preloadUrl)
 }

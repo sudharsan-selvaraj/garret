@@ -33,6 +33,7 @@ import {
   cleanupPackStaging,
   listInstalledPacks,
   readPackReadme,
+  packWidgetPreviewDataUrl,
   setPackEnabled,
   removePack,
   readPackRecord,
@@ -150,15 +151,19 @@ export function registerExtHandlers(): void {
   // ── board loader — one placeable entry PER WIDGET (packs expand into their widgets) ──────────────
   ipcMain.handle(Channels.extList, async () => ({
     preloadUrl: extPreloadUrl(),
-    extensions: (await resolveEnabledWidgetSpecs()).map(
-      (w): ExtRuntimeInfo => ({
-        id: w.fullId,
-        name: w.widget.name,
-        uiUrl: w.uiOrigin,
-        hasHost: w.widget.nodeEntry !== undefined,
-        capabilities: w.capabilities,
-        defaultSize: w.widget.defaultSize
-      })
+    extensions: await Promise.all(
+      (await resolveEnabledWidgetSpecs()).map(
+        async (w): Promise<ExtRuntimeInfo> => ({
+          id: w.fullId,
+          name: w.widget.name,
+          description: w.widget.description,
+          previewData: await packWidgetPreviewDataUrl(w.packId, w.widget.preview),
+          uiUrl: w.uiOrigin,
+          hasHost: w.widget.nodeEntry !== undefined,
+          capabilities: w.capabilities,
+          defaultSize: w.widget.defaultSize
+        })
+      )
     )
   }))
 

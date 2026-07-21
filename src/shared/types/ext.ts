@@ -118,6 +118,8 @@ export interface InstalledPackWidget {
   fullId: string
   id: string
   name: string
+  /** one-line summary (previews ride the ext:list path, not this one — see install.ts). */
+  description?: string
   hasHost: boolean
   capabilities: string[]
   defaultSize?: { w: number; h: number }
@@ -194,6 +196,10 @@ export interface InstalledExtension {
 export interface ExtRuntimeInfo {
   id: string
   name: string
+  /** one-line summary shown in the Add-widget gallery. */
+  description?: string
+  /** preview screenshot as a data URL, for the Add-widget gallery. */
+  previewData?: string
   /** garret://<widgetId>.<packId>/ — the UI origin. */
   uiUrl: string
   /** the widget ships a host process (system access) → passive warning. */

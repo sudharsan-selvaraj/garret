@@ -3,13 +3,15 @@
   "id": "garret.clock",
   "publisher": "garret",
   "name": "Clock & Timers",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Clock, world clock, timer, and stopwatch.",
   "widgets": [
     {
       "id": "clock",
       "name": "Clock",
+      "description": "The local time on an analog face with a digital readout. 12- or 24-hour.",
       "ui": "dist/clock",
+      "preview": "previews/clock.svg",
       "capabilities": [],
       "defaultSize": { "w": 3, "h": 3 },
       "settings": {
@@ -22,21 +24,27 @@
     {
       "id": "world-clock",
       "name": "World Clock",
+      "description": "The time across cities you pick, with the offset from your local time.",
       "ui": "dist/world",
+      "preview": "previews/world.svg",
       "capabilities": [],
       "defaultSize": { "w": 3, "h": 4 }
     },
     {
       "id": "timer",
       "name": "Timer",
+      "description": "A countdown with a progress ring. Start, pause, and reset.",
       "ui": "dist/timer",
+      "preview": "previews/timer.svg",
       "capabilities": [],
       "defaultSize": { "w": 3, "h": 3 }
     },
     {
       "id": "stopwatch",
       "name": "Stopwatch",
+      "description": "Count up to the hundredth of a second, with laps.",
       "ui": "dist/stopwatch",
+      "preview": "previews/stopwatch.svg",
       "capabilities": [],
       "defaultSize": { "w": 3, "h": 3 }
     }

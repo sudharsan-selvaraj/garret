@@ -3,13 +3,15 @@
   "id": "garret.web-view",
   "publisher": "garret",
   "name": "Web View",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Load any webpage from a URL.",
   "widgets": [
     {
       "id": "web",
       "name": "Web View",
+      "description": "Pin any webpage to your board — a dashboard, docs, or a live page.",
       "ui": "dist/web",
+      "preview": "previews/web.svg",
       "capabilities": ["embed"],
       "defaultSize": { "w": 6, "h": 5 },
       "settings": {

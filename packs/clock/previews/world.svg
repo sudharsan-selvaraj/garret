@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" font-family="-apple-system, system-ui, sans-serif">
+  <rect width="320" height="200" fill="#1b1b1d"/>
+  <text x="24" y="34" fill="#8a8a90" font-size="11" font-weight="600" letter-spacing="0.5">WORLD CLOCK</text>
+  <g font-size="14">
+    <g transform="translate(0,50)">
+      <text x="24" y="16" fill="#f2f2f5" font-weight="500">Cupertino</text>
+      <text x="296" y="16" fill="#f2f2f5" font-weight="600" text-anchor="end">10:09</text>
+      <text x="296" y="32" fill="#6a6a70" font-size="10" text-anchor="end">Today</text>
+    </g>
+    <line x1="24" y1="94" x2="296" y2="94" stroke="#2c2c2e"/>
+    <g transform="translate(0,102)">
+      <text x="24" y="16" fill="#f2f2f5" font-weight="500">London</text>
+      <text x="296" y="16" fill="#f2f2f5" font-weight="600" text-anchor="end">18:09</text>
+      <text x="296" y="32" fill="#6a6a70" font-size="10" text-anchor="end">+8 hrs</text>
+    </g>
+    <line x1="24" y1="146" x2="296" y2="146" stroke="#2c2c2e"/>
+    <g transform="translate(0,154)">
+      <text x="24" y="16" fill="#f2f2f5" font-weight="500">Tokyo</text>
+      <text x="296" y="16" fill="#f2f2f5" font-weight="600" text-anchor="end">02:09</text>
+      <text x="296" y="32" fill="#6a6a70" font-size="10" text-anchor="end">+17 hrs</text>
+    </g>
+  </g>
+</svg>

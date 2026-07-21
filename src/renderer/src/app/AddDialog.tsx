@@ -11,6 +11,8 @@ import { Dialog } from '@renderer/app/Dialog'
 interface Group {
   id: string
   name: string
+  /** pack icon as a data URL — drives the placeholder for widgets without a preview. */
+  icon?: string
   widgets: AnyWidgetPlugin[]
 }
 
@@ -26,7 +28,7 @@ function buildGroups(all: AnyWidgetPlugin[], query: string, packs: InstalledPack
   for (const p of packs) {
     const prefix = `gx:${p.id}/`
     const widgets = all.filter((w) => w.manifest.id.startsWith(prefix) && matches(w))
-    if (widgets.length) out.push({ id: `pack:${p.id}`, name: p.name, widgets })
+    if (widgets.length) out.push({ id: `pack:${p.id}`, name: p.name, icon: p.iconData, widgets })
   }
   return out
 }
@@ -84,7 +86,11 @@ export function AddDialog(): JSX.Element {
               className={`add-nav-item${selected === g.id ? ' active' : ''}`}
               onClick={() => setSelected(g.id)}
             >
-              <WidgetIcon icon={Package} size={16} />
+              {g.icon ? (
+                <img className="add-nav-icon" src={g.icon} alt="" />
+              ) : (
+                <WidgetIcon icon={Package} size={16} />
+              )}
               <span className="add-nav-name">{g.name}</span>
             </button>
           ))}
@@ -106,14 +112,17 @@ export function AddDialog(): JSX.Element {
                 <div className="add-section-head">
                   <span>{g.name}</span>
                 </div>
-                {g.widgets.map((w) => (
-                  <WidgetItem
-                    key={w.manifest.id}
-                    plugin={w}
-                    hasHost={hostIds.has(w.manifest.id)}
-                    onAdd={() => add(w.manifest.id)}
-                  />
-                ))}
+                <div className="add-grid">
+                  {g.widgets.map((w) => (
+                    <WidgetCard
+                      key={w.manifest.id}
+                      plugin={w}
+                      packIcon={g.icon}
+                      hasHost={hostIds.has(w.manifest.id)}
+                      onAdd={() => add(w.manifest.id)}
+                    />
+                  ))}
+                </div>
               </section>
             ))
           )}
@@ -123,35 +132,59 @@ export function AddDialog(): JSX.Element {
   )
 }
 
-function WidgetItem({
+function WidgetCard({
   plugin,
+  packIcon,
   hasHost,
   onAdd
 }: {
   plugin: AnyWidgetPlugin
+  packIcon?: string
   hasHost: boolean
   onAdd: () => void
 }): JSX.Element {
   const { manifest } = plugin
+  const size = manifest.defaultSize
   return (
-    <div className="add-item">
-      <div className="add-item-bar">
-        <div className="add-item-titles">
-          <div className="add-item-head">
-            <WidgetIcon icon={manifest.icon} size={16} />
-            <span className="add-item-name">{manifest.name}</span>
-            {hasHost && (
-              <span className="add-item-badge" title="This widget runs code on your computer, outside the sandbox.">
-                <ShieldAlert size={11} strokeWidth={2} /> Host access
-              </span>
+    <div className="add-card">
+      <div className="add-card-preview">
+        {manifest.preview ? (
+          <img className="add-card-shot" src={manifest.preview} alt="" loading="lazy" />
+        ) : (
+          <div className="add-card-ph">
+            {packIcon ? (
+              <img className="add-card-ph-icon" src={packIcon} alt="" />
+            ) : (
+              <WidgetIcon icon={manifest.icon ?? Package} size={30} />
             )}
+            <span className="add-card-ph-name">{manifest.name}</span>
           </div>
-          {manifest.description && <p className="add-item-desc">{manifest.description}</p>}
+        )}
+        {hasHost && (
+          <span
+            className="add-card-badge"
+            title="This widget runs code on your computer, outside the sandbox."
+          >
+            <ShieldAlert size={11} strokeWidth={2} /> Host access
+          </span>
+        )}
+      </div>
+      <div className="add-card-body">
+        <div className="add-card-titles">
+          <span className="add-card-name">{manifest.name}</span>
+          {manifest.description && <p className="add-card-desc">{manifest.description}</p>}
         </div>
-        <button className="add-item-btn" onClick={onAdd}>
-          <Plus size={14} strokeWidth={2.25} />
-          Add
-        </button>
+        <div className="add-card-foot">
+          {size && (
+            <span className="add-card-size" title="Default size">
+              {size.w}×{size.h}
+            </span>
+          )}
+          <button className="add-card-btn" onClick={onAdd}>
+            <Plus size={14} strokeWidth={2.25} />
+            Add
+          </button>
+        </div>
       </div>
     </div>
   )

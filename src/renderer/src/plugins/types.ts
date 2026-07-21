@@ -15,6 +15,8 @@ export interface WidgetManifest {
   name: string
   icon?: WidgetIconType
   description?: string
+  /** Preview screenshot as a data URL, shown in the Add-widget gallery. */
+  preview?: string
   /** Default placement size, in grid units. */
   defaultSize: { w: number; h: number }
   minSize?: { w: number; h: number }

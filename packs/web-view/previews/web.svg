@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" font-family="-apple-system, system-ui, sans-serif">
+  <rect width="320" height="200" fill="#1b1b1d"/>
+  <rect x="0" y="0" width="320" height="34" fill="#242426"/>
+  <circle cx="20" cy="17" r="4" fill="#ff5f57"/>
+  <circle cx="36" cy="17" r="4" fill="#febc2e"/>
+  <circle cx="52" cy="17" r="4" fill="#28c840"/>
+  <rect x="74" y="9" width="222" height="16" rx="8" fill="#38383a"/>
+  <text x="86" y="21" fill="#9a9aa0" font-size="10">https://example.com</text>
+  <rect x="24" y="52" width="150" height="14" rx="4" fill="#3a3a3c"/>
+  <rect x="24" y="76" width="272" height="9" rx="4" fill="#2c2c2e"/>
+  <rect x="24" y="92" width="272" height="9" rx="4" fill="#2c2c2e"/>
+  <rect x="24" y="108" width="200" height="9" rx="4" fill="#2c2c2e"/>
+  <rect x="24" y="134" width="128" height="46" rx="8" fill="#242426"/>
+  <rect x="168" y="134" width="128" height="46" rx="8" fill="#242426"/>
+</svg>

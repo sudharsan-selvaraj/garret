@@ -1,4 +1,4 @@
-import { cpSync, mkdirSync, rmSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { join, resolve } from 'node:path'
 
@@ -12,6 +12,8 @@ rmSync(PACK, { recursive: true, force: true })
 mkdirSync(`${PACK}/dist`, { recursive: true })
 cpSync('ui/web', `${PACK}/dist/web`, { recursive: true })
 cpSync('garret.manifest.json', `${PACK}/garret.manifest.json`)
+// Widget preview screenshots (manifest `preview` paths) — shipped at the pack root.
+if (existsSync('previews')) cpSync('previews', `${PACK}/previews`, { recursive: true })
 
 mkdirSync(outDir, { recursive: true })
 rmSync(outFile, { force: true })
