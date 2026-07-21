@@ -18,6 +18,7 @@ loaded from the `garret://` scheme. No tiers, no built-ins.
 5. **[Host packs](guide/05-host-packs.md)** — when a widget needs raw Node (OAuth, local processes) and how to write one.
 6. **[Publishing](guide/06-publishing.md)** — build a `.garret`, ship it to the marketplace via CI.
 7. **[SDK reference](guide/07-sdk-reference.md)** — the complete `@garretapp/sdk` surface, capabilities, and manifest schema.
+8. **[Pack CLI (design)](guide/08-pack-cli.md)** — the planned `garret` CLI: audit + build + pack, sharing one manifest rulebook with the app.
 
 ## Repositories
 
