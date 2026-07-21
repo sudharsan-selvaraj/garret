@@ -3,21 +3,55 @@
   <head>
     <meta charset="utf-8" />
     <style>
-      :root { color-scheme: dark; }
+      :root { color-scheme: dark; --accent: #0a84ff; }
       /* Board embeds widgets in a white webview → paint our own native dark card (see the design
          tokens in the app). No inline script (strict CSP: script-src 'self'). */
       html, body { margin: 0; height: 100%; }
       body {
         display: flex; flex-direction: column; align-items: center; justify-content: center;
-        gap: 6px; background: #1c1c1e; color: rgba(255, 255, 255, 0.92);
+        gap: 12px; background: #1c1c1e; color: rgba(255, 255, 255, 0.92);
         font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
         user-select: none; -webkit-user-select: none;
       }
       #time { font-size: 40px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: 0.5px; }
       #date { font-size: 13px; color: rgba(235, 235, 245, 0.6); }
+
+      /* Analog face (default). Hidden in digital mode. Scales with the widget via vmin. */
+      #face { display: none; width: min(72vmin, 260px); height: auto; }
+      #face .tick { stroke: rgba(235, 235, 245, 0.16); stroke-width: 0.8; stroke-linecap: round; }
+      #face .tick.hr { stroke: rgba(235, 235, 245, 0.5); stroke-width: 1.5; }
+      #face .hand { fill: #f5f5f7; }
+      #face .sec { stroke: var(--accent); stroke-width: 1; stroke-linecap: round; }
+      #face .hub-out { fill: #f5f5f7; }
+      #face .hub-in { fill: var(--accent); }
+
+      body.analog #face { display: block; }
+      body.analog #time { font-size: 17px; font-weight: 600; color: rgba(235, 235, 245, 0.85); }
+      body.analog #date { display: none; }
+      body.analog.no-sec #face .sec { display: none; }
     </style>
   </head>
-  <body>
+  <body class="analog">
+    <svg id="face" viewBox="0 0 100 100" aria-hidden="true">
+      <defs>
+        <radialGradient id="faceFill" cx="50%" cy="40%" r="65%">
+          <stop offset="0" stop-color="#2b2b2e" />
+          <stop offset="1" stop-color="#202022" />
+        </radialGradient>
+        <filter id="handShadow" x="-30%" y="-30%" width="160%" height="160%">
+          <feDropShadow dx="0" dy="0.7" stdDeviation="0.7" flood-color="#000" flood-opacity="0.45" />
+        </filter>
+      </defs>
+      <circle cx="50" cy="50" r="47" fill="url(#faceFill)" stroke="rgba(255,255,255,0.06)" stroke-width="0.8" />
+      <g id="ticks"></g>
+      <g filter="url(#handShadow)">
+        <rect id="h-hour" class="hand" x="48.3" y="29" width="3.4" height="27" rx="1.7" />
+        <rect id="h-min" class="hand" x="49" y="15" width="2" height="41" rx="1" />
+        <line id="h-sec" class="hand sec" x1="50" y1="59" x2="50" y2="13" />
+      </g>
+      <circle class="hub-out" cx="50" cy="50" r="3" />
+      <circle class="hub-in" cx="50" cy="50" r="1.3" />
+    </svg>
     <div id="time">--:--</div>
     <div id="date"></div>
     <script type="module" src="app.js"></script>
