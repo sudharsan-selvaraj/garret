@@ -1,6 +1,6 @@
 {
   "name": "@garretapp/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "The garret pack CLI — scaffold, audit, build, and package Garret widget packs.",
   "license": "MIT",
   "author": "Sudharsan Selvaraj",

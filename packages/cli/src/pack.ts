@@ -1,4 +1,4 @@
-import { createWriteStream } from 'node:fs'
+import { createWriteStream, mkdirSync } from 'node:fs'
 import { readdir, stat } from 'node:fs/promises'
 import { join, relative } from 'node:path'
 import archiver from 'archiver'
@@ -24,6 +24,7 @@ async function walk(root: string): Promise<string[]> {
 export async function packPack(dir: string, outDir = process.cwd()): Promise<string> {
   const staging = await buildPack(dir)
   const manifest = await readManifest(dir)
+  mkdirSync(outDir, { recursive: true }) // the --out dir may not exist yet (e.g. a fresh CI checkout)
   const outFile = join(outDir, `${String(manifest.id)}.garret`)
 
   const files = await walk(staging)
@@ -31,6 +32,7 @@ export async function packPack(dir: string, outDir = process.cwd()): Promise<str
     const stream = createWriteStream(outFile)
     const zip = archiver('zip', { zlib: { level: 9 } })
     stream.on('close', () => resolve())
+    stream.on('error', reject)
     zip.on('error', reject)
     zip.pipe(stream)
     for (const rel of files) zip.file(join(staging, rel), { name: rel, date: new Date(0) })
