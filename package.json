@@ -9,19 +9,23 @@
     "packages/*"
   ],
   "scripts": {
+    "predev": "npm run pack:bundled",
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit",
     "knip": "knip",
     "setup:electron": "node node_modules/electron/install.js",
+    "garret": "tsx packages/cli/src/cli.ts",
+    "audit:packs": "tsx packages/cli/src/cli.ts audit --all .",
+    "pack:bundled": "rm -f resources/packs/*.garret && tsx packages/cli/src/cli.ts pack --all . --out resources/packs",
     "build:native": "cd native && node-gyp rebuild --target=31.7.7 --arch=arm64 --dist-url=https://electronjs.org/headers --devdir=../.electron-gyp",
     "build:icon": "bash scripts/make-icon.sh",
     "build:selftest": "bash scripts/build-selftest.sh",
     "pack:selftest": "npm run build:selftest && bash scripts/garret-pack.sh examples/sandbox-selftest/dist examples/sandbox-selftest/sandbox-selftest.garret",
     "test:unpack": "node scripts/test-unpack.mjs",
-    "pack:dir": "npm run build:native && npm run build && electron-builder --dir",
-    "pack:mac": "npm run build:native && npm run build && electron-builder --mac --publish never"
+    "pack:dir": "npm run build:native && npm run pack:bundled && npm run build && electron-builder --dir",
+    "pack:mac": "npm run build:native && npm run pack:bundled && npm run build && electron-builder --mac --publish never"
   },
   "dependencies": {
     "dompurify": "^3.4.12",

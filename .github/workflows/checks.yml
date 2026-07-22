@@ -1,0 +1,29 @@
+name: checks
+
+# Fast gate on every push/PR: the pack rulebook test + `garret audit` on the bundled packs. Keeps
+# the manifest contract and the packs that ship with the app honest, independent of the app build.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  packs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - name: Install (no lifecycle scripts — we don't need the Electron binary here)
+        run: npm ci --ignore-scripts
+      - name: Manifest rulebook test
+        run: npm test -w @garretapp/pack-schema
+      - name: Audit bundled packs
+        run: npm run audit:packs

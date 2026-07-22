@@ -113,9 +113,15 @@ becomes `garret pack`.
    atlassian, google, adb-devices).
 2. ✅ **Build `@garretapp/cli`** on the schema: `init`, `audit`, `build`, `pack` (run in dev via `tsx`;
    `pack` output verified against the current `build.mjs` for a vanilla, a React, and a host pack).
-3. **Convert** `garret-widgets` (`garret pack --all`) + bundled packs (`garret pack`); delete every
-   `build.mjs`; wire `garret audit` into CI as a required check.
-4. **Add** the published `$schema` + `npm i -g @garretapp/cli` distribution.
+3. **Convert** the packs off `build.mjs`; wire `garret audit` into CI.
+   - ✅ **Bundled packs** (clock, web-view) → `garret pack`: their `build.mjs` deleted; `pack:bundled`
+     builds them via the CLI and is wired into `predev` + `pack:mac`/`pack:dir` (previously the release
+     shipped **no** bundled packs — now fixed); `checks.yml` runs the schema test + `garret audit` on
+     every push/PR as a required gate.
+   - ⏳ **`garret-widgets`** awaits the **published** CLI — a separate-repo CI can't import the in-repo
+     package, so this unblocks once phase 4 publishes `@garretapp/cli` + `@garretapp/pack-schema`.
+4. **Publish** `@garretapp/pack-schema` + `@garretapp/cli` to npm (like the SDK) + the `$schema`, then
+   convert `garret-widgets` (`garret pack --all`) and drop its `scripts/build.mjs`.
 
 ## Related
 
