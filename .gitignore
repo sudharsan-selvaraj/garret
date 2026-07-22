@@ -33,4 +33,6 @@ examples/**/host/assets/*.jar
 
 # Bundled widget pack build artifacts (source in packs/*, built on app build)
 packs/*/pack/
+packs/*/build/
+packs/*/*.garret
 resources/packs/*.garret

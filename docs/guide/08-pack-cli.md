@@ -1,8 +1,10 @@
 # The `garret` pack CLI — design
 
-**Status: design, pre-implementation.** Decisions locked (see [Decisions](#decisions)). This replaces
-the hand-written `build.mjs` scripts with a first-party CLI that **audits against the exact rules the
-app enforces**, then packages — the model Chrome (`web-ext`) and VS Code (`vsce`) use.
+**Status: phases 1–2 landed.** `@garretapp/pack-schema` (the shared rulebook, app refactored onto it)
+and `@garretapp/cli` (`init`/`audit`/`build`/`pack`) are built + tested. Remaining: convert the packs
+off their `build.mjs` scripts + wire `audit` into CI (phase 3), then publish + `$schema` (phase 4).
+This replaces the hand-written `build.mjs` scripts with a first-party CLI that **audits against the
+exact rules the app enforces**, then packages — the model Chrome (`web-ext`) and VS Code (`vsce`) use.
 
 ## Why
 
@@ -106,13 +108,14 @@ becomes `garret pack`.
 
 ## Migration (phased, no big-bang)
 
-1. **Extract `@garretapp/pack-schema`** from `manifest.ts` + `shared/types/ext.ts`; refactor the app to
-   consume it. Behaviour-identical — regression-check against all existing packs (clock, web-view,
+1. ✅ **Extract `@garretapp/pack-schema`** from `manifest.ts` + `shared/types/ext.ts`; refactor the app
+   to consume it. Behaviour-identical — regression-checked against all existing packs (clock, web-view,
    atlassian, google, adb-devices).
-2. **Build `@garretapp/cli`** on the schema: `audit`, `build`, `pack`.
-3. **Convert** `garret-widgets` (`garret build --all`) + bundled packs (`garret pack`); delete every
+2. ✅ **Build `@garretapp/cli`** on the schema: `init`, `audit`, `build`, `pack` (run in dev via `tsx`;
+   `pack` output verified against the current `build.mjs` for a vanilla, a React, and a host pack).
+3. **Convert** `garret-widgets` (`garret pack --all`) + bundled packs (`garret pack`); delete every
    `build.mjs`; wire `garret audit` into CI as a required check.
-4. **Add `init`** + publish the `$schema`.
+4. **Add** the published `$schema` + `npm i -g @garretapp/cli` distribution.
 
 ## Related
 
