@@ -14,13 +14,15 @@ const alias = {
   '@garretapp/sdk/host': resolve(__dirname, 'packages/sdk/src/host.ts'),
   '@garretapp/sdk/ui': resolve(__dirname, 'packages/sdk/src/ui.ts'),
   '@garretapp/sdk/react': resolve(__dirname, 'packages/sdk/src/react.ts'),
-  '@garretapp/sdk': resolve(__dirname, 'packages/sdk/src/index.ts')
+  '@garretapp/sdk': resolve(__dirname, 'packages/sdk/src/index.ts'),
+  // Pack manifest rulebook — resolves to TS source too (bundled, not externalized).
+  '@garretapp/pack-schema': resolve(__dirname, 'packages/pack-schema/src/index.ts')
 }
 
-// The SDK workspace package must be BUNDLED (not externalized) since it resolves to TS source —
-// a runtime `require('@garretapp/sdk')` would have nothing to load.
+// These workspace packages must be BUNDLED (not externalized) since they resolve to TS source —
+// a runtime `require()` would have nothing to load.
 const externalize = (): ReturnType<typeof externalizeDepsPlugin> =>
-  externalizeDepsPlugin({ exclude: ['@garretapp/sdk'] })
+  externalizeDepsPlugin({ exclude: ['@garretapp/sdk', '@garretapp/pack-schema'] })
 
 export default defineConfig({
   main: {

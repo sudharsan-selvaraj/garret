@@ -1,0 +1,33 @@
+{
+  "name": "@garretapp/pack-schema",
+  "version": "0.1.0",
+  "description": "The Garret pack manifest — types, capability grammar, and a pure validator shared by the app and the garret CLI.",
+  "license": "MIT",
+  "author": "Sudharsan Selvaraj",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sudharsan-selvaraj/garret.git",
+    "directory": "packages/pack-schema"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean --treeshake",
+    "test": "tsx test.mts",
+    "prepublishOnly": "npm run build"
+  }
+}

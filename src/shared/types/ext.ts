@@ -5,39 +5,11 @@
  * docs/guide/07-sdk-reference.md.
  */
 
-/** A declarative settings field → Garret renders an isolated settings pane per widget; values persist
- *  in the widget's (or pack `_shared`) namespace. `secret` routes to encrypted secrets. */
-export interface SettingsField {
-  key: string
-  label: string
-  type: 'string' | 'secret' | 'number' | 'boolean' | 'select'
-  options?: string[]
-  default?: string | number | boolean
-  placeholder?: string
-}
-
-/** Declarative background-notifier spec (manifest `notifier`). A single shared main-process runner
- *  polls this on a schedule — even when the widget isn't placed/mounted — diffs new items vs a seen
- *  set, and fires a click-through notification. Templates: `{shared.KEY}` / `{secret.KEY}` in auth +
- *  request; `{item.dot.path}` in the title/body/url. No webview, one scheduler → no per-widget cost.
- *  Requires the widget's `notify` capability (and `openExternal` for click-through) + the pack's
- *  `shared` store (opt-in flag + credentials live there). */
-export interface NotifierSpec {
-  /** Authorization header, computed at runtime from the pack's shared store. */
-  auth?: { type: 'basic'; user: string; pass: string } | { type: 'bearer'; token: string }
-  request: { url: string; method?: string; headers?: Record<string, string>; body?: string }
-  /** dot-path to the array of items in the JSON response (omit if the root is the array). */
-  itemsPath?: string
-  /** field (dot-path) within each item that uniquely identifies it. */
-  idField: string
-  /** notification title (per-item `{item.…}` templates). */
-  titleTemplate: string
-  bodyTemplate?: string
-  /** click-through target (`{item.…}` / `{shared.…}`). */
-  urlTemplate?: string
-  /** poll cadence in minutes (default 5; floored to 5 when the board is idle). */
-  intervalMin?: number
-}
+// The declared manifest shapes live in @garretapp/pack-schema (the single source of truth shared with
+// the garret CLI). Imported for local use + re-exported so existing `@shared/types/ext` importers are
+// unaffected.
+import type { SettingsField, NotifierSpec } from '@garretapp/pack-schema'
+export type { SettingsField, NotifierSpec }
 
 // ── packs (multiple widgets per package) ─────────────────────────────────────────────────────────
 
