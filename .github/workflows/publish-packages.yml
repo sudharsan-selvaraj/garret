@@ -1,0 +1,55 @@
+name: Publish packages
+
+# Publish the pack-tooling packages to npm. Cut a release by pushing a tag:
+#   pack-schema-v0.1.0   → @garretapp/pack-schema
+#   cli-v0.1.0           → @garretapp/cli   (publish pack-schema first — the CLI depends on it)
+#
+# Prerequisite (one-time): the `NPM_TOKEN` repo secret (same one the SDK publish uses).
+on:
+  push:
+    tags:
+      - 'pack-schema-v*'
+      - 'cli-v*'
+
+permissions:
+  contents: read
+  id-token: write # npm provenance (ties the published package to this repo + commit)
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest # pure TS packages — no native/electron build needed
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install (skip lifecycle scripts — not needed to build these packages)
+        run: npm ci --ignore-scripts
+
+      - name: Resolve package + version from the tag
+        id: pkg
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if [[ "$TAG" == pack-schema-v* ]]; then
+            echo "name=@garretapp/pack-schema" >> "$GITHUB_OUTPUT"
+            echo "version=${TAG#pack-schema-v}" >> "$GITHUB_OUTPUT"
+          elif [[ "$TAG" == cli-v* ]]; then
+            echo "name=@garretapp/cli" >> "$GITHUB_OUTPUT"
+            echo "version=${TAG#cli-v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "unrecognized tag: $TAG" && exit 1
+          fi
+
+      - name: Sync version to the tag
+        run: npm version "${{ steps.pkg.outputs.version }}" --no-git-tag-version --allow-same-version -w "${{ steps.pkg.outputs.name }}"
+
+      - name: Build
+        run: npm run build -w "${{ steps.pkg.outputs.name }}"
+
+      - name: Publish
+        run: npm publish -w "${{ steps.pkg.outputs.name }}" --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
